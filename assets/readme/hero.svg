@@ -1,6 +1,6 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
   <title id="title">QQ Farm CV Helper Portable</title>
-  <desc id="desc">A blue and white project-native hero showing a portable Windows folder, visual automation cards, and the combating123 GitHub identity.</desc>
+  <desc id="desc">A blue and white project-native hero showing a portable Windows folder, native interface cards, and the combating123 GitHub identity.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#F7FAFF"/>
@@ -17,15 +17,15 @@
     <rect width="56" height="28" rx="14" fill="#DCEAFF"/>
     <text x="28" y="19" text-anchor="middle" font-family="Segoe UI, PingFang SC, sans-serif" font-size="12" font-weight="700" fill="#176BFF">OWNER</text>
     <text x="0" y="86" font-family="Segoe UI, PingFang SC, sans-serif" font-size="48" font-weight="800" fill="#17345F">QQ 经典农场助手</text>
-    <text x="0" y="130" font-family="Segoe UI, PingFang SC, sans-serif" font-size="25" font-weight="650" fill="#176BFF">视觉自动化 · 单目录便携版</text>
-    <text x="0" y="177" font-family="Segoe UI, PingFang SC, sans-serif" font-size="17" fill="#62799D">保留旧设置，集中运行文件，一次解压即可启动。</text>
+    <text x="0" y="130" font-family="Segoe UI, PingFang SC, sans-serif" font-size="25" font-weight="650" fill="#176BFF">原生稳定布局 · 单目录便携版</text>
+    <text x="0" y="177" font-family="Segoe UI, PingFang SC, sans-serif" font-size="17" fill="#62799D">保留旧设置与原生排版，一次解压即可启动。</text>
     <g transform="translate(0 212)">
       <rect width="172" height="42" rx="21" fill="#FFFFFF" stroke="#D5E4F7"/>
       <circle cx="24" cy="21" r="7" fill="#2CCB83"/>
       <text x="42" y="27" font-family="Segoe UI, PingFang SC, sans-serif" font-size="14" font-weight="650" fill="#365579">Portable Data</text>
       <rect x="186" width="186" height="42" rx="21" fill="#FFFFFF" stroke="#D5E4F7"/>
       <path d="M211 15c5-8 16-6 16-6-1 11-7 17-17 17-1-5-1-8 1-11Z" fill="#176BFF"/>
-      <text x="234" y="27" font-family="Segoe UI, PingFang SC, sans-serif" font-size="14" font-weight="650" fill="#365579">Visual Workflow</text>
+      <text x="234" y="27" font-family="Segoe UI, PingFang SC, sans-serif" font-size="14" font-weight="650" fill="#365579">Native Layout</text>
       <rect x="386" width="194" height="42" rx="21" fill="#FFFFFF" stroke="#D5E4F7"/>
       <text x="407" y="27" font-family="ui-monospace,Consolas,monospace" font-size="14" font-weight="700" fill="#176BFF">@combating123</text>
     </g>

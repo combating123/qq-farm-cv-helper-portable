@@ -1,18 +1,18 @@
-﻿QQ Farm Studio 单目录便携项目
+CV 农场助手单目录便携项目
 项目主页：https://github.com/combating123
 主程序：QQFarmCVHelper.exe
 启动入口：启动_QQ经典农场助手.cmd
 
 项目结构：
 1. 主程序与运行依赖集中在同一目录；
-2. python312.dll 代理、python312_orig.dll、hook.py 与界面模块位于程序目录；
-3. UserData 保留历史配置、统计数据和桌面宠物设置；
-4. 启动器在运行前后按修改时间同步 UserData 与当前 Windows 用户配置目录；
-5. 日志、缓存、截图和临时文件不会写回便携设置。
+2. UserData 保留历史配置、统计数据和桌面宠物设置；
+3. 启动器在运行前后按修改时间同步便携设置；
+4. 启动前自动处理残留旧实例，避免双击后没有反应；
+5. 日志、缓存、截图和临时文件不写入交付压缩包。
 
-界面设计：
-1. 全局采用深海军蓝、薄荷青与高对比卡片风格；
-2. 标题栏使用 QQ Farm Studio 与 combating123 身份；
-3. 所有数字标签和升级入口从界面隐藏；
-4. 项目名片页只显示项目名称、combating123 和 GitHub 主页；
-5. 左侧 GitHub 图标只打开 https://github.com/combating123。
+界面策略：
+1. 保留应用原生浅色界面、控件尺寸和布局；
+2. 标题栏显示 CV 农场助手 · combating123；
+3. 隐藏版本标签，会员状态显示为短文案“已激活”；
+4. 项目信息页只显示 combating123 与 GitHub 主页；
+5. GitHub 图标只打开 https://github.com/combating123。

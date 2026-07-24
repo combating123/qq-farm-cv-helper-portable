@@ -1,238 +1,29 @@
-﻿# ASCII-only UI personalization for the portable build.
+﻿# ASCII-only conservative personalization for the portable build.
+# The host application's native QSS and geometry are intentionally preserved.
 GITHUB_HOME = 'https://github.com/combating123'
 GITHUB_USER = 'combating123'
 _PATCH_MARK = '_combating123_personalized'
 _ABOUT_MARK = '_combating123_about_refresh'
-_EARLY_THEME_TRYING = False
-_SHOW_PATCH_MARK = '_combating123_theme_before_show'
+
+# Empty by design: global Qt rules changed title-bar, sidebar and status geometry.
+APP_QSS = ''
+DIALOG_QSS = ''
+DIALOG_CHILD_QSS = ''
+COPY_MAP = {}
 
 ABOUT_HTML = r'''
-<div style="font-family:'Segoe UI','Microsoft YaHei UI',sans-serif; padding:42px; color:#edf7ff; background:#050814;">
-  <table width="100%" cellspacing="0" cellpadding="0" style="background:#0a1222; border:1px solid #22314a;">
-    <tr>
-      <td colspan="2" style="padding:34px 36px 26px 36px; border-bottom:1px solid #22314a;">
-        <div style="font-size:38px; font-weight:800; color:#ffffff;">QQ Farm Studio</div>
-      </td>
-    </tr>
-    <tr>
-      <td width="40%" style="padding:26px 36px; border-right:1px solid #22314a;">
-        <div style="font-size:12px; color:#8292ad;">OWNER</div>
-        <div style="font-size:22px; font-weight:700; color:#ffffff; margin-top:8px;">combating123</div>
-      </td>
-      <td style="padding:26px 36px;">
-        <div style="font-size:12px; color:#8292ad;">GITHUB</div>
-        <a style="font-size:18px; font-weight:700; color:#65fbd2; text-decoration:none;" href="https://github.com/combating123">github.com/combating123</a>
-      </td>
-    </tr>
-  </table>
+<div style="font-family:'Segoe UI','Microsoft YaHei UI',sans-serif; padding:24px; color:#1f2937;">
+  <div style="font-size:30px; font-weight:700; color:#111827;">CV Farm Assistant</div>
+  <div style="margin-top:24px; padding:18px 20px; border:1px solid #dbe4f0; border-radius:10px;">
+    <div style="font-size:12px; color:#64748b;">PROJECT OWNER</div>
+    <div style="margin-top:6px; font-size:20px; font-weight:700; color:#111827;">combating123</div>
+    <div style="margin-top:18px; font-size:12px; color:#64748b;">GITHUB</div>
+    <div style="margin-top:6px;">
+      <a style="font-size:16px; font-weight:600; color:#2563eb; text-decoration:none;" href="https://github.com/combating123">github.com/combating123</a>
+    </div>
+  </div>
 </div>
 '''
-
-APP_QSS = r'''
-/* QQ Farm Studio: dark command-center visual system */
-QWidget {
-    background:#050814;
-    color:#dce8f8;
-    font-family:"Segoe UI","Microsoft YaHei UI";
-    font-size:14px;
-    selection-background-color:#65fbd2;
-    selection-color:#050814;
-}
-QWidget#rootView, QFrame#windowShell {
-    background:#050814;
-    border:none;
-}
-QFrame#sidebar {
-    background:#070c18;
-    border:none;
-    border-right:1px solid #1a2840;
-}
-QFrame#contentShell, QStackedWidget, QScrollArea, QScrollArea > QWidget > QWidget {
-    background:#080e1b;
-    border:none;
-}
-QFrame {
-    background:#0a1222;
-    border-color:#1b2a42;
-}
-QLabel { background:transparent; color:#cbd8ea; }
-QLabel#titleText {
-    color:#ffffff;
-    font-size:19px;
-    font-weight:800;
-    letter-spacing:1px;
-}
-QLabel#aboutSectionTitle { color:#65fbd2; font-size:13px; font-weight:800; }
-QToolButton {
-    background:transparent;
-    color:#8fa0ba;
-    border:1px solid transparent;
-    border-radius:12px;
-    min-height:42px;
-    padding:0 14px;
-}
-QToolButton:hover { background:#101d31; color:#ffffff; border-color:#263a57; }
-QToolButton:pressed { background:#172940; }
-QToolButton#navBtn, QToolButton#navBtnActive {
-    min-height:48px;
-    padding:0 16px;
-    text-align:left;
-    font-weight:700;
-}
-QToolButton#navBtn { color:#8292ad; background:transparent; }
-QToolButton#navBtn:hover { color:#ffffff; background:#101d31; }
-QToolButton#navBtnActive {
-    color:#050814;
-    background:#65fbd2;
-    border-color:#65fbd2;
-}
-QPushButton {
-    min-height:38px;
-    padding:0 18px;
-    color:#dce8f8;
-    background:#101b2e;
-    border:1px solid #263954;
-    border-radius:10px;
-    font-weight:700;
-}
-QPushButton:hover { color:#ffffff; background:#162641; border-color:#65fbd2; }
-QPushButton:pressed { background:#0b1526; }
-QPushButton[studioRole="primaryAction"] {
-    min-height:46px;
-    color:#04100d;
-    background:#65fbd2;
-    border:1px solid #65fbd2;
-    border-radius:12px;
-    font-size:15px;
-    font-weight:800;
-}
-QPushButton[studioRole="primaryAction"]:hover { background:#8cffdf; border-color:#8cffdf; }
-QLabel[studioRole="statusPill"], QPushButton[studioRole="statusPill"] {
-    color:#65fbd2;
-    background:#0d2725;
-    border:1px solid #285c54;
-    border-radius:13px;
-    padding:5px 14px;
-    font-weight:800;
-}
-QLineEdit, QTextEdit, QPlainTextEdit, QTextBrowser, QSpinBox, QDoubleSpinBox {
-    color:#dce8f8;
-    background:#060b15;
-    border:1px solid #22324b;
-    border-radius:10px;
-    padding:8px 10px;
-}
-QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
-    border:1px solid #65fbd2;
-}
-QComboBox {
-    min-height:38px;
-    color:#edf7ff;
-    background:#0d1728;
-    border:1px solid #263954;
-    border-radius:10px;
-    padding:0 34px 0 12px;
-}
-QComboBox:hover, QComboBox:focus { border-color:#65fbd2; }
-QComboBox QAbstractItemView {
-    color:#dce8f8;
-    background:#0a1222;
-    border:1px solid #263954;
-    selection-background-color:#65fbd2;
-    selection-color:#050814;
-    outline:0;
-}
-QCheckBox, QRadioButton { color:#b9c8dc; spacing:8px; background:transparent; }
-QCheckBox::indicator, QRadioButton::indicator { width:18px; height:18px; }
-QCheckBox::indicator:checked, QRadioButton::indicator:checked { background:#65fbd2; border:2px solid #65fbd2; }
-QGroupBox {
-    color:#edf7ff;
-    background:#0a1222;
-    border:1px solid #1d2c45;
-    border-radius:14px;
-    margin-top:14px;
-    padding-top:14px;
-    font-weight:800;
-}
-QGroupBox::title { subcontrol-origin:margin; left:14px; padding:0 7px; color:#65fbd2; }
-QTabWidget::pane { background:#0a1222; border:1px solid #1d2c45; border-radius:12px; }
-QTabBar::tab { color:#8292ad; background:#080e1b; padding:10px 18px; border:none; }
-QTabBar::tab:selected { color:#65fbd2; background:#0f1b2e; }
-QHeaderView::section { color:#8fa0ba; background:#0d1728; border:none; border-bottom:1px solid #263954; padding:9px; }
-QTableView, QTreeView, QListView { color:#dce8f8; background:#070c16; border:1px solid #1d2c45; alternate-background-color:#0a1323; }
-QProgressBar { color:#dce8f8; background:#07101e; border:1px solid #22324b; border-radius:7px; text-align:center; }
-QProgressBar::chunk { background:#65fbd2; border-radius:6px; }
-QScrollBar:vertical { width:10px; background:#070c16; margin:2px; }
-QScrollBar::handle:vertical { min-height:28px; background:#2a3b56; border-radius:5px; }
-QScrollBar::handle:vertical:hover { background:#65fbd2; }
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height:0; }
-QScrollBar:horizontal { height:10px; background:#070c16; margin:2px; }
-QScrollBar::handle:horizontal { min-width:28px; background:#2a3b56; border-radius:5px; }
-QFrame#aboutCard { background:#050814; border:1px solid #22314a; border-radius:18px; }
-QTextBrowser#aboutTextBrowser { background:#050814; color:#dce8f8; border:none; padding:0; }
-QToolTip { color:#edf7ff; background:#101b2e; border:1px solid #65fbd2; padding:6px; }
-'''
-
-DIALOG_QSS = r'''
-QDialog, QMessageBox {
-    background:#050814;
-    color:#dce8f8;
-}
-QDialog QWidget, QMessageBox QWidget {
-    background:#050814;
-    color:#dce8f8;
-}
-QDialog QFrame, QMessageBox QFrame {
-    background:#0a1222;
-    border-color:#22314a;
-}
-QDialog QLabel, QMessageBox QLabel {
-    background:transparent;
-    color:#dce8f8;
-}
-QDialog QLineEdit, QDialog QTextEdit, QDialog QPlainTextEdit {
-    color:#edf7ff;
-    background:#060b15;
-    border:1px solid #2a3d5b;
-    border-radius:10px;
-    padding:8px 10px;
-}
-QDialog QPushButton, QMessageBox QPushButton {
-    min-height:38px;
-    color:#dce8f8;
-    background:#101b2e;
-    border:1px solid #2a3d5b;
-    border-radius:10px;
-    padding:0 18px;
-    font-weight:700;
-}
-QDialog QPushButton:hover, QMessageBox QPushButton:hover {
-    color:#050814;
-    background:#65fbd2;
-    border-color:#65fbd2;
-}
-QDialog [studioRole="statusPill"] {
-    color:#65fbd2;
-    background:#0d2725;
-    border:1px solid #285c54;
-}
-'''
-
-APP_QSS = APP_QSS + DIALOG_QSS
-
-DIALOG_CHILD_QSS = r'''background:#050814;color:#dce8f8;border-color:#22314a;'''
-
-COPY_MAP = {
-    '\u8fd0\u884c\u63a7\u5236': '\u5de5\u4f5c\u53f0',
-    '\u53c2\u6570\u8bbe\u7f6e': '\u81ea\u52a8\u5316\u914d\u7f6e',
-    '\u597d\u53cb\u5c4f\u853d': '\u597d\u53cb\u7b56\u7565',
-    '\u597d\u53cb\u62a4\u4e3b': '\u5b88\u62a4\u4e2d\u5fc3',
-    '\u5f00\u59cb\u8fd0\u884c': '\u542f\u52a8\u5de5\u4f5c\u6d41',
-    '\u5c0f\u7a0b\u5e8f\u5e73\u53f0\u9009\u62e9': '\u8fd0\u884c\u76ee\u6807',
-    '\u663e\u793a\u5c0f\u7a0b\u5e8f': '\u7a97\u53e3\u8054\u52a8',
-    '\u5355\u5f00\u7248': '\u5355\u5b9e\u4f8b',
-    '\u591a\u5f00\u7248': '\u591a\u5b9e\u4f8b',
-}
 
 
 def _safe_call(obj, name, *args):
@@ -273,44 +64,10 @@ def _hide_parent_card(obj):
         _hide(obj)
 
 
-def _set_role(widget, role):
-    _safe_call(widget, 'setProperty', 'studioRole', role)
-    style = _safe_call(widget, 'style')
-    if style is not None:
-        _safe_call(style, 'unpolish', widget)
-        _safe_call(style, 'polish', widget)
-
-
-
-def _apply_application_theme(QtWidgets):
-    try:
-        app = QtWidgets.QApplication.instance()
-        if app is None:
-            return False
-        _safe_call(app, 'setStyleSheet', APP_QSS)
-        return True
-    except BaseException:
-        return False
-
-
 def install_early_theme(QtWidgets=None):
-    """Apply the dark stylesheet as soon as a QApplication exists.
+    """Preserve the application's native stylesheet and all native geometry."""
+    return False
 
-    Native PySide QWidget methods are intentionally left untouched because
-    replacing Shiboken method descriptors can terminate the host at startup.
-    """
-    global _EARLY_THEME_TRYING
-    if _EARLY_THEME_TRYING:
-        return False
-    _EARLY_THEME_TRYING = True
-    try:
-        if QtWidgets is None:
-            QtWidgets = __import__('PySide6.QtWidgets', fromlist=['QApplication'])
-        return bool(_apply_application_theme(QtWidgets))
-    except BaseException:
-        return False
-    finally:
-        _EARLY_THEME_TRYING = False
 
 def _patch_all_widgets():
     try:
@@ -318,7 +75,6 @@ def _patch_all_widgets():
         app = QtWidgets.QApplication.instance()
         if app is None:
             return
-        _safe_call(app, 'setStyleSheet', APP_QSS)
         for item in list(app.allWidgets()):
             patch_widget(item)
     except BaseException:
@@ -345,37 +101,18 @@ def patch_widget(widget, context_getter=None, opener=None):
             context = ''
         lower_context = (name + ' ' + context).lower()
         about_related = 'about' in lower_context
+
+        # Do not touch root, dialog, sidebar, buttons, sizing or host styles.
+        if name in ('rootView', 'windowShell', 'sidebar'):
+            return 0
         context_head = context.strip().lower().split(' ', 1)[0] if context.strip() else ''
-        dialog_related = (
-            context_head in ('qdialog', 'qmessagebox')
-            or name.lower().endswith('dialog')
-            or name.lower() in ('licensedialog', 'vipdialog', 'membershipdialog')
-        )
-        membership_child = (
-            'qdialog' in lower_context
-            and any(key in lower_context for key in ('vip', 'member', 'license', 'entitlement', '\u4f1a\u5458', '\u6743\u76ca', '\u6fc0\u6d3b'))
-        )
-
-        if membership_child and not dialog_related:
-            _safe_call(widget, 'setStyleSheet', DIALOG_CHILD_QSS)
-            _safe_call(widget, 'setProperty', 'studioRole', 'darkDialogChild')
-            return 1
-
-        if dialog_related:
-            _safe_call(widget, 'setStyleSheet', DIALOG_QSS)
-            _safe_call(widget, 'setProperty', 'studioRole', 'darkDialog')
-            return 1
-
-        if name in ('rootView', 'windowShell'):
-            _safe_call(widget, 'setStyleSheet', APP_QSS)
-            return 1
-
-        if name == 'sidebar':
-            _set_role(widget, 'commandRail')
-            return 1
+        if context_head in ('qdialog', 'qmessagebox') or name.lower().endswith('dialog'):
+            return 0
+        if 'qdialog' in context.lower():
+            return 0
 
         if name == 'titleText':
-            _safe_call(widget, 'setText', 'QQ Farm Studio | combating123')
+            _safe_call(widget, 'setText', 'CV \u519c\u573a\u52a9\u624b \u00b7 combating123')
             _safe_call(widget, 'setToolTip', GITHUB_HOME)
             return 1
 
@@ -384,7 +121,7 @@ def patch_widget(widget, context_getter=None, opener=None):
             return 1
 
         if name == 'githubBtn' and (tip == '\u5173\u4e8e' or 'about' in tip.lower()):
-            _safe_call(widget, 'setToolTip', '\u9879\u76ee\u540d\u7247 | combating123')
+            _safe_call(widget, 'setToolTip', '\u9879\u76ee\u4fe1\u606f | combating123')
             try:
                 if not bool(widget.property(_ABOUT_MARK)):
                     signal = getattr(widget, 'clicked', None)
@@ -419,18 +156,11 @@ def patch_widget(widget, context_getter=None, opener=None):
             return 1
 
         if 'vip' in text.lower() or text in ('\u4f1a\u5458\u5df2\u6fc0\u6d3b', '\u5f00\u901a\u4f1a\u5458'):
-            _safe_call(widget, 'setText', 'STUDIO ACTIVE')
-            _set_role(widget, 'statusPill')
-            return 1
-
-        if text in COPY_MAP:
-            _safe_call(widget, 'setText', COPY_MAP[text])
-            if text == '\u5f00\u59cb\u8fd0\u884c':
-                _set_role(widget, 'primaryAction')
+            _safe_call(widget, 'setText', '\u5df2\u6fc0\u6d3b')
             return 1
 
         if text.startswith('\u5173\u4e8e - '):
-            _safe_call(widget, 'setText', 'QQ Farm Studio  /  PROJECT PROFILE')
+            _safe_call(widget, 'setText', '\u9879\u76ee\u4fe1\u606f')
             return 1
 
         if name == 'templateDebugStatus':
@@ -444,18 +174,14 @@ def patch_widget(widget, context_getter=None, opener=None):
             return 1
 
         if name == 'aboutSectionTitle':
-            _safe_call(widget, 'setText', 'PROJECT PROFILE')
-            _safe_call(widget, 'setStyleSheet', 'color:#65fbd2;font-size:13px;font-weight:800;letter-spacing:2px;')
+            _safe_call(widget, 'setText', '\u9879\u76ee\u4fe1\u606f')
             return 1
 
         if name == 'aboutTextBrowser':
             _safe_call(widget, 'setHtml', ABOUT_HTML)
-            _safe_call(widget, 'setStyleSheet', 'QTextBrowser#aboutTextBrowser{border:0;background:#050814;color:#dce8f8;padding:0;}')
+            _safe_call(widget, 'setStyleSheet', 'QTextBrowser#aboutTextBrowser{border:0;background:transparent;}')
             _safe_call(widget, 'setOpenExternalLinks', True)
             _safe_call(widget, 'setProperty', _PATCH_MARK, True)
-            parent = _safe_call(widget, 'parentWidget')
-            if parent is not None:
-                _safe_call(parent, 'setStyleSheet', 'QFrame#aboutCard{background:#050814;border:1px solid #22314a;border-radius:18px;padding:10px;}')
             return 1
     except BaseException:
         return 0
