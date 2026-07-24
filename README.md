@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="QQ Farm Studio 单目录便携项目，保留设置并提供视觉自动化工作流">
 
   <br>
@@ -14,7 +14,7 @@
 ## 界面预览
 
 <p align="center">
-  <img src="./assets/readme/interface-preview.svg" width="100%" alt="QQ Farm Studio 暗色命令中心，显示宽侧栏、运行目标、状态卡片和工作流日志">
+  <img src="./assets/readme/interface-preview.svg" width="100%" alt="QQ Farm Studio 暗色命令中心，显示紧凑导航、运行目标、状态卡片和工作流日志">
 </p>
 
 > 设计预览使用与程序相同的深色令牌与界面文案；实时数据和画面区域会在运行时更新。
@@ -75,6 +75,8 @@ graph LR
 
 - 左侧 GitHub 图标仅跳转至 `github.com/combating123`。
 - “关于”页移除旧项目地址、群聊、文档与更新入口。
+- 深色主题在窗口首次显示前安装，避免启动时由浅色瞬间切换。
+- 会员状态等动态弹窗统一使用深海军蓝与薄荷青视觉。
 - 项目名片页采用深海军蓝与薄荷青布局，仅展示项目名称、所有者与 GitHub 主页。
 - 标题栏加入 `combating123` 标识，便于区分个人便携构建。
 

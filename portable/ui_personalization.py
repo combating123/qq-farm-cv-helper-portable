@@ -3,6 +3,8 @@ GITHUB_HOME = 'https://github.com/combating123'
 GITHUB_USER = 'combating123'
 _PATCH_MARK = '_combating123_personalized'
 _ABOUT_MARK = '_combating123_about_refresh'
+_EARLY_THEME_TRYING = False
+_SHOW_PATCH_MARK = '_combating123_theme_before_show'
 
 ABOUT_HTML = r'''
 <div style="font-family:'Segoe UI','Microsoft YaHei UI',sans-serif; padding:42px; color:#edf7ff; background:#050814;">
@@ -171,6 +173,55 @@ QTextBrowser#aboutTextBrowser { background:#050814; color:#dce8f8; border:none; 
 QToolTip { color:#edf7ff; background:#101b2e; border:1px solid #65fbd2; padding:6px; }
 '''
 
+DIALOG_QSS = r'''
+QDialog, QMessageBox {
+    background:#050814;
+    color:#dce8f8;
+}
+QDialog QWidget, QMessageBox QWidget {
+    background:#050814;
+    color:#dce8f8;
+}
+QDialog QFrame, QMessageBox QFrame {
+    background:#0a1222;
+    border-color:#22314a;
+}
+QDialog QLabel, QMessageBox QLabel {
+    background:transparent;
+    color:#dce8f8;
+}
+QDialog QLineEdit, QDialog QTextEdit, QDialog QPlainTextEdit {
+    color:#edf7ff;
+    background:#060b15;
+    border:1px solid #2a3d5b;
+    border-radius:10px;
+    padding:8px 10px;
+}
+QDialog QPushButton, QMessageBox QPushButton {
+    min-height:38px;
+    color:#dce8f8;
+    background:#101b2e;
+    border:1px solid #2a3d5b;
+    border-radius:10px;
+    padding:0 18px;
+    font-weight:700;
+}
+QDialog QPushButton:hover, QMessageBox QPushButton:hover {
+    color:#050814;
+    background:#65fbd2;
+    border-color:#65fbd2;
+}
+QDialog [studioRole="statusPill"] {
+    color:#65fbd2;
+    background:#0d2725;
+    border:1px solid #285c54;
+}
+'''
+
+APP_QSS = APP_QSS + DIALOG_QSS
+
+DIALOG_CHILD_QSS = r'''background:#050814;color:#dce8f8;border-color:#22314a;'''
+
 COPY_MAP = {
     '\u8fd0\u884c\u63a7\u5236': '\u5de5\u4f5c\u53f0',
     '\u53c2\u6570\u8bbe\u7f6e': '\u81ea\u52a8\u5316\u914d\u7f6e',
@@ -230,6 +281,43 @@ def _set_role(widget, role):
         _safe_call(style, 'polish', widget)
 
 
+
+def _apply_application_theme(QtWidgets):
+    try:
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            return False
+        _safe_call(app, 'setStyleSheet', APP_QSS)
+        return True
+    except BaseException:
+        return False
+
+
+def install_early_theme(QtWidgets=None):
+    """Install the dark stylesheet before the first QWidget is painted."""
+    global _EARLY_THEME_TRYING
+    if _EARLY_THEME_TRYING:
+        return False
+    _EARLY_THEME_TRYING = True
+    try:
+        if QtWidgets is None:
+            QtWidgets = __import__('PySide6.QtWidgets', fromlist=['QApplication', 'QWidget'])
+        applied = _apply_application_theme(QtWidgets)
+        widget_type = getattr(QtWidgets, 'QWidget', None)
+        original_show = getattr(widget_type, 'show', None) if widget_type is not None else None
+        if widget_type is not None and callable(original_show) and not bool(getattr(widget_type, _SHOW_PATCH_MARK, False)):
+            def _show_with_theme(widget, *args, **kwargs):
+                _apply_application_theme(QtWidgets)
+                return original_show(widget, *args, **kwargs)
+            setattr(widget_type, 'show', _show_with_theme)
+            setattr(widget_type, _SHOW_PATCH_MARK, True)
+            applied = True
+        return bool(applied)
+    except BaseException:
+        return False
+    finally:
+        _EARLY_THEME_TRYING = False
+
 def _patch_all_widgets():
     try:
         QtWidgets = __import__('PySide6.QtWidgets', fromlist=['QApplication'])
@@ -263,14 +351,32 @@ def patch_widget(widget, context_getter=None, opener=None):
             context = ''
         lower_context = (name + ' ' + context).lower()
         about_related = 'about' in lower_context
+        context_head = context.strip().lower().split(' ', 1)[0] if context.strip() else ''
+        dialog_related = (
+            context_head in ('qdialog', 'qmessagebox')
+            or name.lower().endswith('dialog')
+            or name.lower() in ('licensedialog', 'vipdialog', 'membershipdialog')
+        )
+        membership_child = (
+            'qdialog' in lower_context
+            and any(key in lower_context for key in ('vip', 'member', 'license', 'entitlement', '\u4f1a\u5458', '\u6743\u76ca', '\u6fc0\u6d3b'))
+        )
+
+        if membership_child and not dialog_related:
+            _safe_call(widget, 'setStyleSheet', DIALOG_CHILD_QSS)
+            _safe_call(widget, 'setProperty', 'studioRole', 'darkDialogChild')
+            return 1
+
+        if dialog_related:
+            _safe_call(widget, 'setStyleSheet', DIALOG_QSS)
+            _safe_call(widget, 'setProperty', 'studioRole', 'darkDialog')
+            return 1
 
         if name in ('rootView', 'windowShell'):
             _safe_call(widget, 'setStyleSheet', APP_QSS)
             return 1
 
         if name == 'sidebar':
-            _safe_call(widget, 'setMinimumWidth', 176)
-            _safe_call(widget, 'setMaximumWidth', 176)
             _set_role(widget, 'commandRail')
             return 1
 
