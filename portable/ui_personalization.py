@@ -294,25 +294,19 @@ def _apply_application_theme(QtWidgets):
 
 
 def install_early_theme(QtWidgets=None):
-    """Install the dark stylesheet before the first QWidget is painted."""
+    """Apply the dark stylesheet as soon as a QApplication exists.
+
+    Native PySide QWidget methods are intentionally left untouched because
+    replacing Shiboken method descriptors can terminate the host at startup.
+    """
     global _EARLY_THEME_TRYING
     if _EARLY_THEME_TRYING:
         return False
     _EARLY_THEME_TRYING = True
     try:
         if QtWidgets is None:
-            QtWidgets = __import__('PySide6.QtWidgets', fromlist=['QApplication', 'QWidget'])
-        applied = _apply_application_theme(QtWidgets)
-        widget_type = getattr(QtWidgets, 'QWidget', None)
-        original_show = getattr(widget_type, 'show', None) if widget_type is not None else None
-        if widget_type is not None and callable(original_show) and not bool(getattr(widget_type, _SHOW_PATCH_MARK, False)):
-            def _show_with_theme(widget, *args, **kwargs):
-                _apply_application_theme(QtWidgets)
-                return original_show(widget, *args, **kwargs)
-            setattr(widget_type, 'show', _show_with_theme)
-            setattr(widget_type, _SHOW_PATCH_MARK, True)
-            applied = True
-        return bool(applied)
+            QtWidgets = __import__('PySide6.QtWidgets', fromlist=['QApplication'])
+        return bool(_apply_application_theme(QtWidgets))
     except BaseException:
         return False
     finally:

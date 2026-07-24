@@ -1,4 +1,4 @@
-param([switch]$NoLaunch)
+﻿param([switch]$NoLaunch)
 $ErrorActionPreference = 'Stop'
 $AppDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PortableRoot = Join-Path $AppDir 'UserData'
@@ -9,6 +9,15 @@ $CurrentProfile = Join-Path $env:APPDATA 'QQFarmCopilot'
 $LogDir = Join-Path $AppDir 'logs'
 $Exe = Join-Path $AppDir 'QQFarmCVHelper.exe'
 $ExcludedDirs = @('logs','models','screenshots','captures','cache','__pycache__','crash')
+
+function Show-LauncherMessage([string]$Text, [int]$Icon = 64) {
+    try {
+        $shell = New-Object -ComObject WScript.Shell
+        [void]$shell.Popup($Text, 0, 'QQ经典农场助手', $Icon)
+    } catch {
+        Write-Host $Text
+    }
+}
 
 function Test-ExcludedRelativePath([string]$RelativePath) {
     $parts = $RelativePath -split '[\\/]'
@@ -40,6 +49,51 @@ function Sync-NewerFiles([string]$Source, [string]$Destination) {
     }
 }
 
+function Stop-ExistingAssistantInstances {
+    $existing = @(Get-Process -Name 'QQFarmCVHelper' -ErrorAction SilentlyContinue)
+    if ($existing.Count -eq 0) { return $true }
+
+    # 检测到旧实例时直接尝试关闭；只有权限不足时才显示系统权限确认。
+
+    foreach ($item in $existing) {
+        try { [void]$item.CloseMainWindow() } catch {}
+    }
+    Start-Sleep -Milliseconds 1200
+
+    $remaining = @($existing | Where-Object { Get-Process -Id $_.Id -ErrorAction SilentlyContinue })
+    if ($remaining.Count -eq 0) { return $true }
+
+    foreach ($item in $remaining) {
+        try { Stop-Process -Id $item.Id -Force -ErrorAction Stop } catch {}
+    }
+    Start-Sleep -Milliseconds 500
+    $remaining = @($remaining | Where-Object { Get-Process -Id $_.Id -ErrorAction SilentlyContinue })
+    if ($remaining.Count -eq 0) { return $true }
+
+    $pidList = ($remaining.Id -join ',')
+    $killScript = "Stop-Process -Id $pidList -Force -ErrorAction Stop"
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($killScript))
+    try {
+        $admin = Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded
+        ) -PassThru -Wait
+        if ($admin.ExitCode -ne 0) { throw "管理员结束进程返回代码 $($admin.ExitCode)" }
+    } catch {
+        Show-LauncherMessage '旧实例仍在运行。请在权限确认窗口点击“是”，然后重新双击启动文件。' 48
+        return $false
+    }
+
+    foreach ($item in $remaining) {
+        Wait-Process -Id $item.Id -Timeout 10 -ErrorAction SilentlyContinue
+    }
+    $stillRunning = @($remaining | Where-Object { Get-Process -Id $_.Id -ErrorAction SilentlyContinue })
+    if ($stillRunning.Count -gt 0) {
+        Show-LauncherMessage '旧实例仍未退出。请在任务管理器中结束 QQFarmCVHelper.exe 后重新启动。' 48
+        return $false
+    }
+    return $true
+}
+
 New-Item -ItemType Directory -Force -Path $LogDir,$LegacyPortable,$CurrentPortable | Out-Null
 # Merge any newer profile-side changes into the portable snapshot, then seed both profiles.
 Sync-NewerFiles $LegacyProfile $LegacyPortable
@@ -51,6 +105,7 @@ $env:QQFARM_HOOK_LOG_PATH = Join-Path $LogDir 'hook_runtime_log.txt'
 $env:QQFARM_PROXY_LOG_PATH = Join-Path $LogDir 'proxy_dll_load.log'
 if (!(Test-Path -LiteralPath $Exe -PathType Leaf)) { throw "Missing main program: $Exe" }
 if ($NoLaunch) { exit 0 }
+if (!(Stop-ExistingAssistantInstances)) { exit 5 }
 
 $process = Start-Process -FilePath $Exe -WorkingDirectory $AppDir -PassThru -Wait
 
@@ -58,3 +113,4 @@ $process = Start-Process -FilePath $Exe -WorkingDirectory $AppDir -PassThru -Wai
 Sync-NewerFiles $LegacyProfile $LegacyPortable
 Sync-NewerFiles $CurrentProfile $CurrentPortable
 exit $process.ExitCode
+
