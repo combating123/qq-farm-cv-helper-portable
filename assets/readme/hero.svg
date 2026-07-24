@@ -15,7 +15,7 @@
   <path d="M0 276 C170 226 282 332 455 280 S748 230 914 290 S1086 315 1200 270 V360 H0Z" fill="#DCEBFF" opacity=".72"/>
   <g transform="translate(58 48)">
     <rect width="56" height="28" rx="14" fill="#DCEAFF"/>
-    <text x="28" y="19" text-anchor="middle" font-family="Segoe UI, PingFang SC, sans-serif" font-size="12" font-weight="700" fill="#176BFF">V2.2.5</text>
+    <text x="28" y="19" text-anchor="middle" font-family="Segoe UI, PingFang SC, sans-serif" font-size="12" font-weight="700" fill="#176BFF">OWNER</text>
     <text x="0" y="86" font-family="Segoe UI, PingFang SC, sans-serif" font-size="48" font-weight="800" fill="#17345F">QQ 经典农场助手</text>
     <text x="0" y="130" font-family="Segoe UI, PingFang SC, sans-serif" font-size="25" font-weight="650" fill="#176BFF">视觉自动化 · 单目录便携版</text>
     <text x="0" y="177" font-family="Segoe UI, PingFang SC, sans-serif" font-size="17" fill="#62799D">保留旧设置，集中运行文件，一次解压即可启动。</text>
@@ -49,3 +49,5 @@
     </g>
   </g>
 </svg>
+
+
