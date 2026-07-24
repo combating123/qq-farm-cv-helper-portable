@@ -4,6 +4,11 @@ GITHUB_HOME = 'https://github.com/combating123'
 GITHUB_USER = 'combating123'
 _PATCH_MARK = '_combating123_personalized'
 _ABOUT_MARK = '_combating123_about_refresh'
+_PROMO_MARKERS = (
+    '\u9879\u76ee\u5730\u5740', '\u7fa4',
+    '\u7f51\u53cb\u63d0\u4f9b', '\u6b22\u8fce\u52a0\u5165\u8ba8\u8bba',
+    '\u6b22\u8fce star', '\u6b22\u8fce\u2b50 star',
+)
 
 # Empty by design: global Qt rules changed title-bar, sidebar and status geometry.
 APP_QSS = ''
@@ -39,6 +44,19 @@ def _safe_call(obj, name, *args):
 def _text(obj):
     value = _safe_call(obj, 'text')
     return '' if value is None else str(value)
+
+
+def _content_text(obj):
+    for method in ('toPlainText', 'text', 'toHtml'):
+        value = _safe_call(obj, method)
+        if value is not None:
+            try:
+                rendered = str(value)
+                if rendered:
+                    return rendered
+            except BaseException:
+                pass
+    return ''
 
 
 def _name(obj):
@@ -84,7 +102,7 @@ def _patch_all_widgets():
 def _schedule_about_refresh(checked=False):
     try:
         QtCore = __import__('PySide6.QtCore', fromlist=['QTimer'])
-        for delay in (0, 30, 120, 350, 800):
+        for delay in (0, 30, 120, 350, 800, 1500, 3000, 5000):
             QtCore.QTimer.singleShot(delay, _patch_all_widgets)
     except BaseException:
         _patch_all_widgets()
@@ -95,6 +113,7 @@ def patch_widget(widget, context_getter=None, opener=None):
         name = _name(widget)
         text = _text(widget)
         tip = _tooltip(widget)
+        content = _content_text(widget)
         try:
             context = str(context_getter(widget)) if context_getter else ''
         except BaseException:
@@ -104,6 +123,18 @@ def patch_widget(widget, context_getter=None, opener=None):
 
         # Clean the project-information dialog before applying the generic
         # dialog guard. Its children legitimately live under a QDialog.
+        promo_blob = (text + ' ' + content).lower()
+        has_promo_copy = any(marker.lower() in promo_blob for marker in _PROMO_MARKERS)
+        if about_related and has_promo_copy:
+            is_rich_browser = ('qtextbrowser' in context.lower() or 'browser' in name.lower())
+            if is_rich_browser and callable(getattr(widget, 'setHtml', None)):
+                _safe_call(widget, 'clear')
+                _safe_call(widget, 'setHtml', ABOUT_HTML)
+                _safe_call(widget, 'setOpenExternalLinks', True)
+                _safe_call(widget, 'setProperty', _PATCH_MARK, True)
+            else:
+                _hide(widget)
+            return 1
         if text.startswith('\u5173\u4e8e - '):
             _safe_call(widget, 'setText', '\u9879\u76ee\u4fe1\u606f')
             return 1
