@@ -1,0 +1,20 @@
+﻿QQ经典农场助手 v2.2.5 单目录便携合并版
+构建日期：2026-07-24
+主程序：QQFarmCVHelper.exe
+启动入口：启动_QQ经典农场助手_v2.2.5.cmd
+
+合并内容：
+1. 2.2.5 主程序及新版依赖；
+2. 同目录 python312.dll 代理、python312_orig.dll 与 hook.py；
+3. UserData 内保留旧版 config-multi.ini、daily_counters.json、桌面宠物设置和会员状态数据；
+4. UserData 内保留 2.2.5 的 JSON 配置与统计数据；
+5. 启动器在运行前后按修改时间同步 UserData 与当前 Windows 用户配置目录。
+
+已排除：历史日志、崩溃转储、模型缓存、旧版重复运行库、旧主程序和配置备份堆积。
+原始 2.2.5 主程序 SHA-256：9AF4B3EE77CA934ABDB846849812D3B2D14E80CCA8D5E3D8D65596B535575AA4
+原始 python312.dll 已保留为 python312_orig.dll。
+界面个性化：
+1. 左侧 GitHub 图标仅打开 https://github.com/combating123；
+2. 标题栏使用 combating123 个人便携版标识；
+3. 关于页移除过期时间、检查更新、使用文档、旧项目地址、QQ群与 Telegram；
+4. 关于页重做为蓝白卡片，仅保留 combating123、v2.2.5 Portable 与 GitHub 主页。

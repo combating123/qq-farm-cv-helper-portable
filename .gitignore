@@ -1,0 +1,15 @@
+﻿# Binary and local runtime outputs
+*.zip
+*.exe
+*.dll
+*.pyd
+logs/
+UserData/
+__pycache__/
+*.pyc
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
