@@ -102,7 +102,31 @@ def patch_widget(widget, context_getter=None, opener=None):
         lower_context = (name + ' ' + context).lower()
         about_related = 'about' in lower_context
 
-        # Do not touch root, dialog, sidebar, buttons, sizing or host styles.
+        # Clean the project-information dialog before applying the generic
+        # dialog guard. Its children legitimately live under a QDialog.
+        if text.startswith('\u5173\u4e8e - '):
+            _safe_call(widget, 'setText', '\u9879\u76ee\u4fe1\u606f')
+            return 1
+        if name == 'templateDebugStatus':
+            _hide_parent_card(widget)
+            return 1
+        if name == 'aboutSectionTitle' and text == '\u8fc7\u671f\u65f6\u95f4':
+            _hide_parent_card(widget)
+            return 1
+        if about_related and text in ('\u68c0\u67e5\u66f4\u65b0', '\u4f7f\u7528\u6587\u6863'):
+            _hide(widget)
+            return 1
+        if name == 'aboutSectionTitle':
+            _safe_call(widget, 'setText', '\u9879\u76ee\u4fe1\u606f')
+            return 1
+        if name == 'aboutTextBrowser':
+            _safe_call(widget, 'setHtml', ABOUT_HTML)
+            _safe_call(widget, 'setStyleSheet', 'QTextBrowser#aboutTextBrowser{border:0;background:transparent;}')
+            _safe_call(widget, 'setOpenExternalLinks', True)
+            _safe_call(widget, 'setProperty', _PATCH_MARK, True)
+            return 1
+
+        # Do not touch other root, dialog, sidebar, sizing or host styles.
         if name in ('rootView', 'windowShell', 'sidebar'):
             return 0
         context_head = context.strip().lower().split(' ', 1)[0] if context.strip() else ''
@@ -159,30 +183,6 @@ def patch_widget(widget, context_getter=None, opener=None):
             _safe_call(widget, 'setText', '\u5df2\u6fc0\u6d3b')
             return 1
 
-        if text.startswith('\u5173\u4e8e - '):
-            _safe_call(widget, 'setText', '\u9879\u76ee\u4fe1\u606f')
-            return 1
-
-        if name == 'templateDebugStatus':
-            _hide_parent_card(widget)
-            return 1
-        if name == 'aboutSectionTitle' and text == '\u8fc7\u671f\u65f6\u95f4':
-            _hide_parent_card(widget)
-            return 1
-        if about_related and text in ('\u68c0\u67e5\u66f4\u65b0', '\u4f7f\u7528\u6587\u6863'):
-            _hide(widget)
-            return 1
-
-        if name == 'aboutSectionTitle':
-            _safe_call(widget, 'setText', '\u9879\u76ee\u4fe1\u606f')
-            return 1
-
-        if name == 'aboutTextBrowser':
-            _safe_call(widget, 'setHtml', ABOUT_HTML)
-            _safe_call(widget, 'setStyleSheet', 'QTextBrowser#aboutTextBrowser{border:0;background:transparent;}')
-            _safe_call(widget, 'setOpenExternalLinks', True)
-            _safe_call(widget, 'setProperty', _PATCH_MARK, True)
-            return 1
     except BaseException:
         return 0
     return 0
