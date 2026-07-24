@@ -31,7 +31,7 @@
 
 ## 快速开始
 
-1. 打开[仓库的 **Releases** 页面](https://github.com/combating123/qq-farm-cv-helper-portable/releases)并下载 `CV农场助手_便携完整版.zip`。
+1. 打开[仓库的 **Releases** 页面](https://github.com/combating123/qq-farm-cv-helper-portable/releases)并下载 `CV-Farm-Studio-Portable.zip`。
 2. 将压缩包完整解压到普通目录，例如 `E:\CV农场助手`。
 3. 双击 `启动_QQ经典农场助手.cmd`。
 4. 在“自动化配置”中检查已迁移的配置，再开始运行。
