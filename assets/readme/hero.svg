@@ -1,53 +1,39 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
-  <title id="title">QQ Farm CV Helper Portable</title>
-  <desc id="desc">A blue and white project-native hero showing a portable Windows folder, native interface cards, and the combating123 GitHub identity.</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#F7FAFF"/>
-      <stop offset="1" stop-color="#EAF3FF"/>
-    </linearGradient>
-    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1677FF"/>
-      <stop offset="1" stop-color="#2457E6"/>
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="360" rx="30" fill="url(#bg)"/>
-  <path d="M0 276 C170 226 282 332 455 280 S748 230 914 290 S1086 315 1200 270 V360 H0Z" fill="#DCEBFF" opacity=".72"/>
-  <g transform="translate(58 48)">
-    <rect width="56" height="28" rx="14" fill="#DCEAFF"/>
-    <text x="28" y="19" text-anchor="middle" font-family="Segoe UI, PingFang SC, sans-serif" font-size="12" font-weight="700" fill="#176BFF">OWNER</text>
-    <text x="0" y="86" font-family="Segoe UI, PingFang SC, sans-serif" font-size="48" font-weight="800" fill="#17345F">QQ 经典农场助手</text>
-    <text x="0" y="130" font-family="Segoe UI, PingFang SC, sans-serif" font-size="25" font-weight="650" fill="#176BFF">原生稳定布局 · 单目录便携版</text>
-    <text x="0" y="177" font-family="Segoe UI, PingFang SC, sans-serif" font-size="17" fill="#62799D">保留旧设置与原生排版，一次解压即可启动。</text>
-    <g transform="translate(0 212)">
-      <rect width="172" height="42" rx="21" fill="#FFFFFF" stroke="#D5E4F7"/>
-      <circle cx="24" cy="21" r="7" fill="#2CCB83"/>
-      <text x="42" y="27" font-family="Segoe UI, PingFang SC, sans-serif" font-size="14" font-weight="650" fill="#365579">Portable Data</text>
-      <rect x="186" width="186" height="42" rx="21" fill="#FFFFFF" stroke="#D5E4F7"/>
-      <path d="M211 15c5-8 16-6 16-6-1 11-7 17-17 17-1-5-1-8 1-11Z" fill="#176BFF"/>
-      <text x="234" y="27" font-family="Segoe UI, PingFang SC, sans-serif" font-size="14" font-weight="650" fill="#365579">Native Layout</text>
-      <rect x="386" width="194" height="42" rx="21" fill="#FFFFFF" stroke="#D5E4F7"/>
-      <text x="407" y="27" font-family="ui-monospace,Consolas,monospace" font-size="14" font-weight="700" fill="#176BFF">@combating123</text>
-    </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="380" viewBox="0 0 1200 380" role="img" aria-labelledby="title desc">
+<title id="title">CV 农场助手</title><desc id="desc">面向 QQ 与微信经典农场的 Windows 视觉自动化助手</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F8FBFF"/><stop offset="1" stop-color="#EDF7F2"/></linearGradient>
+  <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#2176FF"/><stop offset="1" stop-color="#32C98A"/></linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#17345F" flood-opacity=".10"/></filter>
+</defs>
+<rect width="1200" height="380" rx="28" fill="url(#bg)"/>
+<path d="M0 300 C210 245 330 355 520 292 S830 220 1200 278 V380 H0Z" fill="#E7F7EF"/>
+<g transform="translate(64 58)">
+  <rect width="64" height="64" rx="18" fill="#2176FF"/>
+  <path d="M18 38c17-2 27-12 32-24-1 18-11 31-30 34 6-5 10-10 12-17-4 4-9 6-14 7z" fill="white"/>
+  <text x="0" y="112" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="48" font-weight="760" fill="#17345F">CV 农场助手</text>
+  <text x="0" y="154" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="20" font-weight="600" fill="#2176FF">识别窗口 · 自动经营 · 好友巡检 · 便携运行</text>
+  <text x="0" y="201" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="18" fill="#526985">让重复的农场日常，变成可观察、可配置、可恢复的自动工作流。</text>
+  <g transform="translate(0 236)">
+    <rect width="108" height="34" rx="17" fill="#E8F1FF"/><text x="54" y="23" text-anchor="middle" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="14" font-weight="650" fill="#176BDB">Windows</text>
+    <rect x="120" width="122" height="34" rx="17" fill="#E9F8F1"/><text x="181" y="23" text-anchor="middle" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="14" font-weight="650" fill="#15865B">QQ / 微信</text>
+    <rect x="254" width="112" height="34" rx="17" fill="#EDF0F7"/><text x="310" y="23" text-anchor="middle" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="14" font-weight="650" fill="#526985">OpenCV</text>
+    <rect x="378" width="112" height="34" rx="17" fill="#FFF3DA"/><text x="434" y="23" text-anchor="middle" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="14" font-weight="650" fill="#A76A00">Portable</text>
   </g>
-  <g transform="translate(770 44)">
-    <rect width="372" height="272" rx="24" fill="#FFFFFF" stroke="#D4E3F6" stroke-width="2"/>
-    <rect x="22" y="22" width="52" height="52" rx="15" fill="url(#blue)"/>
-    <path d="M39 56c3-12 12-18 24-19-4 13-12 21-24 19Zm4-4c5-1 10-5 14-10-7 2-12 5-14 10Z" fill="#FFFFFF"/>
-    <text x="90" y="44" font-family="Segoe UI, PingFang SC, sans-serif" font-size="17" font-weight="750" fill="#203E6B">Portable workspace</text>
-    <text x="90" y="66" font-family="Segoe UI, PingFang SC, sans-serif" font-size="13" fill="#7B8FAE">one folder · persistent settings</text>
-    <g transform="translate(22 98)">
-      <rect width="154" height="66" rx="14" fill="#F4F8FF"/>
-      <text x="16" y="25" font-family="Segoe UI, PingFang SC, sans-serif" font-size="12" fill="#7C90AF">运行模式</text>
-      <text x="16" y="49" font-family="Segoe UI, PingFang SC, sans-serif" font-size="18" font-weight="750" fill="#176BFF">单开 / 多开</text>
-      <rect x="170" width="154" height="66" rx="14" fill="#F4F8FF"/>
-      <text x="186" y="25" font-family="Segoe UI, PingFang SC, sans-serif" font-size="12" fill="#7C90AF">配置数据</text>
-      <text x="186" y="49" font-family="Segoe UI, PingFang SC, sans-serif" font-size="18" font-weight="750" fill="#176BFF">自动迁移</text>
-      <rect y="80" width="324" height="70" rx="14" fill="#176BFF"/>
-      <text x="18" y="108" font-family="Segoe UI, PingFang SC, sans-serif" font-size="12" fill="#DCEAFF">GITHUB PROFILE</text>
-      <text x="18" y="136" font-family="ui-monospace,Consolas,monospace" font-size="17" font-weight="700" fill="#FFFFFF">github.com/combating123 ↗</text>
-    </g>
+</g>
+<g transform="translate(676 48)" filter="url(#shadow)">
+  <rect width="458" height="276" rx="20" fill="white" stroke="#DCE6F4"/>
+  <rect width="458" height="44" rx="20" fill="#F4F7FC"/><rect y="24" width="458" height="20" fill="#F4F7FC"/>
+  <circle cx="24" cy="22" r="5" fill="#FF7A7A"/><circle cx="42" cy="22" r="5" fill="#FFC85A"/><circle cx="60" cy="22" r="5" fill="#32C98A"/>
+  <text x="83" y="27" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="13" font-weight="650" fill="#526985">视觉自动化控制台</text>
+  <g transform="translate(20 64)">
+    <rect width="116" height="62" rx="12" fill="#F7FAFF" stroke="#DFE8F5"/><text x="16" y="26" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="12" fill="#7C8EAD">运行状态</text><circle cx="18" cy="44" r="5" fill="#32C98A"/><text x="31" y="49" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="15" font-weight="700" fill="#17345F">正在巡检</text>
+    <rect x="128" width="116" height="62" rx="12" fill="#F7FAFF" stroke="#DFE8F5"/><text x="144" y="26" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="12" fill="#7C8EAD">自家农场</text><text x="144" y="50" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="18" font-weight="750" fill="#2176FF">自动经营</text>
+    <rect x="256" width="162" height="62" rx="12" fill="#F7FAFF" stroke="#DFE8F5"/><text x="272" y="26" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="12" fill="#7C8EAD">识别反馈</text><text x="272" y="50" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="15" font-weight="700" fill="#17345F">截图 + 日志</text>
+    <rect y="78" width="270" height="114" rx="12" fill="#FBFCFE" stroke="#DFE8F5"/>
+    <text x="16" y="101" font-family="Cascadia Mono,Consolas,monospace" font-size="11" fill="#15865B">[识别] 找到可收获作物</text><text x="16" y="124" font-family="Cascadia Mono,Consolas,monospace" font-size="11" fill="#526985">[动作] 收获 → 维护 → 播种</text><text x="16" y="147" font-family="Cascadia Mono,Consolas,monospace" font-size="11" fill="#2176FF">[好友] 巡检与帮助完成</text><text x="16" y="170" font-family="Cascadia Mono,Consolas,monospace" font-size="11" fill="#A76A00">[恢复] 异常窗口已重连</text>
+    <rect x="286" y="78" width="132" height="114" rx="12" fill="#EEF8F3" stroke="#CFECDC"/>
+    <path d="M352 171v-43" stroke="#8D6845" stroke-width="5" stroke-linecap="round"/><path d="M352 145c-20-20-37-8-42 3 17 3 31-1 42-3z" fill="#32C98A"/><path d="M352 134c18-20 36-12 42-1-15 5-29 3-42 1z" fill="#50D69B"/><circle cx="352" cy="111" r="13" fill="#FFD56A"/><circle cx="352" cy="111" r="6" fill="#F5A623"/>
+    <text x="352" y="187" text-anchor="middle" font-family="Segoe UI,Microsoft YaHei UI,PingFang SC,sans-serif" font-size="11" font-weight="650" fill="#526985">种下 · 生长 · 收获</text>
   </g>
+</g>
 </svg>
-
-
