@@ -26,6 +26,7 @@
 - 处理好友农场巡检、屏蔽与护主流程。
 - 使用 `UserData` 保留并同步历史设置与统计数据。
 - 启动时自动处理残留的旧实例，避免双击入口后没有反应。
+- “每日分享”默认关闭；启用后只发送给配置中的精确联系人，匹配失败立即取消，不再选择随机或首位联系人。
 - 应用内 GitHub 入口仅指向 [combating123](https://github.com/combating123)。
 
 ## 快速开始
@@ -79,6 +80,14 @@ graph LR
 - 隐藏界面中的版本标签。
 - “项目信息”页只保留项目所有者和 GitHub 主页。
 - GitHub 图标只打开 `github.com/combating123`。
+
+### 每日分享控制
+
+- 默认状态为关闭，程序不会自动打开分享窗口或选择任何好友、群组。
+- 需要手动分享时，直接在 QQ / 微信分享窗口中自行选择对象，不受自动任务影响。
+- 需要定向自动分享时，在 `UserData/legacy-qq-farm-bot-rev/config-multi.ini` 的 `[bot]` 与当前 `[instance.N.bot]` 中填写 `share_target_name`，并开启 `enable_daily_share`。
+- 定向流程只接受名称完全匹配的目标；目标为空、搜索失败或匹配不完整时会取消分享，不会回退到联系人列表第一项。
+- `share_allow_group = False` 表示仅联系人；确需指定群组时再设为 `True`。
 
 ## 运行环境
 

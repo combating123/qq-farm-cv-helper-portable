@@ -1,4 +1,4 @@
-﻿# ASCII-only conservative personalization for the portable build.
+# ASCII-only conservative personalization for the portable build.
 # The host application's native QSS and geometry are intentionally preserved.
 GITHUB_HOME = 'https://github.com/combating123'
 GITHUB_USER = 'combating123'
@@ -120,6 +120,13 @@ def patch_widget(widget, context_getter=None, opener=None):
             context = ''
         lower_context = (name + ' ' + context).lower()
         about_related = 'about' in lower_context
+        # Daily share is manual by default. If automatic sharing is enabled in
+        # configuration, the runtime guard accepts only an exact named target.
+        if '\u968f\u673a\u5206\u4eab\u7ed9\u597d\u53cb/\u7fa4\u7ec4' in text or (
+            '\u6bcf\u65e5\u5206\u4eab' in lower_context and '\u968f\u673a' in text
+        ):
+            _safe_call(widget, 'setText', '\u9ed8\u8ba4\u5173\u95ed\u81ea\u52a8\u5206\u4eab\uff1b\u9700\u8981\u65f6\u8bf7\u624b\u52a8\u5206\u4eab\uff0c\u6216\u586b\u5199\u6307\u5b9a\u8054\u7cfb\u4eba\u540e\u518d\u542f\u7528')
+            return 1
 
         # Clean the project-information dialog before applying the generic
         # dialog guard. Its children legitimately live under a QDialog.
