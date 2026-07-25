@@ -1,4 +1,4 @@
-# ASCII-only conservative personalization for the portable build.
+﻿# ASCII-only conservative personalization for the portable build.
 # The host application's native QSS and geometry are intentionally preserved.
 GITHUB_HOME = 'https://github.com/combating123'
 GITHUB_USER = 'combating123'
@@ -108,6 +108,155 @@ def _schedule_about_refresh(checked=False):
         _patch_all_widgets()
 
 
+def share_target_editor_copy():
+    return {
+        'title': '\u5b9a\u5411\u76ee\u6807',
+        'label': '\u5206\u4eab\u76ee\u6807\uff08\u597d\u53cb\u6635\u79f0\u6216 QQ \u53f7\uff09',
+        'placeholder': '\u586b\u5199\u5b8c\u6574\u597d\u53cb\u6635\u79f0\u6216 QQ \u53f7\uff08QQ \u53f7\u9700\u5728\u641c\u7d22\u7ed3\u679c\u4e2d\u53ef\u89c1\uff09',
+        'empty_status': '\u5f53\u524d\u5206\u4eab\u76ee\u6807\uff1a\u672a\u8bbe\u7f6e\uff08\u81ea\u52a8\u5206\u4eab\u4fdd\u6301\u5173\u95ed\uff09',
+        'save_button': '\u4fdd\u5b58',
+        'clear_button': '\u6e05\u7a7a',
+        'hint': '\u4ec5\u5339\u914d\u641c\u7d22\u7ed3\u679c\u4e2d\u53ef\u89c1\u7684\u5b8c\u6574\u6635\u79f0\u6216 QQ \u53f7\uff1b\u672a\u627e\u5230\u65f6\u53d6\u6d88\uff0c\u4e0d\u9009\u62e9\u9996\u4e2a\u7ed3\u679c\u3002',
+    }
+
+
+def share_target_editor_style():
+    return {
+        'title_px': 14,
+        'body_px': 13,
+        'hint_px': 12,
+        'control_height': 32,
+        'outer_margin': 10,
+        'spacing': 5,
+    }
+
+
+def _load_share_settings_module():
+    try:
+        return __import__('share_target_settings')
+    except BaseException:
+        try:
+            import importlib.util
+            import pathlib
+            path = pathlib.Path(__file__).with_name('share_target_settings.py')
+            spec = importlib.util.spec_from_file_location('_qqfarm_share_target_settings', path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+        except BaseException:
+            return None
+
+
+def _editor_host(anchor):
+    current = _safe_call(anchor, 'parentWidget')
+    fallback = None
+    for _ in range(5):
+        if current is None:
+            break
+        layout = _safe_call(current, 'layout')
+        if layout is not None:
+            fallback = (current, layout)
+            kind = type(layout).__name__.lower()
+            if 'vbox' in kind or 'grid' in kind or 'form' in kind:
+                return current, layout
+        current = _safe_call(current, 'parentWidget')
+    return fallback or (None, None)
+
+
+def _ensure_share_target_editor(anchor):
+    host, host_layout = _editor_host(anchor)
+    if host is None or host_layout is None:
+        return 0
+    try:
+        if bool(host.property('_qqfarm_share_target_editor_installed')):
+            return 0
+    except BaseException:
+        pass
+    settings = _load_share_settings_module()
+    if settings is None:
+        return 0
+    try:
+        QtWidgets = __import__('PySide6.QtWidgets', fromlist=['QFrame'])
+        copy = share_target_editor_copy()
+        state = settings.load_share_target()
+        panel = QtWidgets.QFrame(host)
+        panel.setObjectName('shareTargetEditor')
+        style = share_target_editor_style()
+        panel.setStyleSheet(
+            'QFrame#shareTargetEditor{margin-top:6px;border:1px solid #dbe4f0;border-radius:8px;background:#f8fafc;}'
+            'QLabel#shareTargetEditorTitle{font-size:%(title_px)spx;font-weight:600;color:#0f172a;}'
+            'QLabel#shareTargetStatus{font-size:%(body_px)spx;font-weight:400;color:#334155;}'
+            'QLabel#shareTargetHint{font-size:%(hint_px)spx;font-weight:400;color:#64748b;}'
+            'QLineEdit#shareTargetInput{min-height:%(control_height)spx;max-height:%(control_height)spx;padding:0 9px;'
+            'font-size:%(body_px)spx;font-weight:400;border:1px solid #cbd5e1;border-radius:6px;background:white;color:#111827;}'
+            'QPushButton#shareTargetSaveButton{min-height:%(control_height)spx;max-height:%(control_height)spx;min-width:58px;padding:0 12px;'
+            'font-size:%(body_px)spx;font-weight:500;border:0;border-radius:6px;background:#2563eb;color:white;}'
+            'QPushButton#shareTargetClearButton{min-height:%(control_height)spx;max-height:%(control_height)spx;min-width:58px;padding:0 12px;'
+            'font-size:%(body_px)spx;font-weight:400;border:1px solid #cbd5e1;border-radius:6px;background:white;color:#334155;}'
+            % style
+        )
+        outer = QtWidgets.QVBoxLayout(panel)
+        margin = style['outer_margin']
+        outer.setContentsMargins(margin, margin - 1, margin, margin - 1)
+        outer.setSpacing(style['spacing'])
+        title = QtWidgets.QLabel(copy['title'], panel)
+        title.setObjectName('shareTargetEditorTitle')
+        entry = QtWidgets.QLineEdit(panel)
+        entry.setObjectName('shareTargetInput')
+        entry.setPlaceholderText(copy['placeholder'])
+        entry.setClearButtonEnabled(True)
+        entry.setText(str(state.get('target', '') or ''))
+        status = QtWidgets.QLabel(str(state.get('status_text') or copy['empty_status']), panel)
+        status.setObjectName('shareTargetStatus')
+        status.setWordWrap(True)
+        hint = QtWidgets.QLabel(copy['hint'], panel)
+        hint.setObjectName('shareTargetHint')
+        hint.setWordWrap(True)
+        row = QtWidgets.QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(6)
+        save_button = QtWidgets.QPushButton(copy['save_button'], panel)
+        save_button.setObjectName('shareTargetSaveButton')
+        clear_button = QtWidgets.QPushButton(copy['clear_button'], panel)
+        clear_button.setObjectName('shareTargetClearButton')
+        row.addWidget(entry, 1)
+        row.addWidget(save_button)
+        row.addWidget(clear_button)
+        outer.addWidget(title)
+        outer.addLayout(row)
+        outer.addWidget(status)
+        outer.addWidget(hint)
+
+        def save_current(checked=False):
+            value = str(entry.text() or '').strip()
+            if not value:
+                status.setText(copy['empty_status'])
+                entry.setFocus()
+                return
+            result = settings.save_share_target(target=value, allow_group=False)
+            entry.setText(str(result.get('target', value)))
+            status.setText(str(result.get('status_text', '')))
+
+        def clear_current(checked=False):
+            result = settings.clear_share_target()
+            entry.clear()
+            status.setText(str(result.get('status_text') or copy['empty_status']))
+
+        save_button.clicked.connect(save_current)
+        clear_button.clicked.connect(clear_current)
+        entry.returnPressed.connect(save_current)
+        kind = type(host_layout).__name__.lower()
+        if 'grid' in kind and hasattr(host_layout, 'rowCount'):
+            host_layout.addWidget(panel, host_layout.rowCount(), 0, 1, max(1, host_layout.columnCount()))
+        else:
+            host_layout.addWidget(panel)
+        host.setProperty('_qqfarm_share_target_editor_installed', True)
+        anchor.setProperty('_qqfarm_share_target_editor_anchor', True)
+        return 1
+    except BaseException:
+        return 0
+
+
 def patch_widget(widget, context_getter=None, opener=None):
     try:
         name = _name(widget)
@@ -120,12 +269,19 @@ def patch_widget(widget, context_getter=None, opener=None):
             context = ''
         lower_context = (name + ' ' + context).lower()
         about_related = 'about' in lower_context
-        # Daily share is manual by default. If automatic sharing is enabled in
-        # configuration, the runtime guard accepts only an exact named target.
+        # Daily share is manual by default and exposes an editable exact recipient.
+        if name == 'dailyShareDescription':
+            changed = 0
+            if '\u968f\u673a' in text or '\u6307\u5b9a\u8054\u7cfb\u4eba' not in text:
+                _safe_call(widget, 'setText', '\u9ed8\u8ba4\u5173\u95ed\u81ea\u52a8\u5206\u4eab\uff1b\u586b\u5199\u6307\u5b9a\u8054\u7cfb\u4eba\u7684\u5b8c\u6574\u597d\u53cb\u6635\u79f0\u6216 QQ \u53f7\uff0c\u4ec5\u5728\u7cbe\u786e\u5339\u914d\u540e\u53d1\u9001')
+                changed += 1
+            changed += _ensure_share_target_editor(widget)
+            return changed
         if '\u968f\u673a\u5206\u4eab\u7ed9\u597d\u53cb/\u7fa4\u7ec4' in text or (
             '\u6bcf\u65e5\u5206\u4eab' in lower_context and '\u968f\u673a' in text
         ):
-            _safe_call(widget, 'setText', '\u9ed8\u8ba4\u5173\u95ed\u81ea\u52a8\u5206\u4eab\uff1b\u9700\u8981\u65f6\u8bf7\u624b\u52a8\u5206\u4eab\uff0c\u6216\u586b\u5199\u6307\u5b9a\u8054\u7cfb\u4eba\u540e\u518d\u542f\u7528')
+            _safe_call(widget, 'setText', '\u9ed8\u8ba4\u5173\u95ed\u81ea\u52a8\u5206\u4eab\uff1b\u586b\u5199\u6307\u5b9a\u8054\u7cfb\u4eba\u7684\u5b8c\u6574\u597d\u53cb\u6635\u79f0\u6216 QQ \u53f7\uff0c\u4ec5\u5728\u7cbe\u786e\u5339\u914d\u540e\u53d1\u9001')
+            _ensure_share_target_editor(widget)
             return 1
 
         # Clean the project-information dialog before applying the generic
