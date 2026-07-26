@@ -47,6 +47,18 @@ except BaseException as e:
     raise
 
 try:
+    import resource_limits as _resource_limits
+    _RESOURCE_MAX_THREADS = max(1, int(os.environ.get('QQFARM_MAX_NATIVE_THREADS', '2') or '2'))
+    _resource_limits.configure_environment(_RESOURCE_MAX_THREADS)
+    _RESOURCE_AFFINITY_CORES = max(1, int(os.environ.get('QQFARM_CPU_AFFINITY_CORES', '4') or '4'))
+    _resource_process_result = _resource_limits.apply_process_limits(_RESOURCE_AFFINITY_CORES)
+    _write('native CV/OCR thread pools capped at ' + str(_RESOURCE_MAX_THREADS) + '; process limits=' + repr(_resource_process_result))
+except BaseException as e:
+    _resource_limits = None
+    _RESOURCE_MAX_THREADS = 2
+    _write('native resource limit setup failed: ' + repr(e))
+
+try:
     from ui_personalization import (
         patch_widget as _patch_personal_ui_widget,
         install_early_theme as _install_early_personal_theme,
@@ -5652,6 +5664,10 @@ try:
         mod = _real_import(name, globals, locals, fromlist, level)
         try: _patch_loaded(name)
         except BaseException: pass
+        try:
+            if _resource_limits is not None:
+                _resource_limits.patch_loaded_modules(sys.modules, _RESOURCE_MAX_THREADS)
+        except BaseException: pass
         try: _install_qt_unlocker()
         except BaseException: pass
         return mod
@@ -5661,6 +5677,10 @@ try:
     def _patched_import_module(name, package=None):
         mod = _real_import_module(name, package)
         try: _patch_loaded(name)
+        except BaseException: pass
+        try:
+            if _resource_limits is not None:
+                _resource_limits.patch_loaded_modules(sys.modules, _RESOURCE_MAX_THREADS)
         except BaseException: pass
         try: _install_qt_unlocker()
         except BaseException: pass

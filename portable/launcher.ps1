@@ -103,6 +103,17 @@ Sync-NewerFiles $CurrentPortable $CurrentProfile
 
 $env:QQFARM_HOOK_LOG_PATH = Join-Path $LogDir 'hook_runtime_log.txt'
 $env:QQFARM_PROXY_LOG_PATH = Join-Path $LogDir 'proxy_dll_load.log'
+$env:QQFARM_MAX_NATIVE_THREADS = '2'
+$env:QQFARM_CPU_AFFINITY_CORES = '4'
+# Cap native CV/OCR worker pools before the elevated executable starts.
+$env:OMP_NUM_THREADS = '2'
+$env:OPENBLAS_NUM_THREADS = '2'
+$env:MKL_NUM_THREADS = '2'
+$env:NUMEXPR_NUM_THREADS = '2'
+$env:OPENCV_FOR_THREADS_NUM = '2'
+$env:ORT_INTRA_OP_NUM_THREADS = '2'
+$env:ORT_INTER_OP_NUM_THREADS = '1'
+$env:OMP_WAIT_POLICY = 'PASSIVE'
 if (!(Test-Path -LiteralPath $Exe -PathType Leaf)) { throw "Missing main program: $Exe" }
 if ($NoLaunch) { exit 0 }
 if (!(Stop-ExistingAssistantInstances)) { exit 5 }
