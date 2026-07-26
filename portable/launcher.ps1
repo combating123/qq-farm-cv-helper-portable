@@ -1,5 +1,27 @@
 ﻿param([switch]$NoLaunch)
 $ErrorActionPreference = 'Stop'
+
+function Test-IsAdministrator {
+    try {
+        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+        $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+        return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    } catch {
+        return $false
+    }
+}
+
+# The main executable requests elevation. Elevate the launcher itself first so
+# Start-Process -Wait supervises the real process instead of the UAC proxy.
+if (!$NoLaunch -and !$env:QQFARM_LAUNCHER_ELEVATED -and !(Test-IsAdministrator)) {
+    $escapedScriptPath = $PSCommandPath.Replace("'", "''")
+    $elevatedCommand = "`$env:QQFARM_LAUNCHER_ELEVATED='1'; & '$escapedScriptPath'"
+    $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($elevatedCommand))
+    $elevatedLauncher = Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encodedCommand
+    ) -PassThru -Wait
+    exit $elevatedLauncher.ExitCode
+}
 $AppDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PortableRoot = Join-Path $AppDir 'UserData'
 $LegacyPortable = Join-Path $PortableRoot 'legacy-qq-farm-bot-rev'
