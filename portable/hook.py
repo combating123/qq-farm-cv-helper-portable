@@ -4074,16 +4074,19 @@ def _wrap_share_target_guard_func(fn, mod, name):
     return _wrapped, True
 
 
+def _looks_share_target_module(m):
+    try:
+        return callable(getattr(m, '_click_share_dialog_first_friend_and_confirm', None))
+    except BaseException:
+        return False
+
+
 def _patch_share_target_guard_for_module(m, tag=''):
     try:
-        if m is None:
+        if not _looks_share_target_module(m):
             return 0
         mn = str(getattr(m, '__name__', '') or '')
-        if mn != 'bot.application.freebenefits_flow':
-            return 0
         n = '_click_share_dialog_first_friend_and_confirm'
-        if not hasattr(m, n):
-            return 0
         old = getattr(m, n)
         new, ok = _wrap_share_target_guard_func(old, m, mn + '.' + n)
         if ok:
@@ -4099,10 +4102,11 @@ def _patch_share_target_guard_loaded(tag=''):
     changed = []
     try:
         for mn, m in list(sys.modules.items()):
-            if str(mn) == 'bot.application.freebenefits_flow':
-                c = _patch_share_target_guard_for_module(m, tag)
-                if c:
-                    changed.append(str(mn) + ':' + str(c))
+            if not _looks_share_target_module(m):
+                continue
+            c = _patch_share_target_guard_for_module(m, tag)
+            if c:
+                changed.append(str(mn) + ':' + str(c))
     except BaseException as e:
         try: _write('v31 share target guard scan error ' + repr(e))
         except BaseException: pass
