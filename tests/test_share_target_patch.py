@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import types
 import unittest
 from pathlib import Path
@@ -81,5 +81,3 @@ class ShareTargetPatchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
