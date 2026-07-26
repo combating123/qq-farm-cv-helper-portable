@@ -49,6 +49,19 @@ function Sync-NewerFiles([string]$Source, [string]$Destination) {
     }
 }
 
+function Disable-CloseReopenPeriodicRestart([string]$ConfigPath) {
+    if (!(Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { return }
+    $text = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8
+    $updated = [regex]::Replace(
+        $text,
+        '(?m)^enable_periodic_restart\s*=\s*.*$',
+        'enable_periodic_restart = False'
+    )
+    if ($updated -ne $text) {
+        [IO.File]::WriteAllText($ConfigPath, $updated, (New-Object Text.UTF8Encoding($false)))
+    }
+}
+
 function Stop-ExistingAssistantInstances {
     $existing = @(Get-Process -Name 'QQFarmCVHelper' -ErrorAction SilentlyContinue)
     if ($existing.Count -eq 0) { return $true }
@@ -101,6 +114,13 @@ Sync-NewerFiles $CurrentProfile $CurrentPortable
 Sync-NewerFiles $LegacyPortable $LegacyProfile
 Sync-NewerFiles $CurrentPortable $CurrentProfile
 
+# A close/reopen periodic restart can leave the assistant offline if relaunch fails.
+# Keep scheduled quiet hours, but disable self-closing in every active copy.
+Disable-CloseReopenPeriodicRestart $LegacyProfile
+Disable-CloseReopenPeriodicRestart $LegacyPortable
+Disable-CloseReopenPeriodicRestart $CurrentProfile
+Disable-CloseReopenPeriodicRestart $CurrentPortable
+
 $env:QQFARM_HOOK_LOG_PATH = Join-Path $LogDir 'hook_runtime_log.txt'
 $env:QQFARM_PROXY_LOG_PATH = Join-Path $LogDir 'proxy_dll_load.log'
 $env:QQFARM_MAX_NATIVE_THREADS = '2'
@@ -118,10 +138,29 @@ if (!(Test-Path -LiteralPath $Exe -PathType Leaf)) { throw "Missing main program
 if ($NoLaunch) { exit 0 }
 if (!(Stop-ExistingAssistantInstances)) { exit 5 }
 
-$process = Start-Process -FilePath $Exe -WorkingDirectory $AppDir -PassThru -Wait
+$UnexpectedRestartLimit = 3
+$unexpectedRestartCount = 0
+$lastExitCode = 0
 
-# Save settings and statistics changed during this run back into the single folder.
-Sync-NewerFiles $LegacyProfile $LegacyPortable
-Sync-NewerFiles $CurrentProfile $CurrentPortable
-exit $process.ExitCode
+while ($true) {
+    $startedAt = Get-Date
+    $process = Start-Process -FilePath $Exe -WorkingDirectory $AppDir -PassThru -Wait
+    $lastExitCode = $process.ExitCode
 
+    # Save settings and statistics after every run before deciding whether to recover.
+    Sync-NewerFiles $LegacyProfile $LegacyPortable
+    Sync-NewerFiles $CurrentProfile $CurrentPortable
+
+    if ($process.ExitCode -eq 0) { break }
+
+    $runtimeSeconds = [int]((Get-Date) - $startedAt).TotalSeconds
+    if ($runtimeSeconds -ge 600) { $unexpectedRestartCount = 0 }
+    $unexpectedRestartCount++
+    "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') unexpected_exit exitCode=$($process.ExitCode) runtimeSeconds=$runtimeSeconds attempt=$unexpectedRestartCount/$UnexpectedRestartLimit" |
+        Add-Content -LiteralPath (Join-Path $LogDir 'watchdog.log') -Encoding UTF8
+
+    if ($unexpectedRestartCount -ge $UnexpectedRestartLimit) { break }
+    Start-Sleep -Seconds 10
+}
+
+exit $lastExitCode
