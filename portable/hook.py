@@ -16,6 +16,16 @@ def _write(msg):
 _THROTTLE_LOG_TS = {}
 _SECURITY_WATCHDOG_PATCH_LOG_SEEN = set()
 _DAILY_RETRY_REPAIR_LAST_TS = 0.0
+# Names recovered from the 2026-07-26 access-violation trace.  These are
+# termination/integrity deadline routines, not business-task functions.
+_INTEGRITY_EXIT_NOOP_NAMES = set([
+    '_qf_abc077a3d0ac',
+    'maybe_exit_on_integrity_failure_deadline',
+    'schedule_integrity_failure_exit',
+    '_shadow_penalty_exit_watchdog',
+    '_qf_60723e1c26a6',
+    '_qf_e4b465e77dde',
+])
 
 def _throttled_write(key, msg, seconds=30.0):
     try:
@@ -1324,6 +1334,7 @@ def _patch_module(m):
         (['entitlement_info','gui_entitlement_info','get_entitlement_info','_get_entitlement_info','_collect_entitlement_report_summary'], _fake_info),
         (['bind_entitlement_card','gui_entitlement_bind','fetch_version_info_payload'], _fake_bind),
         (['unbind_entitlement_card','gui_entitlement_unbind','clear_local_entitlement','_apply_entitlement_security_action','_run_report_safe','start_version_info_report_async','report_version_info_crash_sync','_post_version_info'], _fake_none),
+        (list(_INTEGRITY_EXIT_NOOP_NAMES), _fake_none),
         (['integrity_check','_verify_manifest_signature','_verify_manifest_hashes','_verify_windows_authenticode_thumbprint','maybe_exit_on_integrity_failure_deadline','schedule_integrity_failure_exit','initialize_patch_integrity_baseline'], _fake_integrity),
         (['collect_patch_integrity_signals','collect_crack_artifact_signals','_collect_manifest_signals','_collect_runtime_directory_signals','_collect_report_url_signals','_collect_public_key_signals'], _fake_list),
     ]
@@ -1487,10 +1498,21 @@ def _patch_security_watchdogs_loaded(tag=''):
     return changed
 
 
+def _looks_integrity_exit_module(m):
+    try:
+        namespace = vars(m)
+    except BaseException:
+        return False
+    try:
+        return any(name in namespace for name in _INTEGRITY_EXIT_NOOP_NAMES)
+    except BaseException:
+        return False
+
+
 def _is_target_module_name(mn):
-    low = mn.lower()
-    # v11-startup-safe: only patch backend security/entitlement modules.
-    # Do not patch gui.* or broad utils.* during import; that prevented the main window from being built.
+    low = str(mn).lower()
+    # Keep normal patching narrow, while allowing frozen obfuscated security
+    # modules from the crash trace to be inspected by attribute.
     return (low == 'bot.security' or low.startswith('bot.security.') or (low.startswith('bot.') and 'entitlement' in low))
 
 
@@ -4599,6 +4621,8 @@ def _patch_tag_relevant(tag):
             return True
         if low.startswith('bot.') or low == 'bot':
             return True
+        if low.startswith('_q'):
+            return True
         if low.startswith('gui.'):
             return True
         if low.startswith('configparser') or low.startswith('logging') or low.startswith('pyside6'):
@@ -4625,7 +4649,9 @@ def _patch_loaded(tag=''):
     patched = []
     try:
         for mn, m in list(sys.modules.items()):
-            if m is None or not _is_target_module_name(mn):
+            if m is None:
+                continue
+            if not (_is_target_module_name(mn) or _looks_integrity_exit_module(m)):
                 continue
             try:
                 c = _patch_module(m)
