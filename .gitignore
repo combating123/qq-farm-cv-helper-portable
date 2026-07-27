@@ -1,4 +1,4 @@
-﻿# Binary and local runtime outputs
+# Binary and local runtime outputs
 *.zip
 *.exe
 *.dll
@@ -13,3 +13,16 @@ __pycache__/
 Thumbs.db
 .vscode/
 .idea/
+# Local analysis and deployment records
+.analysis*.txt
+deploy-*-status.json
+deploy_*_elevated.ps1
+deploy_build_elevated.ps1
+guard_config_section.txt
+*.bak-before-*
+
+# Local release staging
+release-output/
+
+portable/comtypes/test/
+portable/pywinauto/tests/
