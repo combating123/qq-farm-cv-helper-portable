@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$SourceDir = 'E:\CV农场助手',
     [string]$OutputDir = 'E:\CodexBuilds\qq-farm\releases',
     [string]$Version = ''
@@ -40,7 +40,7 @@ Get-ChildItem -LiteralPath $source -Recurse -File -Force | ForEach-Object {
 }
 
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
-Compress-Archive -LiteralPath (Join-Path $stageFull '*') -DestinationPath $zip -CompressionLevel Optimal
+Compress-Archive -Path (Join-Path $stageFull '*') -DestinationPath $zip -CompressionLevel Optimal
 $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
 [IO.File]::WriteAllText($hashFile, ($hash + '  ' + [IO.Path]::GetFileName($zip) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
 Remove-Item -LiteralPath $stageFull -Recurse -Force

@@ -56,6 +56,7 @@ def _write(msg):
 _THROTTLE_LOG_TS = {}
 _SECURITY_WATCHDOG_PATCH_LOG_SEEN = set()
 _DAILY_RETRY_REPAIR_LAST_TS = 0.0
+_DAILY_TASK_PROMPT_MISS_LAST_TS = 0.0
 _DAILY_METRICS_LAST_SYNC_TS = 0.0
 # Names recovered from the 2026-07-26 access-violation trace.  These are
 # termination/integrity deadline routines, not business-task functions.
@@ -87,7 +88,7 @@ def _throttled_write(key, msg, seconds=30.0):
         except BaseException:
             return False
 
-_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help')
+_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open')
 
 try:
     import sys, time, builtins, importlib, os
@@ -1081,6 +1082,35 @@ def _daily_flow_success_today(flow, target='', paths=None, today=None):
         return False
     except BaseException:
         return False
+
+def _daily_task_authoritative_success_today(paths=None, today=None):
+    """Preserve a same-day task completion established by prompt absence or user confirmation."""
+    try:
+        day = str(today or time.strftime('%Y-%m-%d'))
+        for path in _daily_flow_status_paths(paths):
+            data = _daily_flow_read_status(path)
+            if str(data.get('date', '') or '') != day:
+                continue
+            flows = data.get('flows')
+            if not isinstance(flows, dict):
+                continue
+            entry = flows.get('task')
+            if not isinstance(entry, dict):
+                continue
+            if str(entry.get('date', '') or '') != day:
+                continue
+            if str(entry.get('status', '') or '').strip().lower() != 'success':
+                continue
+            reason = str(entry.get('reason', '') or '').strip().lower()
+            if (
+                reason == 'entry-no-prompt-assumed-cleared'
+                or reason.startswith('user-confirmed-already-claimed-')
+            ):
+                return True
+        return False
+    except BaseException:
+        return False
+
 
 
 
@@ -3119,6 +3149,243 @@ def _friend_guard_list_template_ready(instance_ids=None, template_root=None):
         return False
 
 
+def _friend_guard_list_template_paths(template_paths=None):
+    """Return imported friend-whitelist templates without rescanning unrelated assets."""
+    if template_paths is not None:
+        if isinstance(template_paths, (str, bytes)):
+            return (template_paths,)
+        try:
+            return tuple(template_paths or ())
+        except BaseException:
+            return ()
+    try:
+        status_fn = globals().get('_friend_guard_template_status')
+        status = status_fn() if callable(status_fn) else {}
+        return tuple(status.get('files', ()) or ())
+    except BaseException:
+        return ()
+
+
+def _friend_guard_list_carousel_card_match(
+        frame, card_bounds=None, template_paths=None, threshold=0.72):
+    """Match the currently selected bottom friend card against imported whitelist rows."""
+    result = {
+        'matched': False,
+        'score': 0.0,
+        'path': '',
+        'center': None,
+    }
+    if frame is None:
+        return result
+    try:
+        np = __import__('numpy')
+        cv2 = __import__('cv2')
+        arr = np.asarray(frame)
+        shape = getattr(arr, 'shape', None)
+        if not shape or len(shape) < 3 or int(shape[2]) < 3:
+            return result
+        height, width = int(shape[0]), int(shape[1])
+        if not isinstance(card_bounds, dict):
+            bounds_fn = globals().get('_friend_selected_carousel_card_bounds')
+            card_bounds = bounds_fn(frame) if callable(bounds_fn) else None
+        if not isinstance(card_bounds, dict):
+            return result
+        left = max(0, int(card_bounds.get('left', 0) or 0) - max(2, int(width * 0.008)))
+        right = min(
+            width,
+            int(card_bounds.get('right', left) or left) + max(2, int(width * 0.008)),
+        )
+        top = max(0, int(card_bounds.get('top', 0) or 0) - max(2, int(height * 0.006)))
+        bottom = min(
+            height,
+            int(card_bounds.get('bottom', top) or top) + max(2, int(height * 0.006)),
+        )
+        if right - left < 20 or bottom - top < 20:
+            return result
+        roi = arr[top:bottom, left:right, :3]
+        roi_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        paths_fn = globals().get('_friend_guard_list_template_paths')
+        paths = (
+            paths_fn(template_paths)
+            if callable(paths_fn)
+            else tuple(template_paths or ())
+        )
+        reader = globals().get('_friend_guard_read_template')
+        frame_scale = max(
+            0.45,
+            min(2.5, ((float(width) / 428.0) + (float(height) / 800.0)) / 2.0),
+        )
+        best_score = 0.0
+        best_path = ''
+        best_center = None
+        for template_path in paths:
+            try:
+                template = reader(template_path) if callable(reader) else None
+                if template is None:
+                    raw = np.fromfile(str(template_path), dtype=np.uint8)
+                    template = cv2.imdecode(raw, cv2.IMREAD_COLOR) if raw.size else None
+                if template is None:
+                    continue
+                template_height, template_width = int(template.shape[0]), int(template.shape[1])
+                avatar_width = max(12, min(template_width, int(round(template_width * 0.455))))
+                avatar = template[:, :avatar_width, :3]
+                for factor in (0.82, 0.88, 0.94, 1.00, 1.06):
+                    scale = frame_scale * factor
+                    target_width = max(8, int(round(int(avatar.shape[1]) * scale)))
+                    target_height = max(8, int(round(int(avatar.shape[0]) * scale)))
+                    if target_width > int(roi_gray.shape[1]) or target_height > int(roi_gray.shape[0]):
+                        continue
+                    interpolation = (
+                        cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LINEAR
+                    )
+                    resized = cv2.resize(
+                        avatar,
+                        (target_width, target_height),
+                        interpolation=interpolation,
+                    )
+                    template_gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+                    matched = cv2.matchTemplate(
+                        roi_gray, template_gray, cv2.TM_CCOEFF_NORMED
+                    )
+                    _, score, _, location = cv2.minMaxLoc(matched)
+                    score = float(score)
+                    if score <= best_score:
+                        continue
+                    best_score = score
+                    best_path = str(template_path)
+                    best_center = (
+                        left + int(location[0]) + (target_width // 2),
+                        top + int(location[1]) + (target_height // 2),
+                    )
+            except BaseException:
+                continue
+        result.update({
+            'matched': bool(best_score >= max(0.45, min(0.95, float(threshold)))),
+            'score': float(best_score),
+            'path': best_path,
+            'center': best_center,
+        })
+        return result
+    except BaseException:
+        return result
+
+
+def _friend_guard_list_refresh_prequalification(context, frame):
+    """Replace stale row approval with proof for the newly selected carousel friend."""
+    if context is None:
+        return False
+    match_fn = globals().get('_friend_guard_list_carousel_card_match')
+    try:
+        match = match_fn(frame) if callable(match_fn) else {}
+    except BaseException:
+        match = {}
+    matched = bool(match.get('matched', False)) if isinstance(match, dict) else False
+    score = float(match.get('score', 0.0) or 0.0) if isinstance(match, dict) else 0.0
+    path = str(match.get('path', '') or '') if isinstance(match, dict) else ''
+    try:
+        if matched:
+            now_fn = globals().get('_friend_watchdog_now')
+            now_ts = (
+                float(now_fn())
+                if callable(now_fn)
+                else float(__import__('time').time())
+            )
+            setattr(context, '_qqfarm_guard_list_prequalified', True)
+            setattr(context, '_qqfarm_guard_list_prequalified_ts', now_ts)
+        else:
+            setattr(context, '_qqfarm_guard_list_prequalified', False)
+            setattr(context, '_qqfarm_guard_list_prequalified_ts', 0.0)
+        setattr(context, '_qqfarm_guard_list_carousel_score', score)
+        setattr(context, '_qqfarm_guard_list_carousel_template', path)
+    except BaseException:
+        return False
+    try:
+        writer = globals().get('_write')
+        if callable(writer):
+            writer(
+                'v145 guard-list carousel identity matched=' + repr(matched) +
+                ' score=' + ('%.4f' % score) +
+                ' template=' + str(path).split('\\')[-1].split('/')[-1]
+            )
+    except BaseException:
+        pass
+    return matched
+
+
+def _friend_guard_list_row_match_score(frame, row_y, template_paths=None):
+    """Score one visible actionable friend-list row against imported whitelist rows."""
+    if frame is None:
+        return 0.0
+    try:
+        np = __import__('numpy')
+        cv2 = __import__('cv2')
+        arr = np.asarray(frame)
+        shape = getattr(arr, 'shape', None)
+        if not shape or len(shape) < 3 or int(shape[2]) < 3:
+            return 0.0
+        height, width = int(shape[0]), int(shape[1])
+        center_y = int(row_y)
+        vertical_pad = max(38, int(round(height * 0.058)))
+        y0 = max(0, center_y - vertical_pad)
+        y1 = min(height, center_y + vertical_pad)
+        x0 = max(0, int(round(width * 0.015)))
+        x1 = min(width, int(round(width * 0.78)))
+        roi = arr[y0:y1, x0:x1, :3]
+        if int(roi.shape[0]) < 20 or int(roi.shape[1]) < 30:
+            return 0.0
+        roi_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        paths_fn = globals().get('_friend_guard_list_template_paths')
+        paths = (
+            paths_fn(template_paths)
+            if callable(paths_fn)
+            else tuple(template_paths or ())
+        )
+        reader = globals().get('_friend_guard_read_template')
+        frame_scale = max(
+            0.45,
+            min(2.5, ((float(width) / 428.0) + (float(height) / 800.0)) / 2.0),
+        )
+        best_score = 0.0
+        for template_path in paths:
+            try:
+                template = reader(template_path) if callable(reader) else None
+                if template is None:
+                    raw = np.fromfile(str(template_path), dtype=np.uint8)
+                    template = cv2.imdecode(raw, cv2.IMREAD_COLOR) if raw.size else None
+                if template is None:
+                    continue
+                template_width = int(template.shape[1])
+                candidates = (
+                    template[:, :, :3],
+                    template[:, :max(12, int(round(template_width * 0.455))), :3],
+                )
+                for candidate_template in candidates:
+                    for factor in (0.90, 0.96, 1.00, 1.04):
+                        scale = frame_scale * factor
+                        target_width = max(8, int(round(int(candidate_template.shape[1]) * scale)))
+                        target_height = max(8, int(round(int(candidate_template.shape[0]) * scale)))
+                        if target_width > int(roi_gray.shape[1]) or target_height > int(roi_gray.shape[0]):
+                            continue
+                        resized = cv2.resize(
+                            candidate_template,
+                            (target_width, target_height),
+                            interpolation=(
+                                cv2.INTER_AREA if scale < 1.0 else cv2.INTER_LINEAR
+                            ),
+                        )
+                        template_gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+                        matched = cv2.matchTemplate(
+                            roi_gray, template_gray, cv2.TM_CCOEFF_NORMED
+                        )
+                        _, score, _, _ = cv2.minMaxLoc(matched)
+                        best_score = max(best_score, float(score))
+            except BaseException:
+                continue
+        return float(best_score)
+    except BaseException:
+        return 0.0
+
+
 def _guard_dog_detection_mode_config():
     try:
         raw = str(_cfg_get(
@@ -4413,7 +4680,7 @@ def _friend_guard_help_button_match(frame):
             os_module.path.join(os_module.getcwd(), 'friend_help_all_button.png'),
         )
         match = _friend_guard_match_template(
-            frame, template_path, (0.20, 0.55, 0.80, 0.90), 0.65, 0.22
+            frame, template_path, (0.20, 0.55, 0.80, 0.90), 0.44, 0.22
         )
         globals()['_FRIEND_HELP_ALL_LAST_MATCH'] = match
         return match
@@ -5468,20 +5735,6 @@ def _friend_chain_should_block_troublemaker(context):
     if context is None:
         return False
     try:
-        guard_enabled_fn = globals().get('_guard_dog_ui_config_enabled')
-        guard_mode_fn = globals().get('_guard_dog_detection_mode_config')
-        guard_enabled = bool(guard_enabled_fn()) if callable(guard_enabled_fn) else False
-        guard_mode = str(
-            guard_mode_fn() if callable(guard_mode_fn) else 'avatar_frame'
-        )
-        if guard_enabled and guard_mode == 'friend_guard_list':
-            # The compiled implementation explicitly supports this mode only on
-            # friend-list rows; do not block its own home/list transition in
-            # order to force the unsupported bottom-carousel path.
-            return False
-    except BaseException:
-        pass
-    try:
         pending = bool(getattr(context, '_qqfarm_friend_chain_pending', False))
         active = bool(getattr(context, '_qqfarm_friend_chain_active', False))
         exhausted = bool(getattr(context, '_qqfarm_friend_chain_exhausted', False))
@@ -5823,28 +6076,6 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
         )
     except BaseException:
         verified_guard_row = False
-    if guard_enabled and guard_mode == 'friend_guard_list':
-        # The native checks_friend flow documents that friend-guard-list mode is
-        # row-only and deliberately rejects bottom-carousel help entries.  End
-        # the Hook continuation so the compiled flow can return to that list.
-        result['exhausted'] = True
-        result['reason'] = 'native-guard-list-mode'
-        try:
-            setattr(context, '_qqfarm_friend_chain_exhausted', True)
-            setattr(context, '_qqfarm_friend_chain_pending', False)
-            setattr(context, '_qqfarm_friend_chain_active', False)
-        except BaseException:
-            pass
-        try:
-            writer = globals().get('_write')
-            if callable(writer):
-                writer(
-                    'v133 guard-list mode delegated to native row flow; '
-                    'bottom carousel disabled'
-                )
-        except BaseException:
-            pass
-        return result
     move_fn = globals().get('_invoke_friend_next_actionable_entry')
     adjacent_fn = globals().get('_invoke_friend_adjacent_card_navigation')
     action_fn = globals().get('_invoke_friend_actions_before_home')
@@ -6343,6 +6574,7 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
         full_action_probed = False
         friend_ready_streak = 0
         use_fast_action_probe = callable(fast_action_fn)
+        guard_identity_refreshed = False
         try:
             navigation_threshold = float(
                 getattr(context, 'friend_chain_navigation_change_threshold', 0.012) or 0.012
@@ -6440,6 +6672,20 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                 if not move_counted:
                     result['moves'] += 1
                     move_counted = True
+                if (
+                    guard_enabled
+                    and guard_mode == 'friend_guard_list'
+                    and not guard_identity_refreshed
+                ):
+                    refresh_fn = globals().get(
+                        '_friend_guard_list_refresh_prequalification'
+                    )
+                    if callable(refresh_fn):
+                        try:
+                            refresh_fn(context, candidate)
+                        except BaseException:
+                            pass
+                    guard_identity_refreshed = True
                 frame = candidate
                 result['frame'] = frame
                 if friend_state is True:
@@ -6571,7 +6817,7 @@ def _set_friend_chain_fast_interval(context, active):
                 current = float(getattr(context, 'check_interval', 15.0) or 15.0)
                 setattr(context, '_qqfarm_friend_chain_original_interval', current)
             current = float(getattr(context, 'check_interval', 15.0) or 15.0)
-            setattr(context, 'check_interval', min(current, 2.0))
+            setattr(context, 'check_interval', min(current, 0.75))
             setattr(context, '_qqfarm_friend_chain_active', True)
         else:
             original = getattr(context, '_qqfarm_friend_chain_original_interval', None)
@@ -7122,26 +7368,41 @@ def _handle_friend_list_surface(context, frame):
                 setattr(context, '_qqfarm_guard_row_verified', False)
             except BaseException:
                 pass
-        if guard_enabled and guard_mode == 'friend_guard_list':
-            # Native checks_friend owns this mode and has the row cache/scroll
-            # state needed to identify protected friends.  A generic coordinate
-            # click here bypasses that state and makes every in-farm help gate
-            # report ineligible.
-            try:
-                writer = globals().get('_write')
-                if callable(writer):
-                    writer(
-                        'v133 friend guard list surface delegated to native row flow '
-                        'rows=' + str(len(rows))
-                    )
-            except BaseException:
-                pass
-            return 'native-guard-list'
         target = None
         target_score = 0.0
         target_row_y = 0
         scored = []
-        if rows and guard_enabled:
+        if rows and guard_enabled and guard_mode == 'friend_guard_list':
+            score_fn = globals().get('_friend_guard_list_row_match_score')
+            for row in rows:
+                center = row.get('center') if isinstance(row, dict) else None
+                if not isinstance(center, (tuple, list)) or len(center) < 2:
+                    continue
+                row_y = int(center[1])
+                try:
+                    score = float(score_fn(frame, row_y)) if callable(score_fn) else 0.0
+                except BaseException:
+                    score = 0.0
+                scored.append((row_y, score))
+                # Preserve the visual top-to-bottom ordering.  A later stronger
+                # score must never skip the first matching actionable friend.
+                if target is None and score >= 0.72:
+                    target = row
+                    target_score = score
+                    target_row_y = row_y
+            if target is None:
+                try:
+                    writer = globals().get('_write')
+                    if callable(writer):
+                        writer(
+                            'v145 guard-list fast row match found no verified row; '
+                            'delegating to native scroll flow rows=' + str(len(rows)) +
+                            ' scores=' + repr(scored)[:320]
+                        )
+                except BaseException:
+                    pass
+                return 'native-guard-list'
+        elif rows and guard_enabled:
             score_fn = globals().get('_friend_list_guard_dog_score')
             for row in rows:
                 center = row.get('center') if isinstance(row, dict) else None
@@ -7154,20 +7415,6 @@ def _handle_friend_list_surface(context, frame):
                     target = row
                     target_score = float(score)
                     target_row_y = row_y
-            if guard_mode == 'friend_guard_list':
-                # The interaction list is already ordered top-to-bottom with
-                # actionable entries first.  Avatar cosmetics are not a stable
-                # eligibility signal, so never let a later template score skip
-                # or stall the first visible row.
-                target = rows[0]
-                first_score = float(scored[0][1]) if scored else 0.0
-                write_fn = globals().get('_write')
-                if callable(write_fn):
-                    write_fn(
-                        'v129 friend list ordered first row selected score=' +
-                        ('%.4f' % first_score) +
-                        ' explicit_scores=' + repr(scored)[:240]
-                    )
         elif rows:
             target = rows[0]
         click_fn = globals().get('_friend_guard_post_client_click')
@@ -7191,6 +7438,17 @@ def _handle_friend_list_surface(context, frame):
                             setattr(context, '_qqfarm_guard_row_score', float(target_score))
                         else:
                             setattr(context, '_qqfarm_guard_row_verified', False)
+                        if guard_enabled and guard_mode == 'friend_guard_list':
+                            setattr(context, '_qqfarm_guard_list_prequalified', True)
+                            setattr(context, '_qqfarm_guard_list_prequalified_ts', now_ts)
+                            setattr(context, '_qqfarm_guard_list_row_y', int(target_row_y))
+                            setattr(context, '_qqfarm_guard_list_row_score', float(target_score))
+                            setattr(context, '_qqfarm_friend_chain_pending', True)
+                            setattr(context, '_qqfarm_friend_chain_exhausted', False)
+                            setattr(context, '_qqfarm_friend_chain_native_home_blocked', False)
+                        else:
+                            setattr(context, '_qqfarm_guard_list_prequalified', False)
+                            setattr(context, '_qqfarm_guard_list_prequalified_ts', 0.0)
                         setattr(context, '_qqfarm_friend_cycle_seen', True)
                         setattr(context, '_qqfarm_visual_friend_count', 0)
                         setattr(context, '_qqfarm_friend_page_seen_ts', 0.0)
@@ -7274,7 +7532,7 @@ def _friend_guard_friend_ui_state(frame):
             frame, home_path, (0.68, 0.52, 1.0, 0.86), 0.68, 0.30
         )
         home_is_strong_soft_edge = bool(
-            float(home.get('gray', 0.0) or 0.0) >= 0.84
+            float(home.get('gray', 0.0) or 0.0) >= 0.78
             and float(home.get('edge', 0.0) or 0.0) >= 0.18
         )
         if home_is_strong_soft_edge and not bool(home.get('matched')):
@@ -7474,10 +7732,33 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
         # The compiled process_friend_farm dispatcher can route back into itself
         # when called from the run_cycle post-hook. Prefer its two direct home-page
         # entry checks: the visible help card first, then the ordinary friend tab.
-        for method_name in (
-            'check_friend_help_request_entry',
-            'check_friend_icon',
-        ):
+        guard_list_mode = False
+        try:
+            guard_enabled_fn = globals().get('_guard_dog_ui_config_enabled')
+            guard_mode_fn = globals().get('_guard_dog_detection_mode_config')
+            guard_list_mode = bool(
+                callable(guard_enabled_fn) and guard_enabled_fn()
+                and callable(guard_mode_fn)
+                and str(guard_mode_fn()) == 'friend_guard_list'
+            )
+        except BaseException:
+            guard_list_mode = False
+        method_names = (
+            ('check_friend_icon',)
+            if guard_list_mode else (
+                'check_friend_help_request_entry',
+                'check_friend_icon',
+            )
+        )
+        if guard_list_mode:
+            try:
+                _write(
+                    'v143 guard-list mode skips direct help request entry; '
+                    'routing through friend list for identity proof'
+                )
+            except BaseException:
+                pass
+        for method_name in method_names:
             action = getattr(context, method_name, None)
             if not callable(action):
                 continue
@@ -7506,35 +7787,15 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
             if accepted:
                 return True
 
-        action = getattr(context, 'process_friend_farm', None)
-        if not callable(action):
-            try:
-                _write('v122 friend home recovery missing process_friend_farm')
-            except BaseException:
-                pass
-            return False
+        # This helper runs after the compiled run_cycle dispatcher has already
+        # completed. Re-entering process_friend_farm here recursively calls the
+        # same dispatcher and leaves the UI in a rapid empty-cycle loop. Only
+        # direct home-page entry methods are valid from this recovery path.
         try:
-            result = _invoke_friend_guard_action(
-                action, None, (context, fresh_frame), {}
-            )
-        except RecursionError as error:
-            try:
-                _write(
-                    'v122 friend home processor recursion blocked ' +
-                    repr(error)[:180]
-                )
-            except BaseException:
-                pass
-            return False
-        accepted = bool(result is not False)
-        try:
-            _write(
-                'v122 friend home recovery invoked process_friend_farm result=' +
-                repr(result)[:180] + ' accepted=' + repr(accepted)
-            )
+            _write('v144 friend home direct entries unavailable; dispatcher re-entry skipped')
         except BaseException:
             pass
-        return accepted
+        return False
     except BaseException as error:
         try:
             _write('v122 friend home recovery error ' + repr(error)[:220])
@@ -7546,6 +7807,90 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
             setattr(context, '_qqfarm_friend_home_recovery_active', False)
         except BaseException:
             pass
+
+
+def _friend_guard_list_fast_open_from_home(context):
+    """Open the friend list and return before the legacy multi-row scan starts."""
+    if context is None:
+        return False
+    try:
+        enabled_fn = globals().get('_guard_dog_ui_config_enabled')
+        mode_fn = globals().get('_guard_dog_detection_mode_config')
+        if not (
+            callable(enabled_fn) and enabled_fn()
+            and callable(mode_fn) and str(mode_fn()) == 'friend_guard_list'
+        ):
+            return False
+    except BaseException:
+        return False
+    try:
+        if bool(getattr(context, '_qqfarm_friend_chain_pending', False)):
+            return False
+    except BaseException:
+        pass
+    capture_fn = globals().get('_get_frame_from_bot')
+    try:
+        frame = capture_fn(context) if callable(capture_fn) else None
+    except BaseException:
+        frame = None
+    if frame is None:
+        return False
+    rows_fn = globals().get('_friend_list_visit_button_rows')
+    try:
+        if callable(rows_fn) and len(rows_fn(frame) or []) > 0:
+            return False
+    except BaseException:
+        pass
+    state_fn = globals().get('_friend_guard_friend_ui_state')
+    try:
+        if callable(state_fn) and state_fn(frame) is True:
+            return False
+    except BaseException:
+        pass
+    try:
+        now_fn = globals().get('_friend_watchdog_now')
+        now_ts = (
+            float(now_fn())
+            if callable(now_fn)
+            else float(__import__('time').time())
+        )
+        last_ts = float(getattr(
+            context, '_qqfarm_guard_list_fast_open_ts', 0.0
+        ) or 0.0)
+        if last_ts > 0.0 and -1.0 <= (now_ts - last_ts) < 3.0:
+            return True
+    except BaseException:
+        now_ts = 0.0
+    open_fn = globals().get('_invoke_friend_branch_from_home')
+    try:
+        opened = bool(open_fn(context, frame)) if callable(open_fn) else False
+    except BaseException:
+        opened = False
+    if not opened:
+        return False
+    try:
+        setattr(context, '_qqfarm_guard_list_fast_open_ts', now_ts)
+        setattr(context, '_qqfarm_friend_cycle_seen', True)
+        setattr(context, '_qqfarm_visual_friend_count', 0)
+        setattr(context, '_qqfarm_friend_page_seen_ts', 0.0)
+    except BaseException:
+        pass
+    try:
+        fast_fn = globals().get('_set_friend_chain_fast_interval')
+        if callable(fast_fn):
+            fast_fn(context, True)
+    except BaseException:
+        pass
+    try:
+        writer = globals().get('_write')
+        if callable(writer):
+            writer(
+                'v146 guard-list friend icon opened; legacy row scan skipped '
+                'until list preflight'
+            )
+    except BaseException:
+        pass
+    return True
 
 
 def _apply_visual_friend_route_watchdog(fn, context, function_name=''):
@@ -8172,6 +8517,21 @@ def _wrap_vip_business_func(fn, name=''):
                         pass
                     return False
             if 'process_friend_farm' in lname:
+                fast_open_fn = globals().get(
+                    '_friend_guard_list_fast_open_from_home'
+                )
+                if callable(fast_open_fn):
+                    try:
+                        if fast_open_fn(dispatch_context):
+                            return True
+                    except BaseException as error:
+                        try:
+                            _write(
+                                'v146 guard-list fast open error=' +
+                                repr(error)[:220]
+                            )
+                        except BaseException:
+                            pass
                 begin_fn = globals().get('_friend_chain_begin_dispatch')
                 dispatch_armed = bool(
                     begin_fn(dispatch_context)
@@ -8395,7 +8755,19 @@ def _patch_vip_business_loaded(tag=''):
 # Do not permanently lock the whole day on transient task_prompt misses. Keep
 # the counter one below the hard limit and retry after a bounded backoff.
 _DAILY_TASK_SOFT_RETRY_PATCH_LOG_SEEN = set()
-_DAILY_TASK_RETRY_STATE_PATH = r'C:/Users/11616/reverse-cases/qq-farm-vip/work/daily_task_retry_state.json'
+def _daily_task_retry_state_default_path():
+    try:
+        base = str(os.environ.get('LOCALAPPDATA', '') or '').strip()
+        if not base:
+            return ''
+        return os.path.join(
+            base, 'qq-farm-bot-rev', 'daily_task_retry_state.json'
+        )
+    except BaseException:
+        return ''
+
+
+_DAILY_TASK_RETRY_STATE_PATH = _daily_task_retry_state_default_path()
 
 
 def _daily_task_zero_retry_state():
@@ -8647,8 +9019,56 @@ def _daily_entry_red_dot_present(frame, flow):
         red_rgb = (c0 >= 175) & (c0 >= c1 + 55) & (c0 >= c2 + 45) & (c1 <= 165)
         red = red_bgr | red_rgb
         count = int(red.sum())
-        required = max(5, int(round(float(roi.shape[0] * roi.shape[1]) * 0.0009)))
-        return count >= required
+        area = int(roi.shape[0] * roi.shape[1])
+        required = max(12, int(round(float(area) * 0.0015)))
+        if count < required:
+            return False
+
+        # A real notification dot is a compact, roughly square component.
+        # Farm scenery and the friend carousel can contain long red strips that
+        # previously exceeded the raw-pixel threshold and reopened daily tasks.
+        seen = np.zeros(red.shape, dtype='uint8')
+        red_y, red_x = np.where(red)
+        for start_y, start_x in zip(red_y.tolist(), red_x.tolist()):
+            if seen[start_y, start_x]:
+                continue
+            stack = [(int(start_y), int(start_x))]
+            seen[start_y, start_x] = 1
+            component = []
+            while stack:
+                point_y, point_x = stack.pop()
+                component.append((point_y, point_x))
+                for delta_y in (-1, 0, 1):
+                    for delta_x in (-1, 0, 1):
+                        if delta_x == 0 and delta_y == 0:
+                            continue
+                        next_y = point_y + delta_y
+                        next_x = point_x + delta_x
+                        if (
+                            next_y < 0 or next_x < 0
+                            or next_y >= red.shape[0] or next_x >= red.shape[1]
+                            or seen[next_y, next_x] or not red[next_y, next_x]
+                        ):
+                            continue
+                        seen[next_y, next_x] = 1
+                        stack.append((next_y, next_x))
+            if len(component) < required:
+                continue
+            ys = [point[0] for point in component]
+            xs = [point[1] for point in component]
+            component_height = max(ys) - min(ys) + 1
+            component_width = max(xs) - min(xs) + 1
+            if component_width < 4 or component_height < 4:
+                continue
+            if component_width > 36 or component_height > 36:
+                continue
+            aspect = float(component_width) / float(max(1, component_height))
+            density = float(len(component)) / float(
+                component_width * component_height
+            )
+            if 0.42 <= aspect <= 2.4 and density >= 0.30:
+                return True
+        return False
     except BaseException:
         return False
 
@@ -8681,6 +9101,21 @@ def _daily_flow_entry_red_dot_state(context, flow):
 def _daily_flow_invalidate_success(context, flow, reason='entry-red-dot-present'):
     try:
         flow_key = str(flow or '').strip().lower()
+        if flow_key == 'task':
+            authoritative_fn = globals().get(
+                '_daily_task_authoritative_success_today'
+            )
+            authoritative = bool(
+                authoritative_fn() if callable(authoritative_fn) else False
+            )
+            if authoritative:
+                apply_fn = globals().get('_daily_flow_apply_success_context')
+                if callable(apply_fn):
+                    apply_fn(context, flow_key)
+                clear_fn = globals().get('_daily_task_clear_retry_backoff')
+                if callable(clear_fn):
+                    clear_fn()
+                return True
         if flow_key == 'share':
             target_fn = globals().get('_daily_flow_target')
             target = target_fn(flow_key) if callable(target_fn) else ''
@@ -8877,7 +9312,11 @@ def _patch_daily_flow_status_for_module(module, tag=''):
                     elif _daily_flow_context_success_today(context, __flow):
                         return False if __kind == 'should' else True
                     blocked_fn = globals().get('_daily_flow_retry_blocked')
-                    if callable(blocked_fn) and blocked_fn(__flow):
+                    if (
+                        callable(blocked_fn)
+                        and blocked_fn(__flow)
+                        and red_state is not False
+                    ):
                         return False
                     result = __orig(*args, **kwargs)
                     if __kind == 'should' and result and red_state is False:
@@ -12607,6 +13046,55 @@ def _note_runtime_cycle_branch(message):
         return branch
     except BaseException:
         return ''
+
+
+def _note_runtime_daily_task_outcome(message, now=None):
+    """Treat an opened task entry with no task prompt as completed for today."""
+    global _DAILY_TASK_PROMPT_MISS_LAST_TS
+    try:
+        text = str(message or '')
+        prompt_missing = (
+            'task_prompt' in text
+            and '\u672a\u68c0\u6d4b\u5230' in text
+        )
+        task_failed = '\u6bcf\u65e5\u4efb\u52a1\u9886\u53d6\u5931\u8d25' in text
+        if not (prompt_missing or task_failed):
+            return ''
+        current = float(time.time() if now is None else now)
+        last = float(globals().get(
+            '_DAILY_TASK_PROMPT_MISS_LAST_TS', 0.0
+        ) or 0.0)
+        if last > 0.0 and (current - last) < 5.0:
+            return 'task-prompt-missing-duplicate'
+        globals()['_DAILY_TASK_PROMPT_MISS_LAST_TS'] = current
+        mark_fn = globals().get('_daily_flow_mark_status')
+        if callable(mark_fn):
+            mark_fn(
+                'task', 'success',
+                reason='entry-no-prompt-assumed-cleared',
+            )
+        context = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
+        apply_fn = globals().get('_daily_flow_apply_success_context')
+        if callable(apply_fn):
+            apply_fn(context, 'task')
+        clear_fn = globals().get('_daily_task_clear_retry_backoff')
+        if callable(clear_fn):
+            clear_fn()
+        log_fn = globals().get('_throttled_write')
+        if callable(log_fn):
+            try:
+                log_fn(
+                    'v144-task-prompt-missing-complete',
+                    'v144 daily task entry had no prompt; marked complete for today',
+                    60.0,
+                )
+            except BaseException:
+                pass
+        return 'task-prompt-missing-assumed-complete'
+    except BaseException:
+        return ''
+
+
 _RUNTIME_LAST_SCAN_TS = 0.0
 _RUNTIME_SCAN_RUNNING = False
 
@@ -12838,6 +13326,10 @@ def _install_runtime_log_patch():
                 _note_runtime_cycle_branch(msg)
             except BaseException:
                 pass
+            try:
+                _note_runtime_daily_task_outcome(msg)
+            except BaseException:
+                pass
             new_msg, hit = _rewrite_entitlement_log_message(msg)
             if hit:
                 return orig_info(self, new_msg, **kwargs)
@@ -12845,6 +13337,10 @@ def _install_runtime_log_patch():
         def _patched_info(self, msg, *args, **kwargs):
             try:
                 _note_runtime_cycle_branch(msg)
+            except BaseException:
+                pass
+            try:
+                _note_runtime_daily_task_outcome(msg)
             except BaseException:
                 pass
             new_msg, hit = _rewrite_entitlement_log_message(msg)

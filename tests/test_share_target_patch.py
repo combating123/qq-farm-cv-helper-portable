@@ -221,7 +221,7 @@ class ShareTargetPatchTests(unittest.TestCase):
         calls = []
         target = object()
         ns["_share_find_exact_uia_target"] = lambda *a, **k: calls.append(1) or (target if len(calls) == 3 else None)
-        found = ns["_share_wait_exact_uia_target"](100, "2135736062", False, 1200)
+        found = ns["_share_wait_exact_uia_target"](100, "1000000001", False, 1200)
         self.assertIs(target, found)
         self.assertEqual(3, len(calls))
         self.assertLess(ns["fake_time"].now, 0.4)
@@ -362,10 +362,10 @@ class ShareTargetPatchTests(unittest.TestCase):
             "_share_set_clipboard_unicode": lambda value: False,
             "time": type("Clock", (), {"sleep": staticmethod(lambda seconds: None)}),
         })
-        self.assertTrue(ns["_share_type_target"]("2135736062"))
+        self.assertTrue(ns["_share_type_target"]("1000000001"))
         self.assertEqual([0x41], ctrl)
         typed = [vk for vk, up in keys if not up]
-        self.assertEqual([ord(ch) for ch in "2135736062"], typed)
+        self.assertEqual([ord(ch) for ch in "1000000001"], typed)
 
     def test_share_target_prefers_single_clipboard_paste_when_available(self):
         ns = load_named_hook_functions("_share_type_target")
@@ -379,15 +379,15 @@ class ShareTargetPatchTests(unittest.TestCase):
             "time": type("Clock", (), {"sleep": staticmethod(lambda seconds: None)}),
         })
 
-        self.assertTrue(ns["_share_type_target"]("2135736062"))
-        self.assertEqual(["2135736062"], clipboard)
+        self.assertTrue(ns["_share_type_target"]("1000000001"))
+        self.assertEqual(["1000000001"], clipboard)
         self.assertEqual([0x41, 0x56], ctrl)
         self.assertEqual([], keys)
 
     def test_share_search_rejects_numeric_coordinate_fallback_without_exact_uia(self):
         ns = load_named_hook_functions("_share_search_and_maybe_confirm")
         state = configure_strict_share_namespace(ns, matched=False)
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertFalse(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertFalse(any(event[0] in ("coord", "dialog", "uia") for event in state["events"]))
@@ -398,7 +398,7 @@ class ShareTargetPatchTests(unittest.TestCase):
     def test_share_direct_confirm_is_clicked_once_without_visual_fallback(self):
         ns = load_named_hook_functions("_share_search_and_maybe_confirm")
         state = configure_strict_share_namespace(ns, dialog_closes=False)
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertFalse(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertEqual(
@@ -411,7 +411,7 @@ class ShareTargetPatchTests(unittest.TestCase):
     def test_share_open_dialog_after_direct_confirm_logs_failure_and_closes(self):
         ns = load_named_hook_functions("_share_search_and_maybe_confirm")
         state = configure_strict_share_namespace(ns, dialog_closes=False)
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertFalse(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertTrue(any(key == "confirm-not-closed" for key, _, _ in state["logs"]))
@@ -420,7 +420,7 @@ class ShareTargetPatchTests(unittest.TestCase):
     def test_share_strict_uia_flow_uses_no_coordinate_selection_or_confirm(self):
         ns = load_named_hook_functions("_share_search_and_maybe_confirm")
         state = configure_strict_share_namespace(ns, dialog_closes=True)
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertTrue(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertEqual(
@@ -432,7 +432,7 @@ class ShareTargetPatchTests(unittest.TestCase):
     def test_share_numeric_result_never_retries_result_card_coordinates(self):
         ns = load_named_hook_functions("_share_search_and_maybe_confirm")
         state = configure_strict_share_namespace(ns, matched=False)
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertFalse(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertFalse(any(event[0] in ("coord", "dialog") for event in state["events"]))
@@ -440,7 +440,7 @@ class ShareTargetPatchTests(unittest.TestCase):
     def test_numeric_share_stops_before_uia_wait_when_backend_is_missing(self):
         ns = load_named_hook_functions("_share_search_and_maybe_confirm")
         state = configure_strict_share_namespace(ns, uia_available=False)
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertFalse(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertNotIn(("wait-exact",), state["events"])
@@ -465,7 +465,7 @@ class ShareTargetPatchTests(unittest.TestCase):
             "time": type("Clock", (), {"monotonic": staticmethod(lambda: 100.0)}),
             "_share_target_guard_config": lambda: {
                 "enabled": True,
-                "target_name": "2135736062",
+                "target_name": "1000000001",
                 "dry_run": False,
                 "allow_group": False,
             },
@@ -483,7 +483,7 @@ class ShareTargetPatchTests(unittest.TestCase):
 
         self.assertTrue(ns["_run_share_prompt_recovery"](context))
         self.assertEqual(
-            [("click", (500, 600)), ("send", "2135736062"), ("mark", context)],
+            [("click", (500, 600)), ("send", "1000000001"), ("mark", context)],
             events,
         )
 
@@ -496,7 +496,7 @@ class ShareTargetPatchTests(unittest.TestCase):
             "_share_target_module": lambda: module,
             "_share_target_guard_config": lambda: {
                 "enabled": True,
-                "target_name": "2135736062",
+                "target_name": "1000000001",
                 "dry_run": False,
                 "allow_group": False,
             },
@@ -515,8 +515,8 @@ class ShareTargetPatchTests(unittest.TestCase):
         self.assertEqual(
             [
                 ("dialog", module),
-                ("send", "2135736062"),
-                ("record", "2135736062"),
+                ("send", "1000000001"),
+                ("record", "1000000001"),
                 ("mark", context),
             ],
             events,
@@ -533,7 +533,7 @@ class ShareTargetPatchTests(unittest.TestCase):
             "_share_target_module": lambda: module,
             "_share_target_guard_config": lambda: {
                 "enabled": True,
-                "target_name": "2135736062",
+                "target_name": "1000000001",
                 "dry_run": False,
                 "allow_group": False,
             },
@@ -548,7 +548,7 @@ class ShareTargetPatchTests(unittest.TestCase):
         )
 
         self.assertTrue(wrapped(context, "share_btn_click"))
-        self.assertEqual([("prompt-click",), ("send", "2135736062")], events)
+        self.assertEqual([("prompt-click",), ("send", "1000000001")], events)
 
     def test_first_friend_handler_acknowledges_recent_direct_target_send(self):
         ns = load_share_patch_functions()
@@ -616,7 +616,7 @@ class ShareTargetPatchTests(unittest.TestCase):
             "_share_target_module": lambda: module,
             "_share_target_guard_config": lambda: {
                 "enabled": True,
-                "target_name": "2135736062",
+                "target_name": "1000000001",
                 "dry_run": False,
                 "allow_group": False,
             },
@@ -741,11 +741,11 @@ class ShareTargetPatchTests(unittest.TestCase):
             "_throttled_write": lambda *args, **kwargs: None,
             "_write": lambda *args, **kwargs: None,
             "_share_target_guard_config": lambda: {
-                "target_name": "2135736062",
+                "target_name": "1000000001",
             },
             "_share_direct_success_recent": (
                 lambda target="", max_age=15.0:
-                target == "2135736062" and max_age >= 86400.0
+                target == "1000000001" and max_age >= 86400.0
             ),
             "_share_mark_runtime_success": (
                 lambda bot: events.append(("mark-runtime-success", bot)) or True
@@ -785,7 +785,7 @@ class ShareTargetPatchTests(unittest.TestCase):
         typed = []
         clicks = []
         logs = []
-        readbacks = iter(("25736062", "2135736062"))
+        readbacks = iter(("25736062", "1000000001"))
         ns.update({
             "_share_activate_dialog": lambda mod, hwnd: True,
             "_share_click_dialog_point": (
@@ -800,8 +800,8 @@ class ShareTargetPatchTests(unittest.TestCase):
             "time": type("Clock", (), {"sleep": staticmethod(lambda seconds: None)}),
         })
 
-        self.assertTrue(helper(None, 77, 442, 308, "2135736062"))
-        self.assertEqual(["2135736062", "2135736062"], typed)
+        self.assertTrue(helper(None, 77, 442, 308, "1000000001"))
+        self.assertEqual(["1000000001", "1000000001"], typed)
         self.assertEqual(2, len(clicks))
         self.assertTrue(any(key == "target-readback-mismatch" for key, _, _ in logs))
         self.assertTrue(any(key == "target-readback-verified" for key, _, _ in logs))
@@ -824,7 +824,7 @@ class ShareTargetPatchTests(unittest.TestCase):
         win32 = types.ModuleType("win32clipboard")
         win32.CF_UNICODETEXT = 13
         win32.OpenClipboard = lambda: None
-        win32.GetClipboardData = lambda fmt: "2135736062"
+        win32.GetClipboardData = lambda fmt: "1000000001"
         win32.CloseClipboard = lambda: None
 
         with mock.patch.dict(
@@ -835,7 +835,7 @@ class ShareTargetPatchTests(unittest.TestCase):
                 "win32clipboard": win32,
             },
         ):
-            self.assertEqual("2135736062", helper())
+            self.assertEqual("1000000001", helper())
 
     def test_share_clipboard_writer_prefers_native_clipboard_before_qt(self):
         ns = load_named_hook_functions("_share_set_clipboard_unicode")
@@ -845,7 +845,7 @@ class ShareTargetPatchTests(unittest.TestCase):
 
         qt_clipboard = types.SimpleNamespace(
             setText=lambda value: events.append(("qt", value)),
-            text=lambda: "2135736062",
+            text=lambda: "1000000001",
         )
         qt_module = types.ModuleType("PySide6.QtGui")
         qt_module.QGuiApplication = types.SimpleNamespace(
@@ -867,13 +867,13 @@ class ShareTargetPatchTests(unittest.TestCase):
                 "win32clipboard": win32,
             },
         ):
-            self.assertTrue(helper("2135736062"))
+            self.assertTrue(helper("1000000001"))
 
         self.assertEqual(
             [
                 ("open",),
                 ("empty",),
-                ("set", "2135736062", 13),
+                ("set", "1000000001", 13),
                 ("close",),
             ],
             events,
@@ -887,7 +887,7 @@ class ShareTargetPatchTests(unittest.TestCase):
             "_share_get_clipboard_unicode",
         )
         ns.update({"time": time, "_write": lambda message: None})
-        value = "2135736062"
+        value = "1000000001"
         original = subprocess.check_output(
             [
                 "powershell.exe",
@@ -948,7 +948,7 @@ class ShareTargetPatchTests(unittest.TestCase):
     def test_share_flow_ensures_visible_rect_before_strict_uia_send(self):
         ns = load_named_hook_functions("_share_search_and_maybe_confirm")
         state = configure_strict_share_namespace(ns, dialog_closes=True, ensure_rect=True)
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertTrue(ns["_share_search_and_maybe_confirm"](None, cfg))
         ensure_index = state["events"].index(("ensure", 77))
@@ -958,7 +958,7 @@ class ShareTargetPatchTests(unittest.TestCase):
     def test_numeric_share_uses_exact_uia_element_not_radio_candidate_chain(self):
         ns = load_named_hook_functions("_share_search_and_maybe_confirm")
         state = configure_strict_share_namespace(ns, dialog_closes=True)
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertTrue(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertEqual(1, sum(event == ("uia", "target") for event in state["events"]))
@@ -968,7 +968,7 @@ class ShareTargetPatchTests(unittest.TestCase):
     def test_numeric_share_never_toggles_custom_radio_by_coordinates(self):
         ns = load_named_hook_functions("_share_search_and_maybe_confirm")
         state = configure_strict_share_namespace(ns, uia_available=False)
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertFalse(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertFalse(any(event[0] in ("coord", "dialog", "uia") for event in state["events"]))
@@ -980,14 +980,14 @@ class ShareTargetPatchTests(unittest.TestCase):
         closes = []
         logs = []
         ns.update({
-            "_share_direct_success_recent": lambda target, max_age=15.0: target == "2135736062",
+            "_share_direct_success_recent": lambda target, max_age=15.0: target == "1000000001",
             "_share_find_dialog_hwnd": lambda mod=None: 77,
             "_share_close_dialog": lambda mod=None, hwnd=0: closes.append((mod, hwnd)) or True,
             "_share_wait_dialog_hwnd": lambda *args, **kwargs: waits.append(True) or 0,
             "_share_log_runtime": lambda key, msg, warning=False: logs.append((key, msg, warning)),
         })
 
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
         self.assertTrue(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertEqual([], waits)
         self.assertEqual([(None, 77)], closes)
@@ -996,10 +996,10 @@ class ShareTargetPatchTests(unittest.TestCase):
     def test_verified_dialog_close_records_success_before_returning_to_wrappers(self):
         ns = load_named_hook_functions("_share_search_and_maybe_confirm")
         state = configure_strict_share_namespace(ns, dialog_closes=True)
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertTrue(ns["_share_search_and_maybe_confirm"](None, cfg))
-        self.assertEqual(["2135736062"], state["recorded"])
+        self.assertEqual(["1000000001"], state["recorded"])
         self.assertEqual(
             [("uia", "target"), ("uia", "confirm")],
             [event for event in state["events"] if event[0] == "uia"],
@@ -1020,7 +1020,7 @@ class ShareTargetPatchTests(unittest.TestCase):
         candidate = Candidate()
         ns["_share_uia_element_texts"] = lambda element: [
             "name" + chr(0xFF08) + "2" + chr(0x4EBA) + chr(0xFF09),
-            "2135736062",
+            "1000000001",
         ]
 
         self.assertTrue(ns["_share_uia_candidate_is_group"](candidate))
@@ -1064,7 +1064,7 @@ class ShareTargetPatchTests(unittest.TestCase):
             "time": type("Clock", (), {"sleep": staticmethod(lambda seconds: None)}),
         })
 
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
         self.assertFalse(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertEqual(["target"], clicks)
         self.assertEqual([77], closes)
@@ -1108,7 +1108,7 @@ class ShareTargetPatchTests(unittest.TestCase):
             "time": type("Clock", (), {"sleep": staticmethod(lambda seconds: None)}),
         })
 
-        cfg = {"target_name": "2135736062", "allow_group": False, "dry_run": False}
+        cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
         self.assertFalse(ns["_share_search_and_maybe_confirm"](None, cfg))
         self.assertEqual([("uia", "target"), ("uia", "confirm")], events)
 
@@ -1129,11 +1129,11 @@ class ShareTargetPatchTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {"LOCALAPPDATA": temp_dir}, clear=False):
                 first = load_named_hook_functions(*names)
                 first.update({"os": os, "time": time, "__file__": fake_hook})
-                self.assertTrue(first["_share_record_direct_success"]("2135736062"))
+                self.assertTrue(first["_share_record_direct_success"]("1000000001"))
 
                 second = load_named_hook_functions(*names)
                 second.update({"os": os, "time": time, "__file__": fake_hook})
-                self.assertTrue(second["_share_direct_success_recent"]("2135736062"))
+                self.assertTrue(second["_share_direct_success_recent"]("1000000001"))
 
 
     def test_runtime_share_success_also_persists_durable_flow_status(self):
@@ -1149,7 +1149,7 @@ class ShareTargetPatchTests(unittest.TestCase):
             'time': time,
             '__file__': str(ROOT / 'portable' / 'hook.py'),
             '_share_clear_retry_backoff': lambda value: None,
-            '_daily_flow_target': lambda flow: '2135736062',
+            '_daily_flow_target': lambda flow: '1000000001',
             '_daily_flow_mark_status': (
                 lambda flow, status, target='', reason='':
                 calls.append((flow, status, target, reason)) or True
@@ -1159,7 +1159,7 @@ class ShareTargetPatchTests(unittest.TestCase):
 
         self.assertTrue(ns['_share_mark_runtime_success'](context))
         self.assertIn(
-            ('share', 'success', '2135736062', 'verified-direct-contact-send'),
+            ('share', 'success', '1000000001', 'verified-direct-contact-send'),
             calls,
         )
 
@@ -1266,7 +1266,7 @@ class ShareDirectRecipientSelectorTests(unittest.TestCase):
             "_share_confirm_label_is_direct_send": lambda element: element is confirm,
         })
 
-        proof = ns["_share_single_target_selection_proof"](77, "2135736062", matched)
+        proof = ns["_share_single_target_selection_proof"](77, "1000000001", matched)
         self.assertTrue(proof["ok"], proof)
         self.assertEqual("single-exact-target", proof["reason"])
 
