@@ -4,8 +4,8 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.2-32C98A?style=flat-square)](#版本与更新)
-  [![Tests](https://img.shields.io/badge/回归测试-300%20passed-17345F?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.3-32C98A?style=flat-square)](#版本与更新)
+  [![Tests](https://img.shields.io/badge/回归测试-316%20passed-17345F?style=flat-square)](#版本与更新)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
   [![Portable](https://img.shields.io/badge/交付方式-单目录便携-F2A93B?style=flat-square)](#便携目录与数据保留)
@@ -78,12 +78,12 @@
 
 ### 2. 好友巡检与帮助
 
-- 按好友列表顺序巡检农场；
-- 处理帮助浇水、除草、除虫等动作；
-- 支持批量入口、巡检上限和间隔控制；
-- 通过黑名单、保护和单次操作限制缩小操作范围；
-- 日志记录当前好友、动作结果和跳过原因。
-
+- 好友列表严格从上到下选择第一位符合条件的好友，避免跳过首位；
+- 同一好友同时有可偷取作物和“一键务农”时，两项都完成后再继续；
+- 通过农场底部好友卡连续访问后续好友，直到遇到首个稳定无任务好友后才回家；
+- 护主名单模式会在每次切换好友后重新核对已导入头像模板，资格不会跨好友残留；
+- 快速打开好友列表并压缩连续处理等待，减少列表、拜访和点击动作之间的停顿；
+- 支持批量入口、巡检上限和间隔控制，并记录当前好友、动作结果和跳过原因。
 ### 3. 播种策略
 
 - 读取当前等级并过滤不可用作物；
@@ -233,10 +233,11 @@ CV农场助手/
 
 ## 版本与更新
 
-当前稳定版本为 **v1.4.2**。项目采用独立 Git 标签和 Release 记录每轮公开修改，不再只保留一个无法区分迭代历史的安装包。
+当前稳定版本为 **v1.4.3**。项目采用独立 Git 标签和 Release 记录每轮公开修改，不再只保留一个无法区分迭代历史的安装包。
 
 | 版本 | 重点变化 | 验证 |
 | --- | --- | --- |
+| [v1.4.3](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.3) | 首位好友优先、多好友底部连续处理、逐好友护主复核、快速列表入口与每日任务状态修复 | 316 项测试 |
 | [v1.4.2](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.2) | 护主好友进入后继承资格，立即执行一键务农，消除约 30–40 秒无动作等待 | 300 项测试 |
 | [v1.4.1](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.1) | 定向分享成功状态持久化，精确选择联系人圆点，避免重复发送 | 296 项测试 |
 | [v1.4.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.0) | 好友连续处理、护主名单、每日状态、资源限制与 UIA 便携依赖 | 293 项测试 |

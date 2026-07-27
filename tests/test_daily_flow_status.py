@@ -31,6 +31,7 @@ STATUS_FUNCTIONS = (
     "_daily_flow_write_status",
     "_daily_flow_mark_status",
     "_daily_flow_success_today",
+    "_daily_task_authoritative_success_today",
     "_daily_flow_mark_failure",
     "_daily_flow_retry_blocked",
     "_daily_flow_repair_unverified_status",
@@ -334,6 +335,112 @@ class DailyFlowStatusTests(unittest.TestCase):
         self.assertTrue(detect(task_frame, "task"))
         self.assertFalse(detect(np.zeros((800, 428, 3), dtype=np.uint8), "share"))
 
+    def test_task_red_dot_rejects_wide_horizontal_red_strip(self):
+        import numpy as np
+
+        namespace = load_functions("_daily_entry_red_dot_present")
+        detect = namespace["_daily_entry_red_dot_present"]
+        frame = np.zeros((800, 428, 3), dtype=np.uint8)
+        frame[632:650, 13:100, 2] = 245
+
+        self.assertFalse(detect(frame, "task"))
+
+    def test_daily_task_retry_state_defaults_to_active_local_profile(self):
+        namespace = load_functions("_daily_task_retry_state_default_path")
+        resolve = namespace.get("_daily_task_retry_state_default_path")
+        if resolve is None:
+            self.fail("_daily_task_retry_state_default_path is missing")
+        namespace["os"] = types.SimpleNamespace(
+            environ={"LOCALAPPDATA": r"E:\ActiveProfile"},
+            path=os.path,
+        )
+
+        self.assertEqual(
+            os.path.join(
+                r"E:\ActiveProfile", "qq-farm-bot-rev",
+                "daily_task_retry_state.json",
+            ),
+            resolve(),
+        )
+    def test_runtime_task_prompt_miss_marks_flow_complete_once(self):
+        namespace = load_functions("_note_runtime_daily_task_outcome")
+        note = namespace.get("_note_runtime_daily_task_outcome")
+        if note is None:
+            self.fail("_note_runtime_daily_task_outcome is missing")
+        events = []
+        bot = types.SimpleNamespace(
+            task_last_date="",
+            daily_flow_retry_counts={"task": 1},
+        )
+        namespace.update({
+            "_DAILY_TASK_PROMPT_MISS_LAST_TS": 0.0,
+            "_ACTIVE_RUN_CYCLE_CONTEXT": bot,
+            "_daily_flow_mark_status": (
+                lambda flow, status, reason="", **kwargs:
+                events.append(("status", flow, status, reason)) or True
+            ),
+            "_daily_flow_apply_success_context": (
+                lambda context, flow:
+                events.append(("context", context, flow)) or True
+            ),
+            "_daily_task_clear_retry_backoff": (
+                lambda: events.append(("clear-backoff",)) or True
+            ),
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        first = note(
+            "\u00d7\u672a\u68c0\u6d4b\u5230 task_prompt\uff0c\u672c\u6b21\u6bcf\u65e5\u4efb\u52a1\u672a\u9886\u53d6", now=100.0
+        )
+        duplicate = note(
+            "\u6bcf\u65e5\u4efb\u52a1\u9886\u53d6\u5931\u8d25\uff1a\u5df2\u70b9\u51fb\u5173\u95ed\u6309\u94ae\u6536\u655b\u6bcf\u65e5\u5f39\u7a97", now=101.0
+        )
+
+        self.assertEqual("task-prompt-missing-assumed-complete", first)
+        self.assertEqual("task-prompt-missing-duplicate", duplicate)
+        self.assertEqual(
+            [("status", "task", "success", "entry-no-prompt-assumed-cleared")],
+            [item for item in events if item[0] == "status"],
+        )
+        self.assertEqual(1, len([item for item in events if item[0] == "context"]))
+        self.assertEqual(1, len([item for item in events if item[0] == "clear-backoff"]))
+
+    def test_task_no_prompt_success_is_not_invalidated_by_entry_red_dot(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            namespace = self.build_namespace(temp_dir)
+            today = "2026-07-28"
+            namespace["time"] = types.SimpleNamespace(
+                strftime=lambda fmt: today,
+                time=time.time,
+            )
+            for reason in (
+                "entry-no-prompt-assumed-cleared",
+                "user-confirmed-already-claimed-manual-test",
+            ):
+                with self.subTest(reason=reason):
+                    bot = types.SimpleNamespace(
+                        task_last_date=today,
+                        daily_flow_retry_counts={"task": 0},
+                    )
+                    self.assertTrue(namespace["_daily_flow_mark_status"](
+                        "task", "success", reason=reason, today=today
+                    ))
+                    self.assertTrue(namespace["_daily_flow_invalidate_success"](
+                        bot, "task", reason="entry-red-dot-still-present"
+                    ))
+                    self.assertEqual(today, bot.task_last_date)
+                    self.assertTrue(namespace["_daily_task_authoritative_success_today"](
+                        today=today
+                    ))
+                    self.assertTrue(namespace["_daily_flow_success_today"](
+                        "task", today=today
+                    ))
+
+    def test_runtime_logger_routes_task_outcomes_to_backoff_helper(self):
+        source = HOOK.read_text(encoding="utf-8-sig")
+        self.assertGreaterEqual(
+            source.count("_note_runtime_daily_task_outcome(msg)"), 2
+        )
     def test_red_dot_invalidates_same_day_success_and_allows_a_retry(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             namespace = self.build_namespace(temp_dir)
@@ -382,6 +489,31 @@ class DailyFlowStatusTests(unittest.TestCase):
 
 
 
+    def test_cleared_task_red_dot_overrides_failed_backoff_and_marks_success(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            namespace = self.build_namespace(temp_dir)
+            events = []
+            module = self.build_module(events)
+            bot = types.SimpleNamespace(
+                task_last_date="",
+                share_last_date="",
+                daily_flow_retry_counts={
+                    "freebenefits": 0, "task": 1, "svip": 0, "share": 0,
+                },
+            )
+            namespace["_daily_flow_entry_red_dot_state"] = (
+                lambda context, flow: False if flow == "task" else None
+            )
+            namespace["_daily_flow_retry_blocked"] = (
+                lambda flow: flow == "task"
+            )
+            patch = namespace["_patch_daily_flow_status_for_module"]
+            self.assertGreater(patch(module), 0)
+
+            self.assertFalse(module.should_run_daily_task(bot))
+            self.assertIn(("should-task",), events)
+            self.assertEqual(time.strftime("%Y-%m-%d"), bot.task_last_date)
+            self.assertTrue(namespace["_daily_flow_success_today"]("task"))
     def test_share_red_dot_does_not_invalidate_verified_direct_send(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             namespace = self.build_namespace(temp_dir)
