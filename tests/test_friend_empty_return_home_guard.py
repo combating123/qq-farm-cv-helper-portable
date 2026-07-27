@@ -845,6 +845,68 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             getattr(scheduler, "_qqfarm_guard_dog_help_skipped", False)
         )
 
+    def test_friend_guard_list_prequalified_entry_allows_help_without_native_predicate(self):
+        namespace = load_functions("_friend_guard_help_action_allowed")
+        gate = namespace["_friend_guard_help_action_allowed"]
+        resolver_calls = []
+        context = types.SimpleNamespace(
+            _qqfarm_guard_list_prequalified=True,
+            _qqfarm_guard_list_prequalified_ts=100.0,
+        )
+        namespace.update({
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda owner: True,
+            "_resolve_friend_guard_native_callable": (
+                lambda *args: resolver_calls.append(args) or (None, "")
+            ),
+            "_write": lambda message: None,
+        })
+
+        self.assertTrue(gate(context, object(), (213, 597)))
+        self.assertEqual([], resolver_calls)
+
+    def test_runtime_log_marks_friend_guard_list_entry_prequalified(self):
+        namespace = load_functions("_note_runtime_cycle_branch")
+        context = types.SimpleNamespace()
+        namespace.update({
+            "_ACTIVE_RUN_CYCLE_CONTEXT": context,
+            "_friend_watchdog_now": lambda: 123.5,
+        })
+
+        result = namespace["_note_runtime_cycle_branch"](
+            "护主犬筛选：可帮忙务农 命中好友护主列表，允许进入帮忙"
+        )
+
+        self.assertEqual("friend-guard-prequalified", result)
+        self.assertTrue(context._qqfarm_guard_list_prequalified)
+        self.assertEqual(123.5, context._qqfarm_guard_list_prequalified_ts)
+    def test_friend_guard_list_prequalification_expires_after_bounded_window(self):
+        namespace = load_functions("_friend_guard_list_prequalified_entry_active")
+        active = namespace.get("_friend_guard_list_prequalified_entry_active")
+        if active is None:
+            self.fail("_friend_guard_list_prequalified_entry_active is missing")
+        context = types.SimpleNamespace(
+            _qqfarm_guard_list_prequalified=True,
+            _qqfarm_guard_list_prequalified_ts=100.0,
+        )
+
+        self.assertTrue(active(context, now_ts=150.0, max_age_seconds=60.0))
+        self.assertFalse(active(context, now_ts=161.0, max_age_seconds=60.0))
+
+    def test_friend_guard_prequalification_reset_clears_previous_cycle(self):
+        namespace = load_functions("_friend_guard_clear_prequalification")
+        clear = namespace.get("_friend_guard_clear_prequalification")
+        if clear is None:
+            self.fail("_friend_guard_clear_prequalification is missing")
+        context = types.SimpleNamespace(
+            _qqfarm_guard_list_prequalified=True,
+            _qqfarm_guard_list_prequalified_ts=100.0,
+        )
+
+        self.assertTrue(clear(context))
+        self.assertFalse(context._qqfarm_guard_list_prequalified)
+        self.assertEqual(0.0, context._qqfarm_guard_list_prequalified_ts)
     def test_guard_dog_help_gate_uses_native_bottom_predicate(self):
         namespace = load_functions("_friend_guard_help_action_allowed")
         gate = namespace.get("_friend_guard_help_action_allowed")

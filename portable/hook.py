@@ -87,7 +87,7 @@ def _throttled_write(key, msg, seconds=30.0):
         except BaseException:
             return False
 
-_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter')
+_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help')
 
 try:
     import sys, time, builtins, importlib, os
@@ -2967,6 +2967,43 @@ def _friend_guard_verified_entry_active(context, now_ts=None, max_age_seconds=90
         return False
 
 
+
+def _friend_guard_list_prequalified_entry_active(
+        context, now_ts=None, max_age_seconds=90.0):
+    """Return True after native friend-list matching approved this visit."""
+    try:
+        if context is None or not bool(getattr(
+                context, '_qqfarm_guard_list_prequalified', False)):
+            return False
+        approved_ts = float(getattr(
+            context, '_qqfarm_guard_list_prequalified_ts', 0.0
+        ) or 0.0)
+        if approved_ts <= 0.0:
+            return False
+        if now_ts is None:
+            now_fn = globals().get('_friend_watchdog_now')
+            now_ts = (
+                float(now_fn())
+                if callable(now_fn)
+                else float(__import__('time').time())
+            )
+        age = float(now_ts) - approved_ts
+        return bool(age >= -5.0 and age <= max(1.0, float(max_age_seconds)))
+    except BaseException:
+        return False
+
+
+def _friend_guard_clear_prequalification(context):
+    """Clear native friend-list approval before a new inspection cycle."""
+    if context is None:
+        return False
+    try:
+        setattr(context, '_qqfarm_guard_list_prequalified', False)
+        setattr(context, '_qqfarm_guard_list_prequalified_ts', 0.0)
+        return True
+    except BaseException:
+        return False
+
 def _friend_guard_active_instance_ids():
     """Return the active legacy instance ids used by the native template loader."""
     values = []
@@ -4561,6 +4598,20 @@ def _friend_guard_help_action_allowed(context, game_frame, match_center):
         guard_mode = str(mode_fn() if callable(mode_fn) else 'avatar_frame')
     except BaseException:
         guard_mode = 'avatar_frame'
+    if guard_mode == 'friend_guard_list':
+        approved_fn = globals().get(
+            '_friend_guard_list_prequalified_entry_active'
+        )
+        approved = bool(approved_fn(context)) if callable(approved_fn) else False
+        if approved:
+            try:
+                _write(
+                    'v142 guard-list help allowed by native row approval '
+                    'center=' + repr(match_center)
+                )
+            except BaseException:
+                pass
+            return True
     if guard_mode == 'avatar_frame':
         verified_fn = globals().get('_friend_guard_verified_entry_active')
         verified = bool(verified_fn(context)) if callable(verified_fn) else False
@@ -9246,6 +9297,11 @@ def _wrap_runtime_diag_method(fn, label):
                     pass
         if is_run_cycle:
             try:
+                clear_guard_approval = globals().get(
+                    '_friend_guard_clear_prequalification'
+                )
+                if callable(clear_guard_approval):
+                    clear_guard_approval(self_obj)
                 setattr(self_obj, '_qqfarm_cycle_branch_hint', '')
                 globals()['_ACTIVE_RUN_CYCLE_CONTEXT'] = self_obj
             except BaseException:
@@ -12520,16 +12576,32 @@ def _infer_cycle_branch_from_runtime_log(paths=None, max_bytes=16384):
 
 
 def _note_runtime_cycle_branch(message):
-    """Record whether the active run_cycle announced self or friend work."""
+    """Record active cycle routing plus native guard-list visit approval."""
     try:
         text = str(message or '')
+        context = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
+        guard_approval_marker = (
+            '\u62a4\u4e3b\u72ac\u7b5b\u9009\uff1a\u53ef\u5e2e\u5fd9\u52a1\u519c '
+            '\u547d\u4e2d\u597d\u53cb\u62a4\u4e3b\u5217\u8868\uff0c'
+            '\u5141\u8bb8\u8fdb\u5165\u5e2e\u5fd9'
+        )
+        if guard_approval_marker in text:
+            if context is not None:
+                now_fn = globals().get('_friend_watchdog_now')
+                now_ts = (
+                    float(now_fn())
+                    if callable(now_fn)
+                    else float(__import__('time').time())
+                )
+                setattr(context, '_qqfarm_guard_list_prequalified', True)
+                setattr(context, '_qqfarm_guard_list_prequalified_ts', now_ts)
+            return 'friend-guard-prequalified'
         if '\u6b63\u5728\u68c0\u67e5\u597d\u53cb\u519c\u573a\u662f\u5426\u6709\u53ef\u6267\u884c\u7684\u4efb\u52a1' in text:
             branch = 'friend'
         elif '\u6b63\u5728\u68c0\u67e5\u81ea\u5bb6\u519c\u573a\u662f\u5426\u6709\u53ef\u6267\u884c\u7684\u4efb\u52a1' in text:
             branch = 'self'
         else:
             return ''
-        context = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
         if context is not None:
             setattr(context, '_qqfarm_cycle_branch_hint', branch)
         return branch
@@ -13590,4 +13662,3 @@ try: _install_qt_unlocker()
 except BaseException: pass
 _write('v37 persistent daily task backoff + task entry settle installed')
 _write('local vip hook installed no-thread + v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference')
-

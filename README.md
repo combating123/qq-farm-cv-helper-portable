@@ -1,9 +1,11 @@
-﻿<div align="center">
+<div align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="CV 农场助手：面向 QQ 与微信经典农场的 Windows 视觉自动化助手">
 
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
+  [![Version](https://img.shields.io/badge/版本-v1.4.2-32C98A?style=flat-square)](#版本与更新)
+  [![Tests](https://img.shields.io/badge/回归测试-300%20passed-17345F?style=flat-square)](#版本与更新)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
   [![Portable](https://img.shields.io/badge/交付方式-单目录便携-F2A93B?style=flat-square)](#便携目录与数据保留)
@@ -229,6 +231,22 @@ CV农场助手/
 保留旧目录中的 `UserData`，再更新其余程序文件。便携启动器会继续使用目录内的数据，不需要重新配置每一项功能。
 </details>
 
+## 版本与更新
+
+当前稳定版本为 **v1.4.2**。项目采用独立 Git 标签和 Release 记录每轮公开修改，不再只保留一个无法区分迭代历史的安装包。
+
+| 版本 | 重点变化 | 验证 |
+| --- | --- | --- |
+| [v1.4.2](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.2) | 护主好友进入后继承资格，立即执行一键务农，消除约 30–40 秒无动作等待 | 300 项测试 |
+| [v1.4.1](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.1) | 定向分享成功状态持久化，精确选择联系人圆点，避免重复发送 | 296 项测试 |
+| [v1.4.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.0) | 好友连续处理、护主名单、每日状态、资源限制与 UIA 便携依赖 | 293 项测试 |
+| [v1.3.1](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.3.1) | 分享目标、运行监督与权益上下文稳定性修复 | 历史稳定点 |
+| [v1.3.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.3.0) | CPU/OCR 限制与好友巡检恢复 | 历史稳定点 |
+| [v1.2.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.2.0) | README、关于页与定向分享设置 | 历史稳定点 |
+| [v1.1.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.1.0) | 单目录合并、旧设置迁移和原生浅色布局 | 历史稳定点 |
+| [v1.0.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.0.0) | 首个便携交付版本 | 历史稳定点 |
+
+完整明细见 [`CHANGELOG.md`](./CHANGELOG.md)。更新时只替换程序文件并保留 `UserData`，即可延续原有实例、好友护主模板和功能设置。
 ## 仓库内容
 
 本仓库主要维护：
