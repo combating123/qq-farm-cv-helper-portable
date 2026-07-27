@@ -8630,6 +8630,27 @@ def _daily_flow_entry_red_dot_state(context, flow):
 def _daily_flow_invalidate_success(context, flow, reason='entry-red-dot-present'):
     try:
         flow_key = str(flow or '').strip().lower()
+        if flow_key == 'share':
+            target_fn = globals().get('_daily_flow_target')
+            target = target_fn(flow_key) if callable(target_fn) else ''
+            direct_fn = globals().get('_share_direct_success_recent')
+            direct_verified = False
+            if callable(direct_fn):
+                try:
+                    direct_verified = bool(direct_fn(target, max_age=86400.0))
+                except TypeError:
+                    direct_verified = bool(direct_fn(target))
+            if direct_verified:
+                mark_fn = globals().get('_daily_flow_mark_status')
+                if callable(mark_fn):
+                    mark_fn(
+                        flow_key, 'success', target=target,
+                        reason='verified-direct-contact-send'
+                    )
+                apply_fn = globals().get('_daily_flow_apply_success_context')
+                if callable(apply_fn):
+                    apply_fn(context, flow_key)
+                return True
         fields = {
             'freebenefits': 'freebenefits_last_date',
             'task': 'task_last_date',
@@ -9468,9 +9489,45 @@ def _patch_share_retry_backoff_for_module(module, tag=''):
             original_failure, '__qqfarm_share_retry_backoff_wrapped__', False
         ):
             def _wrapped_failure(*args, __orig=original_failure, **kwargs):
+                flow_key = _share_flow_key(args, kwargs)
+                context = _share_bot_from_args(args, kwargs)
+                if flow_key == 'share':
+                    target = ''
+                    cfg_fn = globals().get('_share_target_guard_config')
+                    try:
+                        cfg = cfg_fn() if callable(cfg_fn) else {}
+                        if isinstance(cfg, dict):
+                            target = str(cfg.get('target_name', '') or '').strip()
+                    except BaseException:
+                        target = ''
+                    direct_fn = globals().get('_share_direct_success_recent')
+                    direct_verified = False
+                    if callable(direct_fn):
+                        try:
+                            direct_verified = bool(
+                                direct_fn(target, max_age=86400.0)
+                            )
+                        except TypeError:
+                            direct_verified = bool(direct_fn(target))
+                        except BaseException:
+                            direct_verified = False
+                    if direct_verified:
+                        mark_fn = globals().get('_share_mark_runtime_success')
+                        if callable(mark_fn):
+                            try:
+                                mark_fn(context)
+                            except BaseException:
+                                pass
+                        _share_clear_retry_backoff(context)
+                        _throttled_write(
+                            'v141-share-late-failure-suppressed',
+                            'v141 preserved verified exact-target share success; '
+                            'late native failure ignored target=' + target,
+                            30.0,
+                        )
+                        return False
                 result = __orig(*args, **kwargs)
-                if _share_flow_key(args, kwargs) == 'share':
-                    context = _share_bot_from_args(args, kwargs)
+                if flow_key == 'share':
                     next_ts = _share_set_retry_backoff(context)
                     _throttled_write(
                         'v86-share-retry-backoff',
@@ -9738,6 +9795,17 @@ def _share_mark_runtime_success(context):
                 _throttled_write('v78-share-counter-write-' + str(path), 'v78 share success counter write error ' + repr(e), 30.0)
             except BaseException:
                 pass
+    try:
+        target_fn = globals().get('_daily_flow_target')
+        target = target_fn('share') if callable(target_fn) else ''
+        mark_fn = globals().get('_daily_flow_mark_status')
+        if callable(mark_fn):
+            changed = bool(mark_fn(
+                'share', 'success', target=str(target or '').strip(),
+                reason='verified-direct-contact-send'
+            )) or changed
+    except BaseException:
+        pass
     # Do not call the engine's broad daily-counter saver here. During startup
     # its unrelated counters can still be zero and would overwrite valid
     # same-day harvest/help/radish statistics. The targeted atomic updates

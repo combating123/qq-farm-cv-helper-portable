@@ -379,6 +379,36 @@ class DailyFlowStatusTests(unittest.TestCase):
             self.assertTrue(namespace["_daily_flow_success_today"]("task"))
             self.assertIn(("should-task",), events)
 
+
+
+
+    def test_share_red_dot_does_not_invalidate_verified_direct_send(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            namespace = self.build_namespace(temp_dir)
+            today = time.strftime("%Y-%m-%d")
+            bot = types.SimpleNamespace(
+                share_last_date=today,
+                daily_flow_retry_counts={
+                    "freebenefits": 0, "task": 0, "svip": 0, "share": 0,
+                },
+            )
+            self.assertTrue(namespace["_daily_flow_mark_status"](
+                "share", "success", target="1000000001", today=today
+            ))
+            namespace["_share_direct_success_recent"] = (
+                lambda target="", max_age=15.0:
+                target == "1000000001" and max_age >= 86400.0
+            )
+
+            self.assertTrue(namespace["_daily_flow_invalidate_success"](
+                bot, "share", reason="entry-red-dot-still-present"
+            ))
+
+            self.assertEqual(today, bot.share_last_date)
+            self.assertTrue(namespace["_daily_flow_success_today"](
+                "share", target="1000000001", today=today
+            ))
+
     def test_red_dot_preserves_active_failed_backoff_instead_of_reopening_share(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             namespace = self.build_namespace(temp_dir)
