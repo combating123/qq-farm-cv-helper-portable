@@ -72,6 +72,21 @@ class ResourceLimitsTests(unittest.TestCase):
         self.assertEqual((123, resource_limits.BELOW_NORMAL_PRIORITY_CLASS), fake.priority)
         self.assertTrue(result["affinity"])
         self.assertTrue(result["priority"])
+    def test_apply_process_limits_degrades_when_native_backend_is_missing(self):
+        import resource_limits
+
+        def missing_backend():
+            raise ModuleNotFoundError("No module named 'ctypes'")
+
+        result = resource_limits.apply_process_limits(
+            affinity_cores=4, kernel32_loader=missing_backend
+        )
+
+        self.assertFalse(result["affinity"])
+        self.assertFalse(result["priority"])
+        self.assertEqual(0b1111, result["mask"])
+        self.assertIn("ctypes", result["error"])
+
     def test_launcher_exports_native_thread_caps_before_starting_app(self):
         text = (PORTABLE / "launcher.ps1").read_text(encoding="utf-8-sig")
         for name in (
@@ -80,8 +95,14 @@ class ResourceLimitsTests(unittest.TestCase):
             "ORT_INTRA_OP_NUM_THREADS", "ORT_INTER_OP_NUM_THREADS",
         ):
             self.assertIn(name, text)
-        self.assertNotIn("ProcessorAffinity", text)
-        self.assertNotIn("resource-limit-error", text)
+        self.assertIn("function Set-AssistantProcessLimits", text)
+        self.assertIn("ProcessorAffinity", text)
+        self.assertIn("PriorityClass", text)
+        self.assertIn("BelowNormal", text)
+        self.assertIn("resource_control.log", text)
+        self.assertIn("Start-Process -FilePath $Exe -WorkingDirectory $AppDir -PassThru", text)
+        self.assertIn("Set-AssistantProcessLimits $assistantProcess", text)
+        self.assertNotIn("Start-Process -FilePath $Exe -WorkingDirectory $AppDir -PassThru -Wait", text)
 
 
 if __name__ == "__main__":

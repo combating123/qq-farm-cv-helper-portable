@@ -8,15 +8,24 @@ _PATCHED_MODULE_IDS = set()
 BELOW_NORMAL_PRIORITY_CLASS = 0x00004000
 
 
-def apply_process_limits(affinity_cores=4, kernel32=None):
-    if kernel32 is None:
-        if os.name != "nt":
-            return {"affinity": False, "priority": False, "mask": 0}
-        import ctypes
-        kernel32 = ctypes.windll.kernel32
+def apply_process_limits(affinity_cores=4, kernel32=None, kernel32_loader=None):
     available = max(1, int(os.cpu_count() or 1))
     affinity_cores = max(1, min(int(affinity_cores), available))
     mask = (1 << affinity_cores) - 1
+    if kernel32 is None:
+        if os.name != "nt":
+            return {"affinity": False, "priority": False, "mask": mask}
+        if kernel32_loader is None:
+            def kernel32_loader():
+                import ctypes
+                return ctypes.windll.kernel32
+        try:
+            kernel32 = kernel32_loader()
+        except BaseException as exc:
+            return {
+                "affinity": False, "priority": False, "mask": mask,
+                "error": repr(exc),
+            }
     handle = kernel32.GetCurrentProcess()
     affinity_ok = bool(kernel32.SetProcessAffinityMask(handle, mask))
     priority_ok = bool(kernel32.SetPriorityClass(handle, BELOW_NORMAL_PRIORITY_CLASS))

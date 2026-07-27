@@ -257,6 +257,391 @@ def _ensure_share_target_editor(anchor):
         return 0
 
 
+
+_FRIEND_GUARD_SELF_CUTOFF_RATIO = 0.84
+_FRIEND_GUARD_BULK_MARK = '_qqfarm_friend_guard_bulk_controls'
+_FRIEND_GUARD_SELF_MARK = '_qqfarm_friend_guard_self_candidate'
+
+
+def _friend_guard_candidate_bounds(candidate):
+    """Return candidate bounds as (left, top, right, bottom) when available."""
+    values = None
+    if isinstance(candidate, dict):
+        for key in ('rect', 'bbox', 'box', 'bounds', 'roi'):
+            raw = candidate.get(key)
+            if isinstance(raw, (tuple, list)) and len(raw) >= 4:
+                values = raw[:4]
+                break
+        if values is None:
+            center = candidate.get('center')
+            size = candidate.get('size')
+            if isinstance(center, (tuple, list)) and len(center) >= 2:
+                if isinstance(size, (tuple, list)) and len(size) >= 2:
+                    half_w = float(size[0]) / 2.0
+                    half_h = float(size[1]) / 2.0
+                    values = (
+                        float(center[0]) - half_w,
+                        float(center[1]) - half_h,
+                        float(center[0]) + half_w,
+                        float(center[1]) + half_h,
+                    )
+                else:
+                    values = (float(center[0]), float(center[1]), float(center[0]), float(center[1]))
+    elif isinstance(candidate, (tuple, list)) and len(candidate) >= 4:
+        values = candidate[:4]
+    else:
+        for key in ('rect', 'bbox', 'box', 'bounds', 'roi'):
+            raw = getattr(candidate, key, None)
+            if isinstance(raw, (tuple, list)) and len(raw) >= 4:
+                values = raw[:4]
+                break
+    if values is None:
+        return None
+    try:
+        left, top, right, bottom = [float(value) for value in values]
+        if right < left:
+            left, right = right, left
+        if bottom < top:
+            top, bottom = bottom, top
+        return left, top, right, bottom
+    except BaseException:
+        return None
+
+
+def _friend_guard_candidate_is_self_overlay(candidate, frame_shape, cutoff_ratio=None):
+    """Exclude the fixed player strip anchored at the bottom of the friend list."""
+    bounds = _friend_guard_candidate_bounds(candidate)
+    if bounds is None:
+        return False
+    try:
+        if hasattr(frame_shape, 'shape'):
+            frame_shape = frame_shape.shape
+        frame_height = float(frame_shape[0])
+        if frame_height <= 0:
+            return False
+        ratio = float(
+            _FRIEND_GUARD_SELF_CUTOFF_RATIO
+            if cutoff_ratio is None else cutoff_ratio
+        )
+        _left, top, _right, bottom = bounds
+        center_y = (float(top) + float(bottom)) / 2.0
+        return bool(float(top) >= frame_height * ratio or center_y >= frame_height * 0.89)
+    except BaseException:
+        return False
+
+
+def _friend_guard_checkbox_has_self_mark(checkbox):
+    current = checkbox
+    for _ in range(5):
+        if current is None:
+            break
+        try:
+            if bool(current.property(_FRIEND_GUARD_SELF_MARK)):
+                return True
+        except BaseException:
+            pass
+        current = _safe_call(current, 'parentWidget')
+    return False
+
+
+def _friend_guard_checkbox_is_selectable(checkbox):
+    if checkbox is None or _friend_guard_checkbox_has_self_mark(checkbox):
+        return False
+    try:
+        hidden = _safe_call(checkbox, 'isHidden')
+        if hidden is True:
+            return False
+        visible = _safe_call(checkbox, 'isVisible')
+        if visible is False:
+            return False
+        enabled = _safe_call(checkbox, 'isEnabled')
+        if enabled is False:
+            return False
+        return callable(getattr(checkbox, 'setChecked', None))
+    except BaseException:
+        return False
+
+
+def _friend_guard_select_valid_checkboxes(checkboxes, checked=True):
+    selected = 0
+    for checkbox in list(checkboxes or ()):
+        if not _friend_guard_checkbox_is_selectable(checkbox):
+            continue
+        _safe_call(checkbox, 'setChecked', bool(checked))
+        selected += 1
+    return selected
+
+
+def _friend_guard_select_and_save(checkboxes, save_button):
+    selected = _friend_guard_select_valid_checkboxes(checkboxes, True)
+    if selected > 0:
+        _safe_call(save_button, 'click')
+    return selected
+
+
+def _friend_guard_default_ini_paths():
+    paths = []
+    try:
+        import os
+        local = os.environ.get('LOCALAPPDATA', '')
+        if local:
+            paths.append(os.path.join(local, 'qq-farm-bot-rev', 'config-multi.ini'))
+        paths.append(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'UserData', 'legacy-qq-farm-bot-rev', 'config-multi.ini',
+        ))
+    except BaseException:
+        pass
+    return paths
+
+
+def _persist_friend_guard_list_confirmed(confirmed=True, ini_paths=None):
+    desired = 'True' if bool(confirmed) else 'False'
+    changed_any = False
+    paths = _friend_guard_default_ini_paths() if ini_paths is None else ini_paths
+    if isinstance(paths, (str, bytes)):
+        paths = [paths]
+    for raw_path in list(paths or ()):
+        try:
+            import os
+            import re
+            path = os.path.abspath(os.fspath(raw_path))
+            if not os.path.isfile(path):
+                continue
+            with open(path, 'r', encoding='utf-8-sig') as handle:
+                original = handle.read()
+            newline = '\r\n' if '\r\n' in original else '\n'
+            lines = original.splitlines()
+            output = []
+            active_friend = False
+            key_seen = False
+            file_changed = False
+
+            def _flush_missing_key():
+                nonlocal key_seen, file_changed
+                if active_friend and not key_seen:
+                    output.append('friend_guard_list_confirmed = ' + desired)
+                    key_seen = True
+                    file_changed = True
+
+            for line in lines:
+                stripped = line.strip()
+                if stripped.startswith('[') and stripped.endswith(']'):
+                    _flush_missing_key()
+                    section = stripped[1:-1].strip().lower()
+                    active_friend = bool(
+                        section == 'friend'
+                        or re.fullmatch(r'instance\.[^.]+\.friend', section)
+                    )
+                    key_seen = False
+                    output.append(line)
+                    continue
+                if active_friend and stripped.lower().startswith('friend_guard_list_confirmed'):
+                    replacement = 'friend_guard_list_confirmed = ' + desired
+                    if stripped != replacement:
+                        output.append(replacement)
+                        file_changed = True
+                    else:
+                        output.append(line)
+                    key_seen = True
+                    continue
+                output.append(line)
+            _flush_missing_key()
+            if not file_changed:
+                continue
+            temp = path + '.tmp-friend-guard-confirmed-' + str(os.getpid())
+            with open(temp, 'w', encoding='utf-8', newline='') as handle:
+                handle.write(newline.join(output) + newline)
+            os.replace(temp, path)
+            changed_any = True
+        except BaseException:
+            try:
+                if 'temp' in locals() and os.path.exists(temp):
+                    os.remove(temp)
+            except BaseException:
+                pass
+    return changed_any
+
+
+def _friend_guard_runtime_state(widget):
+    try:
+        window = _safe_call(widget, 'window') or widget
+        states = getattr(window, '_friend_guard_state_by_instance', None)
+        if not isinstance(states, dict) or not states:
+            return None, None, None
+        instance_id = None
+        for attr in ('current_instance_id', '_current_instance_id', 'instance_id'):
+            value = getattr(window, attr, None)
+            if value not in (None, ''):
+                instance_id = str(value)
+                break
+        state = states.get(instance_id) if instance_id is not None else None
+        if not isinstance(state, dict):
+            state = next((value for value in states.values() if isinstance(value, dict)), None)
+        if not isinstance(state, dict):
+            return window, None, None
+        return window, state.get('frame'), list(state.get('candidates') or ())
+    except BaseException:
+        return None, None, None
+
+
+def _friend_guard_candidate_index(text):
+    try:
+        import re
+        match = re.search(r'#\s*(\d+)', str(text or ''))
+        return int(match.group(1)) - 1 if match else -1
+    except BaseException:
+        return -1
+
+
+def _friend_guard_candidate_card(widget):
+    try:
+        QtWidgets = __import__('PySide6.QtWidgets', fromlist=['QCheckBox'])
+        current = widget
+        for _ in range(5):
+            if current is None:
+                break
+            boxes = list(current.findChildren(QtWidgets.QCheckBox))
+            if boxes:
+                return current, boxes
+            current = _safe_call(current, 'parentWidget')
+    except BaseException:
+        pass
+    return None, []
+
+
+def _patch_friend_guard_candidate(widget, text):
+    index = _friend_guard_candidate_index(text)
+    if index < 0:
+        return 0
+    _window, frame, candidates = _friend_guard_runtime_state(widget)
+    if frame is None or index >= len(candidates):
+        return 0
+    if not _friend_guard_candidate_is_self_overlay(candidates[index], frame):
+        return 0
+    card, boxes = _friend_guard_candidate_card(widget)
+    if card is None:
+        return 0
+    _safe_call(card, 'setProperty', _FRIEND_GUARD_SELF_MARK, True)
+    for box in boxes:
+        _safe_call(box, 'setProperty', _FRIEND_GUARD_SELF_MARK, True)
+        _safe_call(box, 'setChecked', False)
+        _safe_call(box, 'setEnabled', False)
+    _hide(card)
+    try:
+        if isinstance(candidates[index], dict):
+            candidates[index]['_qqfarm_excluded_self'] = True
+    except BaseException:
+        pass
+    return 1
+
+
+def _friend_guard_candidate_checkboxes(anchor):
+    try:
+        QtWidgets = __import__('PySide6.QtWidgets', fromlist=['QCheckBox', 'QLabel'])
+        current = _safe_call(anchor, 'parentWidget')
+        fallback = []
+        for _ in range(7):
+            if current is None:
+                break
+            boxes = list(current.findChildren(QtWidgets.QCheckBox))
+            if boxes:
+                fallback = boxes
+                labels = list(current.findChildren(QtWidgets.QLabel))
+                if any(_text(label).strip().startswith('\u5019\u9009 #') for label in labels):
+                    return boxes
+            current = _safe_call(current, 'parentWidget')
+        return fallback
+    except BaseException:
+        return []
+
+
+def _friend_guard_mark_confirmed_if_templates_present():
+    try:
+        import glob
+        import os
+        roots = []
+        local = os.environ.get('LOCALAPPDATA', '')
+        if local:
+            roots.append(os.path.join(
+                local, 'qq-farm-bot-rev', 'assert', 'templates', 'element',
+                'instances', '*', 'friend_list', 'guard',
+            ))
+        roots.append(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 'UserData',
+            'legacy-qq-farm-bot-rev', 'assert', 'templates', 'element',
+            'instances', '*', 'friend_list', 'guard',
+        ))
+        count = 0
+        for root in roots:
+            for directory in glob.glob(root):
+                count += len(glob.glob(os.path.join(directory, '*.png')))
+                count += len(glob.glob(os.path.join(directory, '*.jpg')))
+                count += len(glob.glob(os.path.join(directory, '*.jpeg')))
+        if count > 0:
+            _persist_friend_guard_list_confirmed(True)
+            return True
+    except BaseException:
+        pass
+    return False
+
+
+def _ensure_friend_guard_bulk_controls(anchor):
+    try:
+        if bool(anchor.property(_FRIEND_GUARD_BULK_MARK)):
+            return 0
+    except BaseException:
+        pass
+    parent = _safe_call(anchor, 'parentWidget')
+    layout = _safe_call(parent, 'layout') if parent is not None else None
+    if parent is None or layout is None:
+        return 0
+    try:
+        QtWidgets = __import__('PySide6.QtWidgets', fromlist=['QFrame', 'QPushButton'])
+        QtCore = __import__('PySide6.QtCore', fromlist=['QTimer'])
+        bar = QtWidgets.QFrame(parent)
+        bar.setObjectName('friendGuardBulkBar')
+        row = QtWidgets.QHBoxLayout(bar)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(8)
+        select_button = QtWidgets.QPushButton('\u5168\u9009\u6709\u6548\u5019\u9009', bar)
+        select_button.setObjectName('friendGuardSelectAllButton')
+        save_all_button = QtWidgets.QPushButton('\u5168\u9009\u5e76\u4fdd\u5b58', bar)
+        save_all_button.setObjectName('friendGuardSelectSaveButton')
+        row.addWidget(select_button)
+        row.addWidget(save_all_button)
+        bar.setStyleSheet(
+            'QPushButton#friendGuardSelectAllButton{min-height:34px;border:1px solid #2563eb;border-radius:7px;background:white;color:#2563eb;font-weight:600;}'
+            'QPushButton#friendGuardSelectSaveButton{min-height:34px;border:0;border-radius:7px;background:#2563eb;color:white;font-weight:600;}'
+        )
+
+        def _boxes():
+            return _friend_guard_candidate_checkboxes(anchor)
+
+        def _select_all(checked=False):
+            _friend_guard_select_valid_checkboxes(_boxes(), True)
+
+        def _select_and_save(checked=False):
+            _friend_guard_select_and_save(_boxes(), anchor)
+
+        select_button.clicked.connect(_select_all)
+        save_all_button.clicked.connect(_select_and_save)
+        index = _safe_call(layout, 'indexOf', anchor)
+        if isinstance(index, int) and index >= 0 and callable(getattr(layout, 'insertWidget', None)):
+            layout.insertWidget(index, bar)
+        else:
+            layout.addWidget(bar)
+
+        signal = getattr(anchor, 'clicked', None)
+        if signal is not None:
+            def _after_native_save(checked=False):
+                QtCore.QTimer.singleShot(350, _friend_guard_mark_confirmed_if_templates_present)
+            signal.connect(_after_native_save)
+        anchor.setProperty(_FRIEND_GUARD_BULK_MARK, True)
+        return 1
+    except BaseException:
+        return 0
+
 def patch_widget(widget, context_getter=None, opener=None):
     try:
         name = _name(widget)
@@ -269,6 +654,17 @@ def patch_widget(widget, context_getter=None, opener=None):
             context = ''
         lower_context = (name + ' ' + context).lower()
         about_related = 'about' in lower_context
+        if text.strip().startswith('\u5019\u9009 #'):
+            return _patch_friend_guard_candidate(widget, text)
+        if text.strip() == '\u786e\u8ba4\u4fdd\u5b58':
+            return _ensure_friend_guard_bulk_controls(widget)
+        if '\u8bf7\u6253\u5f00\u597d\u53cb\u5217\u8868' in text and '\u786e\u8ba4\u4fdd\u5b58' in text:
+            _safe_call(
+                widget,
+                'setText',
+                '\u8bf4\u660e\uff1a\u6253\u5f00\u597d\u53cb\u5217\u8868\u540e\u83b7\u53d6\u622a\u56fe\uff1b\u5e95\u90e8\u56fa\u5b9a\u7684\u672c\u4eba\u4fe1\u606f\u4f1a\u81ea\u52a8\u6392\u9664\u3002\u53ef\u4f7f\u7528\u201c\u5168\u9009\u5e76\u4fdd\u5b58\u201d\u4e00\u6b21\u5b8c\u6210\u3002',
+            )
+            return 1
         # Daily share is manual by default and exposes an editable exact recipient.
         if name == 'dailyShareDescription':
             changed = 0
