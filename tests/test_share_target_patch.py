@@ -705,6 +705,78 @@ class ShareTargetPatchTests(unittest.TestCase):
         self.assertTrue(module._mark_daily_flow_success(bot, "share"))
         self.assertFalse(namespace["_share_retry_backoff_active"](bot))
 
+
+    def test_verified_direct_share_success_suppresses_late_native_failure(self):
+        source = HOOK.read_text(encoding="utf-8-sig")
+        tree = ast.parse(source, filename=str(HOOK))
+        wanted = {
+            "_share_flow_key",
+            "_share_bot_from_args",
+            "_share_retry_backoff_seconds",
+            "_share_retry_backoff_active",
+            "_share_set_retry_backoff",
+            "_share_clear_retry_backoff",
+            "_patch_share_retry_backoff_for_module",
+        }
+        nodes = [
+            node for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name in wanted
+        ]
+        module_ast = ast.Module(body=nodes, type_ignores=[])
+        ast.fix_missing_locations(module_ast)
+
+        class Clock:
+            now = 100.0
+
+            @classmethod
+            def monotonic(cls):
+                return cls.now
+
+        events = []
+        namespace = {
+            "time": Clock,
+            "_cfg_get": lambda sections, key, default: "300",
+            "_active_bot_sections": lambda: {},
+            "_SHARE_RETRY_PATCH_LOG_SEEN": set(),
+            "_throttled_write": lambda *args, **kwargs: None,
+            "_write": lambda *args, **kwargs: None,
+            "_share_target_guard_config": lambda: {
+                "target_name": "2135736062",
+            },
+            "_share_direct_success_recent": (
+                lambda target="", max_age=15.0:
+                target == "2135736062" and max_age >= 86400.0
+            ),
+            "_share_mark_runtime_success": (
+                lambda bot: events.append(("mark-runtime-success", bot)) or True
+            ),
+        }
+        exec(compile(module_ast, str(HOOK), "exec"), namespace)
+
+        module = types.ModuleType("bot.synthetic.freebenefits_flow")
+
+        def mark_failure(bot, flow_key):
+            events.append(("native-failure", flow_key))
+            bot.daily_flow_retry_counts[flow_key] += 1
+            return False
+
+        module._mark_daily_flow_failure = mark_failure
+        module.should_run_daily_share = lambda bot: True
+        module.run_daily_share = lambda bot: True
+        bot = types.SimpleNamespace(
+            daily_flow_retry_counts={"share": 0},
+            share_last_date="",
+        )
+
+        self.assertGreater(
+            namespace["_patch_share_retry_backoff_for_module"](module), 0
+        )
+        self.assertFalse(module._mark_daily_flow_failure(bot, "share"))
+        self.assertEqual(0, bot.daily_flow_retry_counts["share"])
+        self.assertFalse(namespace["_share_retry_backoff_active"](bot))
+        self.assertNotIn(("native-failure", "share"), events)
+        self.assertIn(("mark-runtime-success", bot), events)
+
     def test_share_exact_entry_retries_until_clipboard_readback_matches_target(self):
         ns = load_named_hook_functions("_share_enter_target_exact")
         helper = ns.get("_share_enter_target_exact")
@@ -1062,6 +1134,34 @@ class ShareTargetPatchTests(unittest.TestCase):
                 second = load_named_hook_functions(*names)
                 second.update({"os": os, "time": time, "__file__": fake_hook})
                 self.assertTrue(second["_share_direct_success_recent"]("2135736062"))
+
+
+    def test_runtime_share_success_also_persists_durable_flow_status(self):
+        ns = load_named_hook_functions('_share_mark_runtime_success')
+        calls = []
+        context = types.SimpleNamespace(
+            instance_id='1',
+            share_last_date='',
+            daily_flow_retry_counts={'share': 2},
+        )
+        ns.update({
+            'os': os,
+            'time': time,
+            '__file__': str(ROOT / 'portable' / 'hook.py'),
+            '_share_clear_retry_backoff': lambda value: None,
+            '_daily_flow_target': lambda flow: '2135736062',
+            '_daily_flow_mark_status': (
+                lambda flow, status, target='', reason='':
+                calls.append((flow, status, target, reason)) or True
+            ),
+            '_throttled_write': lambda *args, **kwargs: None,
+        })
+
+        self.assertTrue(ns['_share_mark_runtime_success'](context))
+        self.assertIn(
+            ('share', 'success', '2135736062', 'verified-direct-contact-send'),
+            calls,
+        )
 
     def test_share_success_counter_does_not_rewrite_already_current_files(self):
         import json
