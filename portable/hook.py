@@ -69,6 +69,26 @@ _INTEGRITY_EXIT_NOOP_NAMES = set([
     '_qf_e4b465e77dde',
 ])
 
+def _qqfarm_preserve_wrapper_metadata(wrapper, wrapped):
+    """Keep patch idempotency markers when multiple runtime wrappers compose."""
+    try:
+        attributes = getattr(wrapped, '__dict__', {})
+        if isinstance(attributes, dict):
+            for key, value in list(attributes.items()):
+                name = str(key or '')
+                if not name.startswith('__qqfarm_'):
+                    continue
+                if not (name.endswith('_wrapped__') or name.endswith('_orig__')):
+                    continue
+                try:
+                    setattr(wrapper, name, value)
+                except BaseException:
+                    pass
+        return wrapper
+    except BaseException:
+        return wrapper
+
+
 def _throttled_write(key, msg, seconds=30.0):
     try:
         now = time.time()
@@ -88,7 +108,7 @@ def _throttled_write(key, msg, seconds=30.0):
         except BaseException:
             return False
 
-_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open+v147-first-friend-approval-barrier+v148-first-friend-no-skip+v149-first-friend-render-grace+v150-troublemaker-adjacent-retry+v151-troublemaker-frame-diagnostics+v152-troublemaker-frame-import+v153-troublemaker-callable-diagnostic+v154-troublemaker-helper-probes+v155-troublemaker-seed-land-compat+v156-troublemaker-geometry-preferred+v157-troublemaker-dynamic-lattice+v158-troublemaker-chain-finalize+v159-stale-friend-branch-cooldown+v160-native-home-visual-gate+v161-false-friend-log-relabel+v162-same-cycle-false-friend-clear+v163-active-cycle-false-friend-suppression+v164-skip-legacy-false-friend-processor+v165-force-self-pass-after-false-friend+v167-runtime-go-home-threshold-floor+v168-friend-entry-callable-inventory+v169-native-bottom-adjacent-fallback+v170-native-bottom-fresh-frame+v171-private-home-icon-gate+v172-force-self-after-private-home+v173-first-friend-post-steal-grace+v174-durable-action-counter-merge+v175-troublemaker-runtime-callable+v176-troublemaker-home-probe-authority+v177-single-harvest-immediate-planting+v178-run-cycle-durable-sync+v179-visual-only-friend-action-poll+v180-durable-counter-flow-mirror+v181-fast-planting-cooldown+v182-radish-counter-isolation-first-friend-grace+v183-watchdog-visual-only-probe+v184-visible-friend-preflight-owner+v185-guard-initial-next-card+v186-first-friend-render-floor+v187-troublemaker-full-miss-cooldown+v188-bounded-guard-pending-advance+v189-friend-list-entry-settle-barrier+v190-visible-first-action-early-release+v191-delayed-friend-action-grace+v192-planting-callable-inventory+v193-safe-planting-callable-inventory+v194-pending-entry-guard-approval+v195-fast-backpack-panel-settle+v196-backpack-helper-profile+v197-backpack-preverified-empty-land+v198-trouble-planted-evidence+v199-trouble-native-evidence-gate+v200-trouble-popup-action-fallback+v201-fast-no-seed-ocr+v202-restore-native-no-seed-ocr+v203-friend-list-progress-cursor+v204-backpack-panel-capture+v205-first-friend-native-miss-fallback+v206-friend-list-pending-row-retry+v207-confirmed-entry-cursor+v208-restore-normal-cycle-interval+v209-pending-row-reopen-recovery+v210-friend-help-daily-quota+v211-quota-chain-short-circuit+v212-native-help-proof-barrier+v213-about-expiry-card-cleanup+v214-about-expiry-text-fallback+v215-about-widget-diagnostic+v216-native-project-dialog+v217-friend-capture-card-restore+v218-fast-planting-inventory-chain+v219-quad-click-friend-first-blocked-row-outfit-guard+v220-empty-land-candidate-diagnostics+v221-empty-land-crop-cover-filter+v222-blocked-toast-home-terminal+v223-blocked-row-second-cap+v224-troublemaker-bounded-three+v226-quad-skip-normal-seeds-soft-friend-action+v227-exhaustive-local-quad-groups+v228-bounded-help-false-positive-gap-scan+v229-current-card-guard-proof-gap-budget')
+_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open+v147-first-friend-approval-barrier+v148-first-friend-no-skip+v149-first-friend-render-grace+v150-troublemaker-adjacent-retry+v151-troublemaker-frame-diagnostics+v152-troublemaker-frame-import+v153-troublemaker-callable-diagnostic+v154-troublemaker-helper-probes+v155-troublemaker-seed-land-compat+v156-troublemaker-geometry-preferred+v157-troublemaker-dynamic-lattice+v158-troublemaker-chain-finalize+v159-stale-friend-branch-cooldown+v160-native-home-visual-gate+v161-false-friend-log-relabel+v162-same-cycle-false-friend-clear+v163-active-cycle-false-friend-suppression+v164-skip-legacy-false-friend-processor+v165-force-self-pass-after-false-friend+v167-runtime-go-home-threshold-floor+v168-friend-entry-callable-inventory+v169-native-bottom-adjacent-fallback+v170-native-bottom-fresh-frame+v171-private-home-icon-gate+v172-force-self-after-private-home+v173-first-friend-post-steal-grace+v174-durable-action-counter-merge+v175-troublemaker-runtime-callable+v176-troublemaker-home-probe-authority+v177-single-harvest-immediate-planting+v178-run-cycle-durable-sync+v179-visual-only-friend-action-poll+v180-durable-counter-flow-mirror+v181-fast-planting-cooldown+v182-radish-counter-isolation-first-friend-grace+v183-watchdog-visual-only-probe+v184-visible-friend-preflight-owner+v185-guard-initial-next-card+v186-first-friend-render-floor+v187-troublemaker-full-miss-cooldown+v188-bounded-guard-pending-advance+v189-friend-list-entry-settle-barrier+v190-visible-first-action-early-release+v191-delayed-friend-action-grace+v192-planting-callable-inventory+v193-safe-planting-callable-inventory+v194-pending-entry-guard-approval+v195-fast-backpack-panel-settle+v196-backpack-helper-profile+v197-backpack-preverified-empty-land+v198-trouble-planted-evidence+v199-trouble-native-evidence-gate+v200-trouble-popup-action-fallback+v201-fast-no-seed-ocr+v202-restore-native-no-seed-ocr+v203-friend-list-progress-cursor+v204-backpack-panel-capture+v205-first-friend-native-miss-fallback+v206-friend-list-pending-row-retry+v207-confirmed-entry-cursor+v208-restore-normal-cycle-interval+v209-pending-row-reopen-recovery+v210-friend-help-daily-quota+v211-quota-chain-short-circuit+v212-native-help-proof-barrier+v213-about-expiry-card-cleanup+v214-about-expiry-text-fallback+v215-about-widget-diagnostic+v216-native-project-dialog+v217-friend-capture-card-restore+v218-fast-planting-inventory-chain+v219-quad-click-friend-first-blocked-row-outfit-guard+v220-empty-land-candidate-diagnostics+v221-empty-land-crop-cover-filter+v222-blocked-toast-home-terminal+v223-blocked-row-second-cap+v224-troublemaker-bounded-three+v226-quad-skip-normal-seeds-soft-friend-action+v227-exhaustive-local-quad-groups+v228-bounded-help-false-positive-gap-scan+v229-current-card-guard-proof-gap-budget+v230-daily-wrapper-idempotency')
 
 try:
     import sys, time, builtins, importlib, os
@@ -3823,7 +3843,11 @@ def _wrap_is_qq_launch_protocol(fn, name):
     try:
         _wrapped.__name__ = getattr(fn, '__name__', 'is_qq_launch_protocol')
         _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+        if callable(preserve_fn):
+            preserve_fn(_wrapped, fn)
         _wrapped.__qqfarm_wechat_focus_wrapped__ = True
+        _wrapped.__qqfarm_wechat_focus_orig__ = fn
     except BaseException:
         pass
     return _wrapped
@@ -3899,7 +3923,11 @@ def _wrap_apply_wechat_focus_after_hwnd(fn, name):
     try:
         _wrapped.__name__ = getattr(fn, '__name__', 'apply_wechat_focus_guard')
         _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+        if callable(preserve_fn):
+            preserve_fn(_wrapped, fn)
         _wrapped.__qqfarm_wechat_focus_wrapped__ = True
+        _wrapped.__qqfarm_wechat_focus_orig__ = fn
     except BaseException:
         pass
     return _wrapped, True
@@ -3943,7 +3971,11 @@ def _wrap_wechat_focus_guard(fn, name):
     try:
         _wrapped.__name__ = getattr(fn, '__name__', 'ensure_wechat_focus_guard_for_current_window')
         _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+        if callable(preserve_fn):
+            preserve_fn(_wrapped, fn)
         _wrapped.__qqfarm_wechat_focus_wrapped__ = True
+        _wrapped.__qqfarm_wechat_focus_orig__ = fn
     except BaseException:
         pass
     return _wrapped, True
@@ -13642,6 +13674,9 @@ def _patch_daily_flow_status_for_module(module, tag=''):
                     _daily_flow_apply_success_context(context, flow)
                 return result
             try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_success, original_success)
                 _wrapped_success.__qqfarm_daily_flow_status_wrapped__ = True
                 _wrapped_success.__qqfarm_daily_flow_status_orig__ = original_success
             except BaseException:
@@ -13665,6 +13700,9 @@ def _patch_daily_flow_status_for_module(module, tag=''):
                         fail_fn(flow, reason='verified daily flow failure')
                 return result
             try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_failure, original_failure)
                 _wrapped_failure.__qqfarm_daily_flow_status_wrapped__ = True
                 _wrapped_failure.__qqfarm_daily_flow_status_orig__ = original_failure
             except BaseException:
@@ -13723,7 +13761,17 @@ def _patch_daily_flow_status_for_module(module, tag=''):
                         and red_state is not False
                     ):
                         return False
-                    result = __orig(*args, **kwargs)
+                    try:
+                        result = __orig(*args, **kwargs)
+                    except RecursionError as error:
+                        fail_fn = globals().get('_daily_flow_mark_failure')
+                        if callable(fail_fn):
+                            fail_fn(
+                                __flow,
+                                reason='daily ' + str(__kind) +
+                                ' recursion guard: ' + repr(error),
+                            )
+                        raise
                     if __kind == 'should' and result and red_state is False:
                         target = _daily_flow_target(__flow)
                         mark_fn = globals().get('_daily_flow_mark_status')
@@ -13738,6 +13786,9 @@ def _patch_daily_flow_status_for_module(module, tag=''):
                 try:
                     _wrapped.__name__ = getattr(original, '__name__', method_name)
                     _wrapped.__qualname__ = getattr(original, '__qualname__', _wrapped.__name__)
+                    preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                    if callable(preserve_fn):
+                        preserve_fn(_wrapped, original)
                     _wrapped.__qqfarm_daily_flow_status_wrapped__ = True
                     _wrapped.__qqfarm_daily_flow_status_orig__ = original
                 except BaseException:
@@ -13814,7 +13865,12 @@ def _patch_daily_task_soft_retry_for_module(m, tag=''):
                 except BaseException:
                     pass
                 return result
-            try: _wrapped_failure.__qqfarm_task_soft_retry_wrapped__ = True
+            try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_failure, original_failure)
+                _wrapped_failure.__qqfarm_task_soft_retry_wrapped__ = True
+                _wrapped_failure.__qqfarm_task_soft_retry_orig__ = original_failure
             except BaseException: pass
             setattr(m, '_mark_daily_flow_failure', _wrapped_failure)
             changed += 1
@@ -13826,7 +13882,12 @@ def _patch_daily_task_soft_retry_for_module(m, tag=''):
                     if bot is not None:
                         return min(_daily_task_retry_count(bot), max(1, _daily_retry_max_default() - 1))
                 return __orig(*a, **k)
-            try: _wrapped_get.__qqfarm_task_soft_retry_wrapped__ = True
+            try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_get, original_get)
+                _wrapped_get.__qqfarm_task_soft_retry_wrapped__ = True
+                _wrapped_get.__qqfarm_task_soft_retry_orig__ = original_get
             except BaseException: pass
             setattr(m, '_get_daily_flow_retry_count', _wrapped_get)
             changed += 1
@@ -13842,7 +13903,12 @@ def _patch_daily_task_soft_retry_for_module(m, tag=''):
                 except BaseException:
                     pass
                 return __orig(*a, **k)
-            try: _wrapped_should.__qqfarm_task_soft_retry_wrapped__ = True
+            try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_should, original_should)
+                _wrapped_should.__qqfarm_task_soft_retry_wrapped__ = True
+                _wrapped_should.__qqfarm_task_soft_retry_orig__ = original_should
             except BaseException: pass
             setattr(m, 'should_run_daily_task', _wrapped_should)
             changed += 1
@@ -13854,7 +13920,12 @@ def _patch_daily_task_soft_retry_for_module(m, tag=''):
                     except BaseException: pass
                     return False
                 return __orig(*a, **k)
-            try: _wrapped_run.__qqfarm_task_soft_retry_wrapped__ = True
+            try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_run, original_run)
+                _wrapped_run.__qqfarm_task_soft_retry_wrapped__ = True
+                _wrapped_run.__qqfarm_task_soft_retry_orig__ = original_run
             except BaseException: pass
             setattr(m, 'run_daily_task', _wrapped_run)
             changed += 1
@@ -13871,7 +13942,12 @@ def _patch_daily_task_soft_retry_for_module(m, tag=''):
                     except BaseException:
                         pass
                 return result
-            try: _wrapped_success.__qqfarm_task_soft_retry_wrapped__ = True
+            try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_success, original_success)
+                _wrapped_success.__qqfarm_task_soft_retry_wrapped__ = True
+                _wrapped_success.__qqfarm_task_soft_retry_orig__ = original_success
             except BaseException: pass
             setattr(m, '_mark_daily_flow_success', _wrapped_success)
             changed += 1
@@ -14699,7 +14775,11 @@ def _patch_share_retry_backoff_for_module(module, tag=''):
                     )
                 return result
             try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_failure, original_failure)
                 _wrapped_failure.__qqfarm_share_retry_backoff_wrapped__ = True
+                _wrapped_failure.__qqfarm_share_retry_backoff_orig__ = original_failure
             except BaseException:
                 pass
             setattr(module, '_mark_daily_flow_failure', _wrapped_failure)
@@ -14719,7 +14799,11 @@ def _patch_share_retry_backoff_for_module(module, tag=''):
                     return False
                 return __orig(*args, **kwargs)
             try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_should, original_should)
                 _wrapped_should.__qqfarm_share_retry_backoff_wrapped__ = True
+                _wrapped_should.__qqfarm_share_retry_backoff_orig__ = original_should
             except BaseException:
                 pass
             setattr(module, 'should_run_daily_share', _wrapped_should)
@@ -14734,7 +14818,11 @@ def _patch_share_retry_backoff_for_module(module, tag=''):
                     return False
                 return __orig(*args, **kwargs)
             try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_run, original_run)
                 _wrapped_run.__qqfarm_share_retry_backoff_wrapped__ = True
+                _wrapped_run.__qqfarm_share_retry_backoff_orig__ = original_run
             except BaseException:
                 pass
             setattr(module, 'run_daily_share', _wrapped_run)
@@ -14749,7 +14837,11 @@ def _patch_share_retry_backoff_for_module(module, tag=''):
                     _share_clear_retry_backoff(_share_bot_from_args(args, kwargs))
                 return result
             try:
+                preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+                if callable(preserve_fn):
+                    preserve_fn(_wrapped_success, original_success)
                 _wrapped_success.__qqfarm_share_retry_backoff_wrapped__ = True
+                _wrapped_success.__qqfarm_share_retry_backoff_orig__ = original_success
             except BaseException:
                 pass
             setattr(module, '_mark_daily_flow_success', _wrapped_success)
@@ -16962,7 +17054,11 @@ def _wrap_share_entry_settle_func(fn):
     try:
         _wrapped.__name__ = getattr(fn, '__name__', '_click_template_once')
         _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+        if callable(preserve_fn):
+            preserve_fn(_wrapped, fn)
         _wrapped.__qqfarm_share_entry_settle_wrapped__ = True
+        _wrapped.__qqfarm_share_entry_settle_orig__ = fn
     except BaseException:
         pass
     return _wrapped, True
