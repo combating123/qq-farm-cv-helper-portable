@@ -861,6 +861,39 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             getattr(scheduler, "_qqfarm_guard_dog_help_skipped", False)
         )
 
+    def test_friend_guard_list_refreshes_current_carousel_identity_before_native_gate(self):
+        namespace = load_functions("_friend_guard_help_action_allowed")
+        context = types.SimpleNamespace(_qqfarm_guard_list_prequalified=False)
+        refresh_calls = []
+        resolver_calls = []
+
+        def refresh(owner, frame):
+            refresh_calls.append(frame)
+            owner._qqfarm_guard_list_prequalified = True
+            return True
+
+        namespace.update({
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": (
+                lambda owner: bool(owner._qqfarm_guard_list_prequalified)
+            ),
+            "_friend_guard_list_refresh_prequalification": refresh,
+            "_resolve_friend_guard_native_callable": (
+                lambda *args: resolver_calls.append(args) or (None, "")
+            ),
+            "_write": lambda message: None,
+        })
+        frame = object()
+
+        self.assertTrue(
+            namespace["_friend_guard_help_action_allowed"](
+                context, frame, (213, 596)
+            )
+        )
+        self.assertEqual([frame], refresh_calls)
+        self.assertEqual([], resolver_calls)
+
     def test_friend_guard_list_prequalified_entry_allows_help_without_native_predicate(self):
         namespace = load_functions("_friend_guard_help_action_allowed")
         gate = namespace["_friend_guard_help_action_allowed"]
@@ -1110,16 +1143,32 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         refreshes = [object(), object(), object()]
         visible = {"matched": True, "center": (212, 598)}
         clicks = []
+        now = {"value": 100.0}
+        selected = {"left": 120, "right": 220, "top": 680, "bottom": 759}
         namespace.update({
             "_friend_guard_help_button_match": lambda value: visible,
+            "_friend_selected_carousel_card_bounds": lambda value: selected,
             "_invoke_friend_guard_match_coordinate_click": (
                 lambda context, value, found: clicks.append(value) or True
             ),
             "_get_frame_from_bot": lambda context: refreshes.pop(0),
             "_friend_guard_sleep": lambda seconds: None,
+            "time": types.SimpleNamespace(time=lambda: now["value"]),
             "_write": lambda message: None,
         })
-        result = namespace["_invoke_friend_guard_help_visual_click"](object(), initial)
+        scheduler = types.SimpleNamespace()
+        result = namespace["_invoke_friend_guard_help_visual_click"](scheduler, initial)
+        self.assertFalse(result)
+        self.assertEqual(3, len(clicks))
+        self.assertEqual(
+            (120, 220, 680, 759),
+            scheduler._qqfarm_friend_help_visual_unresolved_card,
+        )
+        self.assertGreater(scheduler._qqfarm_friend_help_visual_unresolved_until, 100.0)
+
+        # The same unchanged card must be suppressed instead of receiving another
+        # three-click batch on every action poll.
+        result = namespace["_invoke_friend_guard_help_visual_click"](scheduler, initial)
         self.assertFalse(result)
         self.assertEqual(3, len(clicks))
 
@@ -3555,24 +3604,23 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual("", label)
         self.assertEqual([], native_calls)
 
-    def test_guard_list_initial_no_action_friend_advances_to_next_actionable_friend(self):
+    def test_guard_list_continues_past_intermediate_no_action_friend_to_later_action(self):
         namespace = load_functions("_run_friend_continuation_chain")
         first_frame = object()
         second_frame = object()
         third_frame = object()
         moves = []
-        captures = iter((
-            first_frame, first_frame, first_frame, first_frame,
-            first_frame, first_frame, first_frame, first_frame,
-            first_frame, first_frame, first_frame, first_frame,
-            second_frame,
-            second_frame, second_frame, second_frame,
-            third_frame, third_frame, third_frame,
-        ))
         acted_second = {"value": False}
 
+        def capture(_owner):
+            if len(moves) <= 0:
+                return first_frame
+            if len(moves) == 1:
+                return second_frame
+            return third_frame
+
         def visual_action(context, candidate):
-            if candidate is second_frame and not acted_second["value"]:
+            if candidate is third_frame and not acted_second["value"]:
                 acted_second["value"] = True
                 return True, "visual.friend_help_all"
             return False, ""
@@ -3589,7 +3637,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             ),
             "_invoke_friend_visual_actions_before_home": visual_action,
             "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
-            "_get_frame_from_bot": lambda owner: next(captures, third_frame),
+            "_get_frame_from_bot": capture,
             "_friend_guard_friend_ui_state": lambda candidate: True,
             "_friend_guard_sleep": lambda seconds: None,
             "_friend_navigation_signature": lambda candidate: None,
@@ -3606,6 +3654,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             friend_chain_idle_confirmations=2,
             friend_chain_initial_idle_poll_min=8,
             _qqfarm_guard_list_prequalified=True,
+            _qqfarm_friend_list_visit_cursor=1,
         )
 
         result = namespace["_run_friend_continuation_chain"](
@@ -3614,9 +3663,9 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
 
         self.assertGreaterEqual(len(moves), 2)
         self.assertIs(first_frame, moves[0])
+        self.assertIn(second_frame, moves)
         self.assertGreaterEqual(result["actions"], 1)
-        self.assertTrue(result["exhausted"])
-        self.assertEqual("first-no-action-friend", result["reason"])
+        self.assertTrue(acted_second["value"])
 
     def test_friend_continuation_advances_list_cursor_by_bottom_carousel_moves(self):
         namespace = load_functions("_run_friend_continuation_chain")
@@ -6865,6 +6914,27 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual([68, 136, 204, 273, 341], [item["center"][0] for item in candidates])
         self.assertTrue(all(item["count"] >= 1 for item in candidates))
 
+    def test_live_24_land_seed_panel_keeps_all_five_inventory_candidates(self):
+        namespace = load_functions(
+            "_seed_panel_strip_visible",
+            "_fast_seed_badge_candidates_from_frame",
+        )
+        import cv2
+
+        frame = cv2.imread(
+            str(FIXTURES / "home_seed_inventory_live_20260729.png")
+        )
+        candidates = namespace["_fast_seed_badge_candidates_from_frame"](
+            frame, capacity_hint=3
+        )
+
+        self.assertEqual(5, len(candidates))
+        self.assertEqual(
+            [102, 204, 306, 409, 511],
+            [item["center"][0] for item in candidates],
+        )
+        self.assertTrue(all(item["count"] == 3 for item in candidates))
+
     def test_fast_seed_badge_wrapper_skips_native_ocr_for_visible_panel(self):
         namespace = load_functions(
             "_seed_panel_strip_visible",
@@ -7306,6 +7376,59 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         if "navigate" in events:
             self.assertLess(events.index("help"), events.index("navigate"))
         self.assertFalse(getattr(scheduler, "_qqfarm_post_steal_help_retry_pending", False))
+
+    def test_first_friend_rechecks_delayed_steal_after_help_even_if_guard_marker_was_consumed(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        events = []
+        probes = {"count": 0}
+
+        def fast_action(owner, candidate):
+            probes["count"] += 1
+            events.append("probe")
+            if probes["count"] == 10:
+                events.append("steal")
+                return True, "visual.friend_steal_all"
+            return False, ""
+
+        def adjacent(owner, candidate):
+            events.append("navigate")
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": adjacent,
+            "_invoke_friend_visual_actions_before_home": fast_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda owner: False,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=1,
+            friend_chain_action_poll_limit=24,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            friend_chain_initial_idle_poll_min=8,
+            _qqfarm_friend_entry_extended_action_grace=True,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, "visual.friend_help_all"
+        )
+
+        self.assertIn("steal", events)
+        if "navigate" in events:
+            self.assertLess(events.index("steal"), events.index("navigate"))
+        self.assertGreaterEqual(result["actions"], 1)
+        self.assertEqual("visual.friend_steal_all", result["last_label"])
 
     def test_reopened_friend_list_resets_stale_cursor_and_clicks_first_row(self):
         namespace = load_functions("_handle_friend_list_surface")
@@ -8852,6 +8975,50 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual(native_centers, wrapped(object(), object()))
 
 
+    def test_guard_list_friend_skin_soft_help_button_remains_actionable(self):
+        namespace = load_functions(
+            "_friend_guard_read_template",
+            "_friend_guard_match_template",
+            "_friend_guard_help_button_match",
+            "_friend_guard_steal_button_match",
+            "_friend_selected_carousel_card_bounds",
+            "_friend_list_visit_button_rows",
+            "_friend_guard_friend_ui_state",
+        )
+        import cv2
+
+        namespace["_FRIEND_GUARD_TEMPLATE_CACHE"] = {}
+        namespace["_FRIEND_HOME_TEMPLATE_PATH"] = str(
+            FIXTURES / "friend_home_button.png"
+        )
+        namespace["_FRIEND_LIST_TEMPLATE_PATH"] = str(
+            FIXTURES / "friend_list_tabs.png"
+        )
+        namespace["_FRIEND_HELP_ALL_TEMPLATE_PATH"] = str(
+            ROOT / "portable" / "friend_help_all_button.png"
+        )
+        namespace["_FRIEND_STEAL_ALL_TEMPLATE_PATH"] = str(
+            ROOT / "portable" / "friend_steal_all_button.png"
+        )
+        frame = cv2.imread(
+            str(FIXTURES / "friend_help_guard_list_skin_live_20260729.png")
+        )
+
+        selected = namespace["_friend_selected_carousel_card_bounds"](frame)
+        help_match = namespace["_friend_guard_help_button_match"](frame)
+
+        self.assertIsInstance(selected, dict)
+        self.assertTrue(
+            help_match["matched"],
+            "This guard-list friend skin still shows a valid one-click help button.",
+        )
+        self.assertEqual("soft-help+friend-footer", help_match.get("match_mode"))
+        self.assertIs(
+            True,
+            namespace["_friend_guard_friend_ui_state"](frame),
+            "A selected friend card plus soft home/help evidence must stay in friend mode.",
+        )
+
     def test_cropped_friend_surface_with_visible_help_remains_actionable(self):
         namespace = load_functions(
             "_friend_guard_read_template",
@@ -8934,8 +9101,185 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual(0.72, bot.act_seeds_frame_threshold)
         self.assertTrue(any("2x2 transaction retry" in line for line in logs))
 
+    def test_three_empty_lands_skip_2x2_without_attempt_and_continue_single_land_seeds(self):
+        namespace = load_functions(
+            "_wrap_quad_act_seed_transaction",
+            "_wrap_backpack_seed_priority_planting_fast",
+        )
+        namespace["_write"] = lambda _message: None
+        namespace["_friend_guard_sleep"] = lambda _seconds: None
+        calls = {"quad": 0, "backpack": 0, "single": 0}
+        lands = [
+            {"center": (100, 300)},
+            {"center": (160, 330)},
+            {"center": (220, 360)},
+        ]
+
+        def quad_native(bot, *, remain_lands, panel_settle, seed_center):
+            calls["quad"] += 1
+            return False, list(remain_lands)
+
+        wrapped_quad, _ = namespace["_wrap_quad_act_seed_transaction"](
+            quad_native, "synthetic._try_plant_quad_act_seeds"
+        )
+
+        def backpack_native(bot, remain_lands, panel_settle):
+            calls["backpack"] += 1
+            if bot.enable_quad_act_seeds:
+                planted, updated = wrapped_quad(
+                    bot,
+                    remain_lands=remain_lands,
+                    panel_settle=panel_settle,
+                    seed_center=(68, 512),
+                )
+                if not planted:
+                    return False, updated, False, None, False
+            calls["single"] += len(remain_lands)
+            return True, [], False, None, True
+
+        wrapped_backpack, _ = namespace[
+            "_wrap_backpack_seed_priority_planting_fast"
+        ](backpack_native, "synthetic._run_backpack_seed_priority_planting")
+        bot = types.SimpleNamespace(
+            act_seeds_frame_threshold=0.72,
+            enable_quad_act_seeds=True,
+        )
+
+        result = wrapped_backpack(bot, lands, 1.5)
+
+        self.assertEqual((True, [], False, None, True), result)
+        self.assertEqual(0, calls["quad"], "Three empty lands can never form a 2x2 square")
+        self.assertEqual(2, calls["backpack"])
+        self.assertEqual(3, calls["single"])
+        self.assertTrue(bot.enable_quad_act_seeds)
+
+    def test_quad_retry_normalizes_four_consumed_lands_as_success(self):
+        namespace = load_functions("_wrap_quad_act_seed_transaction")
+        namespace["_write"] = lambda _message: None
+        namespace["_friend_guard_sleep"] = lambda _seconds: None
+        calls = []
+        lands = [{"center": (index, index)} for index in range(8)]
+
+        def native(bot, *, remain_lands, panel_settle, seed_center):
+            calls.append((list(remain_lands), panel_settle, seed_center))
+            if len(calls) == 1:
+                return False, list(remain_lands)
+            return False, list(remain_lands)[4:]
+
+        wrapped, changed = namespace["_wrap_quad_act_seed_transaction"](
+            native, "synthetic._try_plant_quad_act_seeds"
+        )
+        bot = types.SimpleNamespace(act_seeds_frame_threshold=0.72)
+
+        result = wrapped(
+            bot,
+            remain_lands=lands,
+            panel_settle=0.20,
+            seed_center=(68, 512),
+        )
+
+        self.assertTrue(changed)
+        self.assertEqual((True, lands[4:]), result)
+        self.assertEqual(2, len(calls))
+        self.assertFalse(hasattr(bot, "_qqfarm_quad_skip_and_continue"))
+
+    def test_quad_failure_skips_special_seed_and_continues_normal_backpack_candidates(self):
+        namespace = load_functions(
+            "_wrap_quad_act_seed_transaction",
+            "_wrap_backpack_seed_priority_planting_fast",
+        )
+        logs = []
+        namespace["_write"] = lambda message: logs.append(message)
+        namespace["_friend_guard_sleep"] = lambda _seconds: None
+        calls = {"backpack": 0, "quad": 0, "drag": []}
+        lands = [{"center": (index, index)} for index in range(8)]
+
+        def quad_native(bot, *, remain_lands, panel_settle, seed_center):
+            calls["quad"] += 1
+            return False, list(remain_lands)
+
+        wrapped_quad, quad_changed = namespace["_wrap_quad_act_seed_transaction"](
+            quad_native, "synthetic._try_plant_quad_act_seeds"
+        )
+
+        def backpack_native(bot, remain_lands, panel_settle):
+            calls["backpack"] += 1
+            if bot.enable_quad_act_seeds:
+                planted, updated_lands = wrapped_quad(
+                    bot,
+                    remain_lands=remain_lands,
+                    panel_settle=panel_settle,
+                    seed_center=(68, 512),
+                )
+                if not planted:
+                    return False, updated_lands, False, None, False
+            calls["drag"].append("ordinary-single-land-seed")
+            return True, [], False, None, True
+
+        wrapped_backpack, backpack_changed = namespace[
+            "_wrap_backpack_seed_priority_planting_fast"
+        ](backpack_native, "synthetic._run_backpack_seed_priority_planting")
+        bot = types.SimpleNamespace(
+            act_seeds_frame_threshold=0.72,
+            enable_quad_act_seeds=True,
+        )
+
+        result = wrapped_backpack(bot, lands, 1.5)
+
+        self.assertTrue(quad_changed)
+        self.assertTrue(backpack_changed)
+        self.assertEqual((True, [], False, None, True), result)
+        self.assertEqual(2, calls["backpack"])
+        self.assertEqual(2, calls["quad"], "2x2 transaction should retry only once")
+        self.assertEqual(["ordinary-single-land-seed"], calls["drag"])
+        self.assertTrue(bot.enable_quad_act_seeds)
+        self.assertFalse(hasattr(bot, "_qqfarm_quad_skip_and_continue"))
+        self.assertTrue(
+            any("skip failed 2x2 seed and continue normal seeds" in line for line in logs)
+        )
+
+    def test_quad_group_finder_scans_every_local_2x2_in_24_land_grid(self):
+        namespace = load_functions(
+            "_qqfarm_quad_land_center",
+            "_qqfarm_find_all_quad_empty_land_groups",
+            "_wrap_quad_empty_land_groups",
+        )
+        namespace["_write"] = lambda _message: None
+        lands = []
+        for row in range(4):
+            for col in range(6):
+                lands.append(
+                    {
+                        "id": (row, col),
+                        "center": (220 + (col - row) * 36, 260 + (col + row) * 18),
+                        "confidence": 0.95,
+                    }
+                )
+
+        def corners_only_native(_bot, native_lands):
+            return [[native_lands[0], native_lands[5], native_lands[18], native_lands[23]]]
+
+        wrapped, changed = namespace["_wrap_quad_empty_land_groups"](
+            corners_only_native, "synthetic._find_quad_empty_land_groups"
+        )
+        groups = wrapped(types.SimpleNamespace(), lands)
+        group_ids = [{item["id"] for item in group} for group in groups]
+
+        self.assertTrue(changed)
+        self.assertEqual(15, len(groups), "A 4x6 lattice contains fifteen local 2x2 groups")
+        self.assertIn({(1, 2), (1, 3), (2, 2), (2, 3)}, group_ids)
+        self.assertNotIn({(0, 0), (0, 5), (3, 0), (3, 5)}, group_ids)
+        for ids in group_ids:
+            rows = [item[0] for item in ids]
+            cols = [item[1] for item in ids]
+            self.assertEqual(1, max(rows) - min(rows))
+            self.assertEqual(1, max(cols) - min(cols))
+
     def test_quad_transaction_wrapper_is_wired_to_native_planting_callable(self):
         source = HOOK.read_text(encoding="utf-8-sig")
+        self.assertIn("'_find_quad_empty_land_groups'", source)
+        self.assertIn("elif n == '_find_quad_empty_land_groups':", source)
+        self.assertIn("_wrap_quad_empty_land_groups(", source)
         self.assertIn("'_try_plant_quad_act_seeds'", source)
         self.assertIn("elif n == '_try_plant_quad_act_seeds':", source)
         self.assertIn("_wrap_quad_act_seed_transaction(", source)

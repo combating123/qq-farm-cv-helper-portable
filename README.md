@@ -237,6 +237,7 @@ CV农场助手/
 
 | 版本 | 重点变化 | 验证 |
 | --- | --- | --- |
+| [v1.4.6](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.6) | 24 块土地全候选局部田字型枚举、普通种子降级、当前护主卡复核与中间无动作好友继续扫描 | 440 项测试 |
 | [v1.4.5](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.5) | 2×2 特殊种子事务级确认重试；好友底栏被裁剪时仍依据回家按钮与可见偷取/务农入口执行动作 | 432 项测试 |
 | [v1.4.4](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.4) | 好友首行封禁门禁、同好友偷取+务农、连续好友链、空地与背包播种、自动捣乱有界扫描、关于页和稳定性收敛 | 429 项测试 |
 | [v1.4.3](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.3) | 首位好友优先、多好友底部连续处理、逐好友护主复核、快速列表入口与每日任务状态修复 | 316 项测试 |

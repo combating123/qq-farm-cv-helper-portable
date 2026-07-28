@@ -88,7 +88,7 @@ def _throttled_write(key, msg, seconds=30.0):
         except BaseException:
             return False
 
-_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open+v147-first-friend-approval-barrier+v148-first-friend-no-skip+v149-first-friend-render-grace+v150-troublemaker-adjacent-retry+v151-troublemaker-frame-diagnostics+v152-troublemaker-frame-import+v153-troublemaker-callable-diagnostic+v154-troublemaker-helper-probes+v155-troublemaker-seed-land-compat+v156-troublemaker-geometry-preferred+v157-troublemaker-dynamic-lattice+v158-troublemaker-chain-finalize+v159-stale-friend-branch-cooldown+v160-native-home-visual-gate+v161-false-friend-log-relabel+v162-same-cycle-false-friend-clear+v163-active-cycle-false-friend-suppression+v164-skip-legacy-false-friend-processor+v165-force-self-pass-after-false-friend+v167-runtime-go-home-threshold-floor+v168-friend-entry-callable-inventory+v169-native-bottom-adjacent-fallback+v170-native-bottom-fresh-frame+v171-private-home-icon-gate+v172-force-self-after-private-home+v173-first-friend-post-steal-grace+v174-durable-action-counter-merge+v175-troublemaker-runtime-callable+v176-troublemaker-home-probe-authority+v177-single-harvest-immediate-planting+v178-run-cycle-durable-sync+v179-visual-only-friend-action-poll+v180-durable-counter-flow-mirror+v181-fast-planting-cooldown+v182-radish-counter-isolation-first-friend-grace+v183-watchdog-visual-only-probe+v184-visible-friend-preflight-owner+v185-guard-initial-next-card+v186-first-friend-render-floor+v187-troublemaker-full-miss-cooldown+v188-bounded-guard-pending-advance+v189-friend-list-entry-settle-barrier+v190-visible-first-action-early-release+v191-delayed-friend-action-grace+v192-planting-callable-inventory+v193-safe-planting-callable-inventory+v194-pending-entry-guard-approval+v195-fast-backpack-panel-settle+v196-backpack-helper-profile+v197-backpack-preverified-empty-land+v198-trouble-planted-evidence+v199-trouble-native-evidence-gate+v200-trouble-popup-action-fallback+v201-fast-no-seed-ocr+v202-restore-native-no-seed-ocr+v203-friend-list-progress-cursor+v204-backpack-panel-capture+v205-first-friend-native-miss-fallback+v206-friend-list-pending-row-retry+v207-confirmed-entry-cursor+v208-restore-normal-cycle-interval+v209-pending-row-reopen-recovery+v210-friend-help-daily-quota+v211-quota-chain-short-circuit+v212-native-help-proof-barrier+v213-about-expiry-card-cleanup+v214-about-expiry-text-fallback+v215-about-widget-diagnostic+v216-native-project-dialog+v217-friend-capture-card-restore+v218-fast-planting-inventory-chain+v219-quad-click-friend-first-blocked-row-outfit-guard+v220-empty-land-candidate-diagnostics+v221-empty-land-crop-cover-filter+v222-blocked-toast-home-terminal+v223-blocked-row-second-cap+v224-troublemaker-bounded-three+v225-quad-confirm-retry-cropped-friend-action')
+_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open+v147-first-friend-approval-barrier+v148-first-friend-no-skip+v149-first-friend-render-grace+v150-troublemaker-adjacent-retry+v151-troublemaker-frame-diagnostics+v152-troublemaker-frame-import+v153-troublemaker-callable-diagnostic+v154-troublemaker-helper-probes+v155-troublemaker-seed-land-compat+v156-troublemaker-geometry-preferred+v157-troublemaker-dynamic-lattice+v158-troublemaker-chain-finalize+v159-stale-friend-branch-cooldown+v160-native-home-visual-gate+v161-false-friend-log-relabel+v162-same-cycle-false-friend-clear+v163-active-cycle-false-friend-suppression+v164-skip-legacy-false-friend-processor+v165-force-self-pass-after-false-friend+v167-runtime-go-home-threshold-floor+v168-friend-entry-callable-inventory+v169-native-bottom-adjacent-fallback+v170-native-bottom-fresh-frame+v171-private-home-icon-gate+v172-force-self-after-private-home+v173-first-friend-post-steal-grace+v174-durable-action-counter-merge+v175-troublemaker-runtime-callable+v176-troublemaker-home-probe-authority+v177-single-harvest-immediate-planting+v178-run-cycle-durable-sync+v179-visual-only-friend-action-poll+v180-durable-counter-flow-mirror+v181-fast-planting-cooldown+v182-radish-counter-isolation-first-friend-grace+v183-watchdog-visual-only-probe+v184-visible-friend-preflight-owner+v185-guard-initial-next-card+v186-first-friend-render-floor+v187-troublemaker-full-miss-cooldown+v188-bounded-guard-pending-advance+v189-friend-list-entry-settle-barrier+v190-visible-first-action-early-release+v191-delayed-friend-action-grace+v192-planting-callable-inventory+v193-safe-planting-callable-inventory+v194-pending-entry-guard-approval+v195-fast-backpack-panel-settle+v196-backpack-helper-profile+v197-backpack-preverified-empty-land+v198-trouble-planted-evidence+v199-trouble-native-evidence-gate+v200-trouble-popup-action-fallback+v201-fast-no-seed-ocr+v202-restore-native-no-seed-ocr+v203-friend-list-progress-cursor+v204-backpack-panel-capture+v205-first-friend-native-miss-fallback+v206-friend-list-pending-row-retry+v207-confirmed-entry-cursor+v208-restore-normal-cycle-interval+v209-pending-row-reopen-recovery+v210-friend-help-daily-quota+v211-quota-chain-short-circuit+v212-native-help-proof-barrier+v213-about-expiry-card-cleanup+v214-about-expiry-text-fallback+v215-about-widget-diagnostic+v216-native-project-dialog+v217-friend-capture-card-restore+v218-fast-planting-inventory-chain+v219-quad-click-friend-first-blocked-row-outfit-guard+v220-empty-land-candidate-diagnostics+v221-empty-land-crop-cover-filter+v222-blocked-toast-home-terminal+v223-blocked-row-second-cap+v224-troublemaker-bounded-three+v226-quad-skip-normal-seeds-soft-friend-action+v227-exhaustive-local-quad-groups+v228-bounded-help-false-positive-gap-scan+v229-current-card-guard-proof-gap-budget')
 
 try:
     import sys, time, builtins, importlib, os
@@ -1846,23 +1846,32 @@ def _fast_seed_badge_candidates_from_frame(frame, capacity_hint=None):
         height, width = frame.shape[:2]
         hsv = cv_module.cvtColor(frame, cv_module.COLOR_BGR2HSV)
         center_y = int(round(float(height) * 0.639))
+        probe_center_ys = []
+        for y_ratio in (0.598, 0.618, 0.639):
+            probe_y = int(round(float(height) * y_ratio))
+            if probe_y not in probe_center_ys:
+                probe_center_ys.append(probe_y)
         radius_x = max(10, int(round(float(width) * 0.055)))
         radius_y = max(8, int(round(float(height) * 0.018)))
         for ratio in (0.159, 0.318, 0.477, 0.637, 0.796):
             center_x = int(round(float(width) * ratio))
             x1 = max(0, center_x - radius_x)
             x2 = min(int(width), center_x + radius_x)
-            y1 = max(0, center_y - radius_y)
-            y2 = min(int(height), center_y + radius_y)
-            crop = hsv[y1:y2, x1:x2]
-            if getattr(crop, 'size', 0) <= 0:
-                continue
-            cream = cv_module.inRange(
-                crop,
-                np_module.array([5, 10, 115], dtype=np_module.uint8),
-                np_module.array([40, 175, 255], dtype=np_module.uint8),
-            )
-            cream_ratio = float(np_module.mean(cream > 0))
+            cream_ratio = 0.0
+            for probe_y in probe_center_ys:
+                y1 = max(0, probe_y - radius_y)
+                y2 = min(int(height), probe_y + radius_y)
+                crop = hsv[y1:y2, x1:x2]
+                if getattr(crop, 'size', 0) <= 0:
+                    continue
+                cream = cv_module.inRange(
+                    crop,
+                    np_module.array([5, 10, 115], dtype=np_module.uint8),
+                    np_module.array([40, 175, 255], dtype=np_module.uint8),
+                )
+                cream_ratio = max(
+                    cream_ratio, float(np_module.mean(cream > 0))
+                )
             if cream_ratio < 0.22:
                 continue
             candidates.append({
@@ -2172,6 +2181,206 @@ def _wrap_backpack_seed_blacklist_fast(fn, name=''):
         return fn, False
 
 
+def _qqfarm_quad_land_center(land):
+    """Return a stable integer center for a detected land candidate."""
+    try:
+        if isinstance(land, dict):
+            center = land.get('center')
+            if isinstance(center, (tuple, list)) and len(center) >= 2:
+                return int(round(float(center[0]))), int(round(float(center[1])))
+            left = land.get('left')
+            top = land.get('top')
+            right = land.get('right')
+            bottom = land.get('bottom')
+            if None not in (left, top, right, bottom):
+                return (
+                    int(round((float(left) + float(right)) * 0.5)),
+                    int(round((float(top) + float(bottom)) * 0.5)),
+                )
+        center = getattr(land, 'center', None)
+        if isinstance(center, (tuple, list)) and len(center) >= 2:
+            return int(round(float(center[0]))), int(round(float(center[1])))
+    except BaseException:
+        pass
+    return None
+
+
+def _qqfarm_find_all_quad_empty_land_groups(lands):
+    """Exhaustively find every local isometric 2x2 group among all empty lands.
+
+    A farm can contain 24 plots.  The four plots for a special seed can be in
+    any local lattice position, so this deliberately evaluates every 4-point
+    combination instead of treating the outer farm corners as the candidate.
+    """
+    try:
+        source = list(lands or [])
+    except BaseException:
+        source = []
+    if len(source) < 4:
+        return []
+
+    points = []
+    seen_centers = set()
+    for index, land in enumerate(source):
+        center = _qqfarm_quad_land_center(land)
+        if center is None or center in seen_centers:
+            continue
+        seen_centers.add(center)
+        points.append((index, land, center))
+    if len(points) < 4:
+        return []
+
+    groups = []
+    seen_groups = set()
+    count = len(points)
+    for a in range(count - 3):
+        for b in range(a + 1, count - 2):
+            for c in range(b + 1, count - 1):
+                for d in range(c + 1, count):
+                    combo = [points[a], points[b], points[c], points[d]]
+                    # In the isometric farm lattice, the logical top-left plot
+                    # is the visually highest point (leftmost on a y tie).
+                    anchor = min(combo, key=lambda item: (item[2][1], item[2][0]))
+                    others = [item for item in combo if item is not anchor]
+                    accepted = None
+                    for oi in range(3):
+                        for oj in range(3):
+                            if oi == oj:
+                                continue
+                            ok = 3 - oi - oj
+                            if ok < 0 or ok > 2 or ok == oi or ok == oj:
+                                continue
+                            first = others[oi]
+                            second = others[oj]
+                            opposite = others[ok]
+                            ax, ay = anchor[2]
+                            fx, fy = first[2]
+                            sx, sy = second[2]
+                            ox, oy = opposite[2]
+                            v1x, v1y = fx - ax, fy - ay
+                            v2x, v2y = sx - ax, sy - ay
+
+                            # The two adjacent isometric directions descend to
+                            # opposite horizontal sides.  This rejects vertical
+                            # diagonals and multi-cell outer-corner rectangles.
+                            if v1x == 0 or v2x == 0 or (v1x > 0) == (v2x > 0):
+                                continue
+                            if v1y < 5 or v2y < 5:
+                                continue
+                            if not (18 <= abs(v1x) <= 72 and 18 <= abs(v2x) <= 72):
+                                continue
+                            if not (6 <= abs(v1y) <= 52 and 6 <= abs(v2y) <= 52):
+                                continue
+                            if abs(v1y - v2y) > max(9.0, 0.35 * max(v1y, v2y)):
+                                continue
+
+                            length1 = (float(v1x * v1x + v1y * v1y)) ** 0.5
+                            length2 = (float(v2x * v2x + v2y * v2y)) ** 0.5
+                            if min(length1, length2) < 22.0:
+                                continue
+                            if max(length1, length2) > 76.0:
+                                continue
+                            if max(length1, length2) / max(1.0, min(length1, length2)) > 1.55:
+                                continue
+
+                            predicted_x = ax + v1x + v2x
+                            predicted_y = ay + v1y + v2y
+                            closure_error = (
+                                float((ox - predicted_x) ** 2 + (oy - predicted_y) ** 2)
+                            ) ** 0.5
+                            if closure_error > max(6.0, 0.14 * min(length1, length2)):
+                                continue
+
+                            dot = float(v1x * v2x + v1y * v2y)
+                            cosine = dot / max(1.0, length1 * length2)
+                            cosine = max(-1.0, min(1.0, cosine))
+                            try:
+                                angle = __import__('math').degrees(__import__('math').acos(cosine))
+                            except BaseException:
+                                angle = 90.0
+                            if angle < 45.0 or angle > 140.0:
+                                continue
+                            area = abs(float(v1x * v2y - v1y * v2x))
+                            if area < 0.55 * length1 * length2:
+                                continue
+
+                            right = first if first[2][0] > second[2][0] else second
+                            left = second if right is first else first
+                            score = (
+                                closure_error
+                                + abs(length1 - length2) * 0.20
+                                + abs(first[2][1] - second[2][1]) * 0.15
+                            )
+                            accepted = (
+                                score,
+                                [anchor[1], right[1], left[1], opposite[1]],
+                                frozenset((anchor[0], right[0], left[0], opposite[0])),
+                            )
+                            break
+                        if accepted is not None:
+                            break
+                    if accepted is None or accepted[2] in seen_groups:
+                        continue
+                    seen_groups.add(accepted[2])
+                    groups.append(accepted)
+
+    groups.sort(
+        key=lambda item: (
+            float(item[0]),
+            _qqfarm_quad_land_center(item[1][0])[1],
+            _qqfarm_quad_land_center(item[1][0])[0],
+        )
+    )
+    return [item[1] for item in groups]
+
+
+def _wrap_quad_empty_land_groups(fn, name=''):
+    """Use exhaustive local-lattice search, with the native finder as fallback."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_quad_group_exhaustive_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            call_args = list(args or ())
+            lands = kwargs.get('lands')
+            if lands is None and len(call_args) >= 2:
+                lands = call_args[1]
+            exhaustive = _qqfarm_find_all_quad_empty_land_groups(lands)
+            if exhaustive:
+                try:
+                    _write(
+                        'v227 exhaustive 2x2 lattice scan: empty_lands=' +
+                        str(len(list(lands or []))) + ', local_groups=' +
+                        str(len(exhaustive)) + ', name=' + str(name)
+                    )
+                except BaseException:
+                    pass
+                return exhaustive
+            try:
+                native = fn(*args, **kwargs)
+            except BaseException:
+                native = []
+            try:
+                _write(
+                    'v227 exhaustive 2x2 lattice scan: no local group; native_fallback=' +
+                    str(len(list(native or []))) + ', name=' + str(name)
+                )
+            except BaseException:
+                pass
+            return native
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'quad_empty_land_groups_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_quad_group_exhaustive_wrapped__ = True
+        _wrapped.__qqfarm_quad_group_exhaustive_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
 def _wrap_quad_act_seed_transaction(fn, name=''):
     """Retry the native 2x2 select-seed-confirm transaction once on a transient miss."""
     try:
@@ -2191,6 +2400,21 @@ def _wrap_quad_act_seed_transaction(fn, name=''):
                 before_count = len(list(remain_lands or []))
             except BaseException:
                 before_count = 0
+            if before_count < 4:
+                if bot is not None:
+                    try:
+                        setattr(bot, '_qqfarm_quad_skip_and_continue', True)
+                    except BaseException:
+                        pass
+                try:
+                    _write(
+                        'v226 skip 2x2 seed: fewer than four empty lands count=' +
+                        str(before_count) + '; continue normal backpack seeds name=' +
+                        str(name)
+                    )
+                except BaseException:
+                    pass
+                return False, list(remain_lands or [])
 
             marker = object()
             old_threshold = marker
@@ -2266,7 +2490,26 @@ def _wrap_quad_act_seed_transaction(fn, name=''):
                         __import__('time').sleep(0.18)
                 except BaseException:
                     pass
-                return _call_once(True)
+                retry_result = _call_once(True)
+                if _confirmed(retry_result):
+                    if (
+                        isinstance(retry_result, (tuple, list))
+                        and retry_result
+                        and not bool(retry_result[0])
+                        and len(retry_result) >= 2
+                    ):
+                        return True, retry_result[1]
+                    return retry_result
+                if bot is not None:
+                    try:
+                        setattr(bot, '_qqfarm_quad_skip_and_continue', True)
+                        _write(
+                            'v226 2x2 transaction failed twice; mark special seed to skip '
+                            'and continue normal backpack seeds name=' + str(name)
+                        )
+                    except BaseException:
+                        pass
+                return retry_result
             finally:
                 try:
                     if old_threshold is marker:
@@ -2599,7 +2842,12 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
             marker = object()
             old_active = marker
             old_profile = marker
+            quad_skip_flag = '_qqfarm_quad_skip_and_continue'
             if bot is not None:
+                try:
+                    delattr(bot, quad_skip_flag)
+                except BaseException:
+                    pass
                 try:
                     old_active = getattr(bot, '_qqfarm_backpack_profile_active')
                 except BaseException:
@@ -2619,6 +2867,49 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
             profile = {}
             try:
                 result = fn(*tuple(call_args), **call_kwargs)
+                skip_quad = False
+                if bot is not None:
+                    try:
+                        skip_quad = bool(getattr(bot, quad_skip_flag, False))
+                    except BaseException:
+                        skip_quad = False
+                if skip_quad:
+                    try:
+                        delattr(bot, quad_skip_flag)
+                    except BaseException:
+                        pass
+                    old_quad_switches = {}
+                    try:
+                        for switch_name in ('enable_quad_act_seeds', 'quad_act_seeds'):
+                            try:
+                                old_quad_switches[switch_name] = getattr(bot, switch_name)
+                            except BaseException:
+                                old_quad_switches[switch_name] = marker
+                            try:
+                                setattr(bot, switch_name, False)
+                            except BaseException:
+                                pass
+                        try:
+                            _write(
+                                'v226 skip failed 2x2 seed and continue normal seeds '
+                                'in the same backpack round name=' + str(name)
+                            )
+                        except BaseException:
+                            pass
+                        result = fn(*tuple(call_args), **call_kwargs)
+                    finally:
+                        for switch_name, old_value in old_quad_switches.items():
+                            try:
+                                if old_value is marker:
+                                    delattr(bot, switch_name)
+                                else:
+                                    setattr(bot, switch_name, old_value)
+                            except BaseException:
+                                pass
+                        try:
+                            delattr(bot, quad_skip_flag)
+                        except BaseException:
+                            pass
             finally:
                 elapsed = max(0.0, __import__('time').perf_counter() - start)
                 if bot is not None:
@@ -4838,6 +5129,7 @@ _VIP_BUSINESS_FUNC_NAMES = set([
     '_plant_seed_over_lands',
     '_run_auto_fertilize_after_planting',
     '_run_backpack_seed_priority_planting',
+    '_find_quad_empty_land_groups',
     '_try_plant_quad_act_seeds',
     'get_current_player_level',
 ]).union(globals().get('_BACKPACK_PROFILE_FUNC_NAMES', set()))
@@ -6622,6 +6914,42 @@ def _friend_guard_help_button_match(frame):
         match = _friend_guard_match_template(
             frame, template_path, (0.20, 0.55, 0.80, 0.90), 0.44, 0.22
         )
+        if not bool(match.get('matched')):
+            shape = getattr(frame, 'shape', None)
+            height = int(shape[0]) if shape is not None and len(shape) >= 2 else 0
+            width = int(shape[1]) if shape is not None and len(shape) >= 2 else 0
+            center = match.get('center') if isinstance(match, dict) else None
+            center_ok = bool(
+                width > 0
+                and height > 0
+                and isinstance(center, (tuple, list))
+                and len(center) >= 2
+                and (width * 0.34) <= float(center[0]) <= (width * 0.66)
+                and (height * 0.64) <= float(center[1]) <= (height * 0.82)
+            )
+            bounds_fn = globals().get('_friend_selected_carousel_card_bounds')
+            selected_bounds = bounds_fn(frame) if callable(bounds_fn) else None
+            home_path = globals().get(
+                '_FRIEND_HOME_TEMPLATE_PATH',
+                os_module.path.join(os_module.getcwd(), 'friend_home_button.png'),
+            )
+            home = _friend_guard_match_template(
+                frame, home_path, (0.68, 0.52, 1.0, 0.86), 1.1, 1.1
+            )
+            soft_help = bool(
+                center_ok
+                and isinstance(selected_bounds, dict)
+                and float(match.get('gray', 0.0) or 0.0) >= 0.36
+                and float(match.get('edge', 0.0) or 0.0) >= 0.18
+                and float(home.get('gray', 0.0) or 0.0) >= 0.72
+                and float(home.get('edge', 0.0) or 0.0) >= 0.18
+            )
+            if soft_help:
+                match = dict(match)
+                match['matched'] = True
+                match['match_mode'] = 'soft-help+friend-footer'
+                match['home_gray'] = float(home.get('gray', 0.0) or 0.0)
+                match['home_edge'] = float(home.get('edge', 0.0) or 0.0)
         globals()['_FRIEND_HELP_ALL_LAST_MATCH'] = match
         return match
     except BaseException:
@@ -6810,10 +7138,20 @@ def _friend_guard_help_action_allowed(context, game_frame, match_center):
             '_friend_guard_list_prequalified_entry_active'
         )
         approved = bool(approved_fn(context)) if callable(approved_fn) else False
+        if not approved:
+            refresh_fn = globals().get('_friend_guard_list_refresh_prequalification')
+            if callable(refresh_fn):
+                try:
+                    refresh_fn(context, game_frame)
+                    approved = bool(
+                        approved_fn(context) if callable(approved_fn) else False
+                    )
+                except BaseException:
+                    approved = False
         if approved:
             try:
                 _write(
-                    'v142 guard-list help allowed by native row approval '
+                    'v229 guard-list help allowed by current carousel identity '
                     'center=' + repr(match_center)
                 )
             except BaseException:
@@ -7057,6 +7395,47 @@ def _invoke_friend_guard_help_visual_click(context, fresh_frame):
         match = match_fn(current_frame)
         if not isinstance(match, dict) or not bool(match.get('matched')):
             return False
+        card_key = None
+        try:
+            bounds_fn = globals().get('_friend_selected_carousel_card_bounds')
+            selected_bounds = bounds_fn(current_frame) if callable(bounds_fn) else None
+            if isinstance(selected_bounds, dict):
+                card_key = tuple(int(selected_bounds.get(key, 0) or 0) for key in (
+                    'left', 'right', 'top', 'bottom'
+                ))
+        except BaseException:
+            card_key = None
+        try:
+            time_module = globals().get('time')
+            now_fn = getattr(time_module, 'time', None)
+            now_ts = float(now_fn() if callable(now_fn) else __import__('time').time())
+        except BaseException:
+            now_ts = 0.0
+        if card_key is not None:
+            try:
+                blocked_card = getattr(
+                    context, '_qqfarm_friend_help_visual_unresolved_card', None
+                )
+                blocked_until = float(getattr(
+                    context, '_qqfarm_friend_help_visual_unresolved_until', 0.0
+                ) or 0.0)
+            except BaseException:
+                blocked_card, blocked_until = None, 0.0
+            if blocked_card == card_key and blocked_until > now_ts:
+                try:
+                    _write(
+                        'v228 suppress unchanged friend help false-positive card=' +
+                        repr(card_key) + ' until=' + str(blocked_until)
+                    )
+                except BaseException:
+                    pass
+                return False
+            if blocked_card is not None and blocked_card != card_key:
+                try:
+                    setattr(context, '_qqfarm_friend_help_visual_unresolved_card', None)
+                    setattr(context, '_qqfarm_friend_help_visual_unresolved_until', 0.0)
+                except BaseException:
+                    pass
         gate_fn = globals().get('_friend_guard_help_action_allowed')
         if callable(gate_fn):
             match_center = match.get('center')
@@ -7100,12 +7479,30 @@ def _invoke_friend_guard_help_visual_click(context, fresh_frame):
                    ' disappeared=' + repr(disappeared) +
                    ' post=' + repr(post_match)[:220])
             if disappeared:
+                try:
+                    setattr(context, '_qqfarm_friend_help_visual_unresolved_card', None)
+                    setattr(context, '_qqfarm_friend_help_visual_unresolved_until', 0.0)
+                except BaseException:
+                    pass
                 return True
             if not isinstance(post_match, dict):
                 return False
             current_frame = next_frame
             match = post_match
-        _write('v70 friend visual help unresolved after 3 verified clicks')
+        try:
+            if card_key is not None:
+                setattr(context, '_qqfarm_friend_help_visual_unresolved_card', card_key)
+                setattr(
+                    context,
+                    '_qqfarm_friend_help_visual_unresolved_until',
+                    float(now_ts) + 15.0,
+                )
+        except BaseException:
+            pass
+        _write(
+            'v228 friend visual help unresolved after 3 verified clicks; '
+            'suppress unchanged card=' + repr(card_key)
+        )
         return False
     except BaseException as e:
         try:
@@ -8902,6 +9299,28 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
         limit = 12
     limit = max(1, min(50, limit))
     try:
+        known_actionable_count = max(0, int(getattr(
+            context, '_qqfarm_friend_list_visible_candidate_count', 0
+        ) or 0))
+    except BaseException:
+        known_actionable_count = 0
+    try:
+        configured_guard_gap_budget = int(getattr(
+            context, 'friend_chain_guard_gap_scan_budget', 6
+        ) or 6)
+    except BaseException:
+        configured_guard_gap_budget = 6
+    configured_guard_gap_budget = max(2, min(limit, configured_guard_gap_budget))
+    guard_gap_scan_budget = min(
+        limit,
+        max(
+            configured_guard_gap_budget
+            if guard_enabled and guard_mode == 'friend_guard_list'
+            else 1,
+            known_actionable_count * 2,
+        ),
+    )
+    try:
         action_poll_limit = int(getattr(context, 'friend_chain_action_poll_limit', 16) or 16)
     except BaseException:
         action_poll_limit = 16
@@ -9282,7 +9701,13 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
     # stable and every visible steal/help action on that same friend is finished.
     if last_label:
         try:
-            initial_friend_recheck = bool(
+            extended_entry_grace = bool(getattr(
+                context, '_qqfarm_friend_entry_extended_action_grace', False
+            ))
+        except BaseException:
+            extended_entry_grace = False
+        try:
+            guard_entry_still_prequalified = bool(
                 guard_enabled
                 and guard_mode == 'friend_guard_list'
                 and callable(globals().get(
@@ -9291,7 +9716,10 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                 and globals()['_friend_guard_list_prequalified_entry_active'](context)
             )
         except BaseException:
-            initial_friend_recheck = False
+            guard_entry_still_prequalified = False
+        initial_friend_recheck = bool(
+            extended_entry_grace or guard_entry_still_prequalified
+        )
         (
             frame,
             drained_actions,
@@ -9842,8 +10270,28 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                 # retry this same friend instead of skipping to later cards.
                 result['reason'] = 'friend-surface-not-ready'
                 break
-            # The ordered action block ends at the first stable friend surface
-            # with no steal/help button.
+            # A friend-list page can contain several known actionable rows with
+            # ordinary friends between them in the bottom carousel.  Continue a
+            # bounded number of stable no-action gaps instead of returning home at
+            # the first gap and skipping later approved friends.
+            continue_known_gap = bool(
+                guard_enabled
+                and guard_mode == 'friend_guard_list'
+                and (index + 1) < guard_gap_scan_budget
+            )
+            if continue_known_gap:
+                result['reason'] = 'known-list-no-action-gap-continue'
+                if callable(write_fn):
+                    try:
+                        write_fn(
+                            'v228 stable no-action friend; continue adjacent scan '
+                            'move=' + str(result.get('moves', 0)) + '/' +
+                            str(guard_gap_scan_budget) + ', known_rows=' +
+                            str(known_actionable_count)
+                        )
+                    except BaseException:
+                        pass
+                continue
             result['exhausted'] = True
             result['reason'] = 'first-no-action-friend'
             break
@@ -11131,7 +11579,7 @@ def _friend_guard_friend_ui_state(frame):
             frame, home_path, (0.68, 0.52, 1.0, 0.86), 0.68, 0.30
         )
         home_is_strong_soft_edge = bool(
-            float(home.get('gray', 0.0) or 0.0) >= 0.78
+            float(home.get('gray', 0.0) or 0.0) >= 0.74
             and float(home.get('edge', 0.0) or 0.0) >= 0.18
         )
         if home_is_strong_soft_edge and not bool(home.get('matched')):
@@ -12655,6 +13103,10 @@ def _patch_vip_business_loaded(tag=''):
                             )
                         elif n == '_match_template_center':
                             new, ok = _wrap_planting_template_center_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_find_quad_empty_land_groups':
+                            new, ok = _wrap_quad_empty_land_groups(
                                 old, prefix + '.' + n
                             )
                         elif n == '_try_plant_quad_act_seeds':
