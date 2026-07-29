@@ -47,41 +47,85 @@ def call_powershell_function(name, *args):
 
 
 class LauncherStabilityTests(unittest.TestCase):
-    def test_launcher_forces_close_reopen_periodic_restart_off(self):
+    def test_launcher_file_parses_in_windows_powershell(self):
+        launcher_escaped = str(LAUNCHER).replace("'", "''")
+        command = (
+            "$tokens=$null; $errors=$null; "
+            f"[void][System.Management.Automation.Language.Parser]::ParseFile('{launcher_escaped}', [ref]$tokens, [ref]$errors); "
+            "if ($errors.Count -gt 0) { $errors | ForEach-Object { Write-Error $_.Message }; exit 1 }"
+        )
+        completed = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-Command", command],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
+
+    def test_launcher_does_not_rewrite_user_settings(self):
         text = LAUNCHER.read_text(encoding="utf-8-sig")
-        self.assertIn("Disable-CloseReopenPeriodicRestart", text)
-        self.assertIn("enable_periodic_restart = False", text)
-        self.assertIn(
-            "Disable-CloseReopenPeriodicRestart (Join-Path $LegacyProfile 'config-multi.ini')",
-            text,
-        )
-        self.assertIn(
-            "Disable-CloseReopenPeriodicRestart (Join-Path $LegacyPortable 'config-multi.ini')",
-            text,
-        )
-        self.assertIn(
-            r"Disable-PeriodicRestartJson (Join-Path $CurrentProfile 'instances\default\configs\config.json')",
-            text,
-        )
-        self.assertIn(
-            r"Disable-PeriodicRestartJson (Join-Path $CurrentPortable 'instances\default\configs\config.json')",
-            text,
+        self.assertNotIn("Disable-CloseReopenPeriodicRestart", text)
+        self.assertNotIn("Disable-PeriodicRestartJson", text)
+        self.assertNotIn("enable_periodic_restart = False", text)
+        self.assertIn("Sync-LegacyUserConfig", text)
+
+    def test_generic_profile_sync_excludes_legacy_user_config(self):
+        self.assertEqual(
+            "True",
+            call_powershell_function("Test-ExcludedRelativePath", "config-multi.ini"),
         )
 
-    def test_periodic_restart_json_function_disables_restart_task(self):
+    def test_config_encoding_normalizer_removes_only_utf8_bom(self):
         text = LAUNCHER.read_text(encoding="utf-8-sig")
-        function_text = extract_powershell_function(text, "Disable-PeriodicRestartJson")
+        function_text = extract_powershell_function(text, "Remove-Utf8BomFromConfig")
         with tempfile.TemporaryDirectory() as temp_dir:
-            config_path = Path(temp_dir) / "config.json"
-            config_path.write_text(
-                json.dumps({"tasks": {"restart": {"enabled": True}}}),
+            config_path = Path(temp_dir) / "config-multi.ini"
+            content = "[planting]\r\npreferred_crop = 金花茶\r\nplayer_level = 121\r\n".encode("utf-8")
+            config_path.write_bytes(b"\xef\xbb\xbf" + content)
+            escaped = str(config_path).replace("'", "''")
+            command = function_text + "\nRemove-Utf8BomFromConfig -Path '" + escaped + "'"
+            completed = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-Command", command],
+                check=False,
+                capture_output=True,
+                text=True,
                 encoding="utf-8",
             )
-            escaped = str(config_path).replace("'", "''")
+            self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
+            self.assertEqual(content, config_path.read_bytes())
+
+    def test_launcher_normalizes_config_encoding_before_profile_sync(self):
+        text = LAUNCHER.read_text(encoding="utf-8-sig")
+        runtime = text[text.index("New-Item -ItemType Directory -Force -Path $LogDir,$HookLogDir"):]
+        normalize_index = runtime.index("Remove-Utf8BomFromConfig -Path $LegacyProfileConfig")
+        sync_index = runtime.index("Sync-LegacyUserConfig `")
+        self.assertLess(normalize_index, sync_index)
+
+    def test_legacy_user_config_sync_keeps_active_profile_authoritative_and_byte_exact(self):
+        text = LAUNCHER.read_text(encoding="utf-8-sig")
+        function_text = extract_powershell_function(text, "Sync-LegacyUserConfig")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            active = root / "active.ini"
+            portable = root / "portable.ini"
+            active_bytes = (
+                "[instance.1.bot]\r\nenable_rest_window = False\r\n"
+                "[instance.1.planting]\r\npreferred_crop = 金花茶\r\n"
+            ).encode("utf-8-sig")
+            active.write_bytes(active_bytes)
+            portable.write_text(
+                "[instance.1.bot]\nenable_rest_window = True\n",
+                encoding="utf-8",
+            )
+            active_escaped = str(active).replace("'", "''")
+            portable_escaped = str(portable).replace("'", "''")
             command = (
                 function_text
-                + "\nDisable-PeriodicRestartJson -ConfigPath '"
-                + escaped
+                + "\nSync-LegacyUserConfig -ProfileConfig '"
+                + active_escaped
+                + "' -PortableConfig '"
+                + portable_escaped
                 + "'"
             )
             completed = subprocess.run(
@@ -92,8 +136,39 @@ class LauncherStabilityTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
-            data = json.loads(config_path.read_text(encoding="utf-8-sig"))
-            self.assertFalse(data["tasks"]["restart"]["enabled"])
+            self.assertEqual(active_bytes, active.read_bytes())
+            self.assertEqual(active_bytes, portable.read_bytes())
+
+    def test_legacy_user_config_sync_restores_only_when_active_profile_is_missing(self):
+        text = LAUNCHER.read_text(encoding="utf-8-sig")
+        function_text = extract_powershell_function(text, "Sync-LegacyUserConfig")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            active = root / "missing" / "active.ini"
+            portable = root / "portable.ini"
+            portable_bytes = (
+                "[instance.1.bot]\r\nenable_rest_window = False\r\n"
+            ).encode("utf-8-sig")
+            portable.write_bytes(portable_bytes)
+            active_escaped = str(active).replace("'", "''")
+            portable_escaped = str(portable).replace("'", "''")
+            command = (
+                function_text
+                + "\nSync-LegacyUserConfig -ProfileConfig '"
+                + active_escaped
+                + "' -PortableConfig '"
+                + portable_escaped
+                + "'"
+            )
+            completed = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-Command", command],
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
+            self.assertEqual(portable_bytes, active.read_bytes())
 
     def test_known_native_faults_are_restartable(self):
         self.assertEqual("restart", call_powershell_function("Get-AssistantExitDisposition", -1073741819))

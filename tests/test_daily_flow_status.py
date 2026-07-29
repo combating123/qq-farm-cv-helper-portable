@@ -182,8 +182,11 @@ class DailyFlowStatusTests(unittest.TestCase):
             namespace = self.build_namespace(temp_dir)
             for flow in ("freebenefits", "task", "share", "svip"):
                 target = "1000000001" if flow == "share" else ""
+                reason = (
+                    "verified-direct-contact-send-v2" if flow == "share" else ""
+                )
                 self.assertTrue(namespace["_daily_flow_mark_status"](
-                    flow, "success", target=target
+                    flow, "success", target=target, reason=reason
                 ))
             for flow in ("freebenefits", "task", "share", "svip"):
                 target = "1000000001" if flow == "share" else ""
@@ -234,7 +237,7 @@ class DailyFlowStatusTests(unittest.TestCase):
 
 
 
-    def test_repair_migrates_seeded_task_and_benefits_but_preserves_share(self):
+    def test_repair_clears_seeded_task_benefits_and_unverified_share(self):
         import json
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -288,22 +291,22 @@ class DailyFlowStatusTests(unittest.TestCase):
             status = json.loads(status_path.read_text(encoding="utf-8"))
             self.assertEqual("pending", status["flows"]["task"]["status"])
             self.assertEqual("pending", status["flows"]["freebenefits"]["status"])
-            self.assertEqual("success", status["flows"]["share"]["status"])
+            self.assertEqual("pending", status["flows"]["share"]["status"])
             counters = json.loads(counters_path.read_text(encoding="utf-8"))
             self.assertEqual("", counters["task_last_date"])
             self.assertEqual("", counters["freebenefits_last_date"])
-            self.assertEqual(today, counters["share_last_date"])
+            self.assertEqual("", counters["share_last_date"])
             self.assertEqual("", counters["instances"]["1"]["task_last_date"])
             self.assertEqual(
                 "", counters["instances"]["1"]["freebenefits_last_date"]
             )
             self.assertEqual(
-                today, counters["instances"]["1"]["share_last_date"]
+                "", counters["instances"]["1"]["share_last_date"]
             )
 
 
 
-    def test_same_day_share_date_is_preserved_to_prevent_duplicate_send(self):
+    def test_same_day_share_date_without_send_proof_is_cleared(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             namespace = self.build_namespace(temp_dir)
             today = time.strftime("%Y-%m-%d")
@@ -312,11 +315,11 @@ class DailyFlowStatusTests(unittest.TestCase):
                 daily_flow_retry_counts={"share": 0},
             )
 
-            self.assertTrue(namespace["_daily_flow_context_success_today"](
+            self.assertFalse(namespace["_daily_flow_context_success_today"](
                 bot, "share", today=today
             ))
-            self.assertEqual(today, bot.share_last_date)
-            self.assertTrue(namespace["_daily_flow_success_today"](
+            self.assertEqual("", bot.share_last_date)
+            self.assertFalse(namespace["_daily_flow_success_today"](
                 "share", target="1000000001", today=today
             ))
 
@@ -462,6 +465,47 @@ class DailyFlowStatusTests(unittest.TestCase):
             self.assertTrue(module.should_run_daily_share(bot))
             self.assertEqual("", bot.share_last_date)
             self.assertIn(("should-share",), events)
+
+    def test_cleared_share_red_dot_keeps_flow_due_without_send_proof(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            namespace = self.build_namespace(temp_dir)
+            events = []
+            module = self.build_module(events)
+            bot = types.SimpleNamespace(
+                share_last_date="",
+                daily_flow_retry_counts={
+                    "freebenefits": 0, "task": 0, "svip": 0, "share": 0,
+                },
+            )
+            namespace["_daily_flow_entry_red_dot_state"] = (
+                lambda context, flow: False if flow == "share" else None
+            )
+            patch = namespace["_patch_daily_flow_status_for_module"]
+            self.assertGreater(patch(module), 0)
+
+            self.assertTrue(module.should_run_daily_share(bot))
+            self.assertEqual("", bot.share_last_date)
+            self.assertFalse(namespace["_daily_flow_success_today"](
+                "share", target="1000000001"
+            ))
+            self.assertIn(("should-share",), events)
+
+    def test_unverified_share_success_write_is_downgraded_to_pending(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            namespace = self.build_namespace(temp_dir)
+            today = time.strftime("%Y-%m-%d")
+            self.assertTrue(namespace["_daily_flow_mark_status"](
+                "share", "success", target="1000000001",
+                reason="entry-red-dot-cleared", today=today,
+            ))
+            status = namespace["_daily_flow_read_status"](
+                namespace["_daily_flow_status_paths"]()[0]
+            )
+            self.assertEqual("pending", status["flows"]["share"]["status"])
+            self.assertEqual(
+                "share-success-requires-v2-proof",
+                status["flows"]["share"]["reason"],
+            )
 
     def test_cleared_red_dot_marks_flow_success_without_reopening_ui(self):
         with tempfile.TemporaryDirectory() as temp_dir:
