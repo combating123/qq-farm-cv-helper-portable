@@ -4,8 +4,8 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.7-32C98A?style=flat-square)](#版本与更新)
-  [![Tests](https://img.shields.io/badge/回归测试-445%20passed-17345F?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.8-32C98A?style=flat-square)](#版本与更新)
+  [![Tests](https://img.shields.io/badge/回归测试-480%20passed-17345F?style=flat-square)](#版本与更新)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
   [![Portable](https://img.shields.io/badge/交付方式-单目录便携-F2A93B?style=flat-square)](#便携目录与数据保留)
@@ -233,10 +233,11 @@ CV农场助手/
 
 ## 版本与更新
 
-当前稳定版本为 **v1.4.7**。项目采用独立 Git 标签和 Release 记录每轮公开修改，不再只保留一个无法区分迭代历史的安装包。
+当前稳定版本为 **v1.4.8**。项目采用独立 Git 标签和 Release 记录每轮公开修改，不再只保留一个无法区分迭代历史的安装包。
 
 | 版本 | 重点变化 | 验证 |
 | --- | --- | --- |
+| [v1.4.8](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.8) | 用户设置字节级保留、自家空地优先种满并施肥、等级末位纠错、分享四项证据闭环与好友链收敛 | 480 项测试 |
 | [v1.4.7](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.7) | 商城每日福利包装幂等、递归异常退避；保留全土地局部 2×2 田字型枚举 | 445 项测试 |
 | [v1.4.6](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.6) | 24 块土地全候选局部田字型枚举、普通种子降级、当前护主卡复核与中间无动作好友继续扫描 | 440 项测试 |
 | [v1.4.5](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.5) | 2×2 特殊种子事务级确认重试；好友底栏被裁剪时仍依据回家按钮与可见偷取/务农入口执行动作 | 432 项测试 |
