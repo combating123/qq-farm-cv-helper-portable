@@ -1,4 +1,4 @@
-import ast
+﻿import ast
 import types
 import unittest
 from pathlib import Path
@@ -1025,6 +1025,34 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertIs(predicate, found)
         self.assertIn("check_friend_farm_bottom_help_all_entry", source)
 
+    def test_visual_friend_help_stops_at_durable_daily_quota(self):
+        namespace = load_functions("_invoke_friend_guard_help_visual_click")
+        clicks = []
+        logs = []
+        frame = object()
+        namespace.update({
+            "_friend_help_counter_snapshot": lambda context: 500,
+            "_friend_guard_help_button_match": (
+                lambda candidate: {"matched": True, "center": (213, 597)}
+            ),
+            "_invoke_friend_guard_match_coordinate_click": (
+                lambda context, candidate, match: clicks.append(match) or True
+            ),
+            "_friend_guard_sleep": lambda seconds: None,
+            "_get_frame_from_bot": lambda context: frame,
+            "_write": lambda message: logs.append(message),
+        })
+        scheduler = types.SimpleNamespace(friend_help_daily_limit=500)
+
+        result = namespace["_invoke_friend_guard_help_visual_click"](
+            scheduler, frame
+        )
+
+        self.assertFalse(result)
+        self.assertEqual([], clicks)
+        self.assertTrue(scheduler._qqfarm_friend_help_quota_exhausted)
+        self.assertTrue(any("daily quota exhausted" in message for message in logs))
+
     def test_help_visual_click_verifies_button_disappears_after_click(self):
         namespace = load_functions("_invoke_friend_guard_help_visual_click")
         self.assertIn("_invoke_friend_guard_help_visual_click", namespace)
@@ -1138,6 +1166,52 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         )
         self.assertTrue(active)
         self.assertEqual([frame], clicks)
+
+    def test_visual_watchdog_skips_slow_native_probe_when_visual_probe_is_available(self):
+        namespace = load_functions("_apply_visual_friend_route_watchdog")
+        frame = object()
+        visual_probes = []
+        native_probes = []
+        chain_calls = []
+        namespace.update({
+            "_friend_watchdog_now": lambda: 100.0,
+            "_get_frame_from_bot": lambda context: frame,
+            "_friend_guard_friend_ui_state": lambda value: True,
+            "_invoke_friend_visual_actions_before_home": (
+                lambda context, value: visual_probes.append(value) or (False, "")
+            ),
+            "_invoke_friend_actions_before_home": (
+                lambda context, value: native_probes.append(value) or (False, "")
+            ),
+            "_run_friend_continuation_chain": (
+                lambda context, value, label="": chain_calls.append((value, label))
+                or {
+                    "moves": 0,
+                    "actions": 0,
+                    "last_label": label,
+                    "frame": value,
+                    "exhausted": False,
+                    "reason": "friend-surface-not-ready",
+                }
+            ),
+            "_friend_chain_should_block_troublemaker": lambda context: True,
+            "_write": lambda message: None,
+            "_FRIEND_HOME_LAST_MATCH": {"matched": True},
+            "_FRIEND_LIST_LAST_MATCH": {"matched": False},
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_cycle_seen=True,
+            _qqfarm_visual_friend_count=0,
+        )
+
+        result = namespace["_apply_visual_friend_route_watchdog"](
+            lambda: None, scheduler, "FarmBotCV.run_cycle"
+        )
+
+        self.assertFalse(result)
+        self.assertEqual([frame], visual_probes)
+        self.assertEqual([], native_probes)
+        self.assertEqual([(frame, "")], chain_calls)
 
     def test_visual_watchdog_rechecks_actions_then_returns_home_after_a_completed_action(self):
         namespace = load_functions("_apply_visual_friend_route_watchdog")
@@ -2000,6 +2074,32 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             self.assertTrue(namespace["_friend_guard_help_button_match"](help_frame)["matched"])
             self.assertFalse(namespace["_friend_guard_steal_button_match"](help_frame)["matched"])
 
+
+    def test_friend_continuation_stops_before_navigation_when_help_quota_exhausted(self):
+        namespace = load_functions(
+            "_friend_help_quota_active",
+            "_run_friend_continuation_chain",
+        )
+        moves = []
+        frame = object()
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": (
+                lambda context, candidate, label="": moves.append(candidate) or (True, "next")
+            ),
+            "_invoke_friend_actions_before_home": lambda context, candidate: (False, ""),
+            "_get_frame_from_bot": lambda context: frame,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_help_quota_exhausted=True
+        )
+
+        result = namespace["_run_friend_continuation_chain"](scheduler, frame)
+
+        self.assertTrue(result["exhausted"])
+        self.assertEqual("friend-help-quota-exhausted", result["reason"])
+        self.assertEqual(0, result["moves"])
+        self.assertEqual([], moves)
 
     def test_friend_continuation_chain_processes_multiple_bottom_entries(self):
         namespace = load_functions("_run_friend_continuation_chain")
@@ -3174,6 +3274,196 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual(1, result["actions"])
         self.assertEqual(["adjacent"], events)
 
+    def test_friend_continuation_skips_slow_native_probe_when_visual_probe_is_available(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        calls = {"visual": 0, "native": 0}
+
+        def visual_probe(context, candidate):
+            calls["visual"] += 1
+            return False, ""
+
+        def native_probe(context, candidate):
+            calls["native"] += 1
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda *args, **kwargs: (True, "visual.adjacent-friend-card")
+            ),
+            "_invoke_friend_visual_actions_before_home": visual_probe,
+            "_invoke_friend_actions_before_home": native_probe,
+            "_get_frame_from_bot": lambda context: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_friend_navigation_signature": lambda candidate: (100, 100, 100),
+            "_friend_navigation_change_score": lambda signature, candidate: None,
+            "_restore_runtime_business_switches": lambda context: 0,
+            "_set_friend_chain_fast_interval": lambda context, active: True,
+            "_is_stop_requested_like": lambda context: False,
+            "_write": lambda message: None,
+        })
+
+        class Scheduler:
+            bottom_friend_list_help_all_limit = 1
+            friend_chain_action_poll_limit = 8
+            friend_chain_primary_navigation_poll_limit = 2
+            friend_chain_prefer_adjacent_navigation = True
+
+        result = namespace["_run_friend_continuation_chain"](
+            Scheduler(), frame, "visual.friend_help_all"
+        )
+
+        self.assertEqual("first-no-action-friend", result["reason"])
+        self.assertGreaterEqual(calls["visual"], 2)
+        self.assertEqual(
+            0,
+            calls["native"],
+            "a verified visual friend surface must not enter the multi-second native scan",
+        )
+
+    def test_native_help_claim_is_unverified_while_help_button_remains_visible(self):
+        namespace = load_functions("_invoke_friend_actions_before_home")
+        frame = object()
+        messages = []
+        captures = []
+
+        class Scheduler:
+            def check_help_all_entry(self, candidate):
+                return True
+
+        scheduler = Scheduler()
+        namespace.update({
+            "_invoke_friend_visual_actions_before_home": (
+                lambda owner, candidate: (False, "")
+            ),
+            "_friend_action_frame_without_bottom_bar": lambda candidate: candidate,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_invoke_friend_guard_action": (
+                lambda action, target, args, kwargs: action(args[-1])
+            ),
+            "_friend_help_counter_snapshot": lambda owner: 10,
+            "_get_frame_from_bot": (
+                lambda owner: captures.append(frame) or frame
+            ),
+            "_friend_guard_help_button_match": (
+                lambda candidate: {"matched": True, "center": (210, 640)}
+            ),
+            "_friend_guard_sleep": lambda seconds: None,
+            "_write": messages.append,
+        })
+
+        acted, label = namespace["_invoke_friend_actions_before_home"](
+            scheduler, frame
+        )
+
+        self.assertFalse(acted)
+        self.assertEqual("", label)
+        self.assertTrue(scheduler._qqfarm_friend_native_action_unverified)
+        self.assertGreaterEqual(len(captures), 1)
+        self.assertTrue(any("unverified" in message for message in messages))
+
+    def test_first_friend_does_not_navigate_after_unverified_native_help_claim(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        moves = []
+
+        def native_probe(owner, candidate):
+            owner._qqfarm_friend_native_action_unverified = True
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda *args, **kwargs: moves.append("adjacent")
+                or (True, "visual.adjacent-friend-card")
+            ),
+            "_invoke_friend_visual_actions_before_home": (
+                lambda owner, candidate: (False, "")
+            ),
+            "_invoke_friend_actions_before_home": native_probe,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda owner: True,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=2,
+            friend_chain_action_poll_limit=8,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            friend_chain_initial_idle_poll_min=4,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, ""
+        )
+
+        self.assertEqual([], moves)
+        self.assertEqual(0, result["moves"])
+        self.assertFalse(result["exhausted"])
+        self.assertEqual("initial-native-action-unverified", result["reason"])
+        self.assertTrue(scheduler._qqfarm_friend_chain_pending)
+
+    def test_guard_list_first_friend_runs_native_probe_before_advancing_after_visual_miss(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        events = []
+        calls = {"visual": 0, "native": 0}
+
+        def visual_probe(context, candidate):
+            calls["visual"] += 1
+            events.append("visual")
+            return False, ""
+
+        def native_probe(context, candidate):
+            calls["native"] += 1
+            events.append("native-help")
+            return True, "native.friend_help_all"
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda *args, **kwargs: events.append("navigate") or (False, "")
+            ),
+            "_invoke_friend_visual_actions_before_home": visual_probe,
+            "_invoke_friend_actions_before_home": native_probe,
+            "_get_frame_from_bot": lambda context: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_restore_runtime_business_switches": lambda context: 0,
+            "_set_friend_chain_fast_interval": lambda context, active: True,
+            "_is_stop_requested_like": lambda context: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda context: True,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=1,
+            friend_chain_action_poll_limit=8,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            friend_chain_initial_idle_poll_min=4,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, ""
+        )
+
+        self.assertGreaterEqual(calls["visual"], 2)
+        self.assertEqual(1, calls["native"])
+        self.assertGreaterEqual(result["actions"], 1)
+        self.assertEqual("native.friend_help_all", result["last_label"])
+        if "navigate" in events:
+            self.assertLess(events.index("native-help"), events.index("navigate"))
     def test_friend_continuation_runs_expensive_native_action_probe_only_once_per_friend(self):
         namespace = load_functions("_run_friend_continuation_chain")
         frame = object()
@@ -3210,6 +3500,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             friend_chain_action_poll_limit = 8
             friend_chain_primary_navigation_poll_limit = 2
             friend_chain_prefer_adjacent_navigation = True
+            friend_chain_allow_native_action_fallback = True
 
         result = namespace["_run_friend_continuation_chain"](
             Scheduler(), frame, "visual.friend_help_all"
@@ -3264,6 +3555,106 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual("", label)
         self.assertEqual([], native_calls)
 
+    def test_guard_list_initial_no_action_friend_advances_to_next_actionable_friend(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        first_frame = object()
+        second_frame = object()
+        third_frame = object()
+        moves = []
+        captures = iter((
+            first_frame, first_frame, first_frame, first_frame,
+            first_frame, first_frame, first_frame, first_frame,
+            first_frame, first_frame, first_frame, first_frame,
+            second_frame,
+            second_frame, second_frame, second_frame,
+            third_frame, third_frame, third_frame,
+        ))
+        acted_second = {"value": False}
+
+        def visual_action(context, candidate):
+            if candidate is second_frame and not acted_second["value"]:
+                acted_second["value"] = True
+                return True, "visual.friend_help_all"
+            return False, ""
+
+        namespace.update({
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda owner: True,
+            "_friend_guard_list_refresh_prequalification": lambda *args: True,
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda owner, candidate: moves.append(candidate)
+                or (True, "visual.adjacent-friend-card")
+            ),
+            "_invoke_friend_visual_actions_before_home": visual_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: next(captures, third_frame),
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_friend_navigation_signature": lambda candidate: None,
+            "_friend_navigation_change_score": lambda signature, candidate: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=3,
+            friend_chain_action_poll_limit=8,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            friend_chain_initial_idle_poll_min=8,
+            _qqfarm_guard_list_prequalified=True,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, first_frame, ""
+        )
+
+        self.assertGreaterEqual(len(moves), 2)
+        self.assertIs(first_frame, moves[0])
+        self.assertGreaterEqual(result["actions"], 1)
+        self.assertTrue(result["exhausted"])
+        self.assertEqual("first-no-action-friend", result["reason"])
+
+    def test_friend_continuation_advances_list_cursor_by_bottom_carousel_moves(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        moves = []
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda owner, candidate: moves.append(candidate)
+                or (True, "visual.adjacent-friend-card")
+            ),
+            "_invoke_friend_visual_actions_before_home": lambda *args: (False, ""),
+            "_invoke_friend_actions_before_home": lambda *args: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_friend_navigation_signature": lambda candidate: None,
+            "_friend_navigation_change_score": lambda signature, candidate: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=2,
+            friend_chain_action_poll_limit=8,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            _qqfarm_friend_list_visit_cursor=1,
+            _qqfarm_friend_list_visible_candidate_count=5,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, "visual.friend_help_all"
+        )
+
+        self.assertEqual(1, result["moves"])
+        self.assertEqual(2, scheduler._qqfarm_friend_list_visit_cursor)
     def test_friend_continuation_stops_at_first_verified_no_action_friend(self):
         namespace = load_functions("_run_friend_continuation_chain")
         frame = object()
@@ -3895,6 +4286,168 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual("visited", result)
         self.assertEqual([(365, 289, 428, 800)], clicks)
 
+    def test_friend_list_handler_never_advances_unconfirmed_pending_row(self):
+        namespace = load_functions("_handle_friend_list_surface")
+        clicks = []
+        logs = []
+        frame = types.SimpleNamespace(shape=(800, 428, 3))
+        rows = [
+            {"center": (365, 288)},
+            {"center": (365, 383)},
+        ]
+        namespace.update({
+            "_friend_list_visit_button_rows": lambda candidate: rows,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_row_match_score": lambda candidate, row_y: 0.95,
+            "_friend_guard_post_client_click": (
+                lambda x, y, width, height: clicks.append((x, y)) or True
+            ),
+            "_friend_watchdog_now": lambda: 100.0,
+            "_set_friend_chain_fast_interval": lambda context, active: True,
+            "_write": lambda message: logs.append(message),
+        })
+        scheduler = types.SimpleNamespace(_qqfarm_friend_list_visit_cursor=0)
+
+        results = [
+            namespace["_handle_friend_list_surface"](scheduler, frame)
+            for _ in range(4)
+        ]
+
+        self.assertEqual(
+            ["visited", "visited", "visited", "pending-row-backoff"],
+            results,
+        )
+        self.assertEqual([(365, 288)] * 3, clicks)
+        self.assertEqual(0, scheduler._qqfarm_friend_list_visit_cursor)
+        self.assertTrue(any("pending row retry" in message for message in logs))
+        self.assertTrue(any("pending row backoff" in message for message in logs))
+        self.assertFalse(any("pending row exhausted" in message for message in logs))
+
+    def test_pending_friend_row_reopens_list_after_entry_timeout_without_advancing(self):
+        namespace = load_functions("_handle_friend_list_surface")
+        clicks = []
+        fast_modes = []
+        logs = []
+        frame = types.SimpleNamespace(shape=(800, 428, 3))
+        rows = [
+            {"center": (365, 288)},
+            {"center": (365, 383)},
+        ]
+        namespace.update({
+            "_friend_list_visit_button_rows": lambda candidate: rows,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_row_match_score": lambda candidate, row_y: 0.95,
+            "_friend_guard_post_client_click": (
+                lambda x, y, width, height: clicks.append((x, y)) or True
+            ),
+            "_friend_watchdog_now": lambda: 100.0,
+            "_set_friend_chain_fast_interval": (
+                lambda context, active: fast_modes.append(active) or True
+            ),
+            "_friend_guard_clear_prequalification": lambda context: True,
+            "_write": lambda message: logs.append(message),
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_list_visit_cursor=0,
+            _qqfarm_friend_list_pending_cursor=0,
+            _qqfarm_friend_entry_pending=True,
+            _qqfarm_friend_entry_retry_count=3,
+            _qqfarm_friend_entry_clicked_ts=90.0,
+            _qqfarm_friend_entry_last_retry_ts=99.0,
+        )
+
+        result = namespace["_handle_friend_list_surface"](scheduler, frame)
+
+        self.assertEqual("pending-row-reopen", result)
+        self.assertEqual([(405, 94)], clicks)
+        self.assertEqual(0, scheduler._qqfarm_friend_list_visit_cursor)
+        self.assertFalse(scheduler._qqfarm_friend_entry_pending)
+        self.assertEqual(0, scheduler._qqfarm_friend_entry_retry_count)
+        self.assertEqual([False], fast_modes)
+        self.assertTrue(any("reopen recovery" in message for message in logs))
+
+    def test_friend_list_entry_cursor_advances_only_after_confirmed_transition(self):
+        namespace = load_functions("_commit_friend_list_entry_transition")
+        logs = []
+        namespace["_write"] = lambda message: logs.append(message)
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_entry_pending=True,
+            _qqfarm_friend_list_pending_cursor=4,
+            _qqfarm_friend_list_visit_cursor=4,
+            _qqfarm_friend_entry_retry_count=3,
+            _qqfarm_friend_entry_last_retry_ts=100.0,
+        )
+
+        committed = namespace["_commit_friend_list_entry_transition"](scheduler)
+
+        self.assertTrue(committed)
+        self.assertEqual(5, scheduler._qqfarm_friend_list_visit_cursor)
+        self.assertEqual(0, scheduler._qqfarm_friend_entry_retry_count)
+        self.assertEqual(0.0, scheduler._qqfarm_friend_entry_last_retry_ts)
+        self.assertTrue(any("confirmed cursor" in message for message in logs))
+    def test_friend_list_handler_reopens_from_first_visible_guard_row(self):
+        handler = load_function("_handle_friend_list_surface")
+        self.assertIsNotNone(handler)
+        clicks = []
+        rows = [
+            {"center": (365, 289), "rect": (331, 271, 399, 307)},
+            {"center": (367, 383), "rect": (333, 365, 401, 401)},
+        ]
+        handler.__globals__.update({
+            "_friend_list_visit_button_rows": lambda candidate: rows,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_row_match_score": lambda candidate, row_y: 0.95,
+            "_friend_guard_post_client_click": (
+                lambda x, y, width, height: clicks.append((x, y, width, height)) or True
+            ),
+            "_friend_watchdog_now": lambda: 100.0,
+            "_set_friend_chain_fast_interval": lambda context, active: True,
+            "_write": lambda message: None,
+        })
+
+        class Frame:
+            shape = (800, 428, 3)
+
+        scheduler = types.SimpleNamespace(_qqfarm_friend_list_visit_cursor=1)
+        result = handler(scheduler, Frame())
+
+        self.assertEqual("visited", result)
+        self.assertEqual([(365, 289, 428, 800)], clicks)
+        self.assertEqual(0, scheduler._qqfarm_friend_list_visit_cursor)
+        commit_namespace = load_functions("_commit_friend_list_entry_transition")
+        commit_namespace["_write"] = lambda message: None
+        self.assertTrue(
+            commit_namespace["_commit_friend_list_entry_transition"](scheduler)
+        )
+        self.assertEqual(1, scheduler._qqfarm_friend_list_visit_cursor)
+        self.assertEqual(2, scheduler._qqfarm_friend_list_visible_candidate_count)
+    def test_friend_list_visit_marks_transition_pending_until_friend_surface_arrives(self):
+        handler = load_function("_handle_friend_list_surface")
+        self.assertIsNotNone(handler)
+        rows = [{"center": (365, 289), "rect": (331, 271, 399, 307)}]
+        handler.__globals__.update({
+            "_friend_list_visit_button_rows": lambda candidate: rows,
+            "_guard_dog_ui_config_enabled": lambda: False,
+            "_guard_dog_detection_mode_config": lambda: "avatar_frame",
+            "_friend_guard_post_client_click": lambda *args, **kwargs: True,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_set_friend_chain_fast_interval": lambda context, active: True,
+            "_write": lambda message: None,
+        })
+
+        class Frame:
+            shape = (800, 428, 3)
+
+        scheduler = types.SimpleNamespace()
+        result = handler(scheduler, Frame())
+
+        self.assertEqual("visited", result)
+        self.assertTrue(scheduler._qqfarm_friend_entry_pending)
+        self.assertEqual(100.0, scheduler._qqfarm_friend_entry_clicked_ts)
+
     def test_friend_list_handler_closes_and_does_not_loop_when_no_action_rows(self):
         handler = load_function("_handle_friend_list_surface")
         self.assertIsNotNone(handler)
@@ -3953,7 +4506,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual([], original_calls)
 
 
-    def test_guard_dog_rejected_help_advances_to_adjacent_friend(self):
+    def test_guard_dog_rejected_initial_help_stays_on_current_friend(self):
         namespace = load_functions("_run_friend_continuation_chain")
         start_frame = object()
         next_frame = object()
@@ -3996,9 +4549,10 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             scheduler, start_frame, ""
         )
 
-        self.assertEqual([start_frame], moves)
-        self.assertEqual(1, result["moves"])
-        self.assertEqual("first-no-action-friend", result["reason"])
+        self.assertEqual([], moves)
+        self.assertEqual(0, result["moves"])
+        self.assertEqual("initial-guard-approval-pending", result["reason"])
+        self.assertTrue(getattr(scheduler, "_qqfarm_friend_chain_pending", False))
         self.assertFalse(
             getattr(scheduler, "_qqfarm_guard_dog_help_skipped", False)
         )
@@ -4299,6 +4853,39 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
                 today=today,
             ))
 
+    def test_single_harvest_forces_immediate_harvest_planting_quota(self):
+        namespace = load_functions(
+            "_note_runtime_single_harvest_outcome",
+            "_wrap_home_harvest_planting_trigger",
+        )
+        self.assertIn("_note_runtime_single_harvest_outcome", namespace)
+        self.assertIn("_wrap_home_harvest_planting_trigger", namespace)
+        scheduler = types.SimpleNamespace(planting_harvest_quota=0)
+        frame = object()
+        logs = []
+
+        def native_harvest(owner, game_frame):
+            namespace["_note_runtime_single_harvest_outcome"](
+                "??????????????????????????"
+            )
+            return False
+
+        namespace.update({
+            "_SINGLE_HARVEST_EVENT_TOKEN": 0,
+            "_friend_guard_context": lambda args, kwargs: scheduler,
+            "_write": logs.append,
+        })
+        wrapped, changed = namespace["_wrap_home_harvest_planting_trigger"](
+            native_harvest, "bot.flows.handle_home_harvest"
+        )
+
+        result = wrapped(scheduler, frame)
+
+        self.assertTrue(changed)
+        self.assertTrue(result)
+        self.assertEqual(1, scheduler.planting_harvest_quota)
+        self.assertTrue(any("single harvest queued planting" in line for line in logs))
+
     def test_deferred_troublemaker_runs_only_after_friend_chain_exhaustion(self):
         runner = load_function("_run_deferred_friend_troublemaker")
         self.assertIsNotNone(runner)
@@ -4364,6 +4951,146 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertTrue(
             getattr(scheduler, "_qqfarm_friend_chain_troublemaker_ran", False)
         )
+
+    def test_deferred_troublemaker_discovers_runtime_module_callable_when_context_cache_is_missing(self):
+        runner = load_function("_run_deferred_friend_troublemaker")
+        self.assertIsNotNone(runner)
+        frame = type("Frame", (), {"shape": (800, 428, 3)})()
+        calls = []
+
+        class Scheduler:
+            _qqfarm_friend_chain_pending = False
+            _qqfarm_friend_chain_exhausted = True
+
+        scheduler = Scheduler()
+
+        def runtime_troublemaker(target, game_frame):
+            calls.append((target, game_frame))
+            return "runtime-module-trouble-done"
+
+        runtime_module = types.SimpleNamespace(
+            _run_friend_daily_troublemaker=runtime_troublemaker,
+        )
+        runner.__globals__.update({
+            "sys": types.SimpleNamespace(
+                modules={"bot.runtime.friend_actions": runtime_module}
+            ),
+            "_invoke_friend_guard_action": (
+                lambda action, target, args, kwargs: action(*args, **kwargs)
+            ),
+            "_write": lambda message: None,
+        })
+
+        result = runner(scheduler, frame)
+
+        self.assertEqual("runtime-module-trouble-done", result)
+        self.assertEqual([(scheduler, frame)], calls)
+        self.assertIs(
+            runtime_troublemaker,
+            getattr(scheduler, "_qqfarm_friend_chain_deferred_troublemaker", None),
+        )
+
+    def test_deferred_troublemaker_retries_on_next_friend_until_counter_increments(self):
+        runner = load_function("_run_deferred_friend_troublemaker")
+        self.assertIsNotNone(runner)
+
+        class Frame:
+            shape = (800, 428, 3)
+
+        first_frame = Frame()
+        second_frame = Frame()
+        calls = []
+        moves = []
+        counter = {"value": 0}
+
+        class Scheduler:
+            _qqfarm_friend_chain_pending = False
+            _qqfarm_friend_chain_exhausted = True
+            _qqfarm_friend_chain_deferred_troublemaker_kwargs = {}
+            friend_troublemaker_adjacent_retry_limit = 2
+
+        scheduler = Scheduler()
+
+        def troublemaker(target, game_frame):
+            calls.append(game_frame)
+            if len(calls) == 2:
+                counter["value"] += 1
+                return True
+            return False
+
+        scheduler._qqfarm_friend_chain_deferred_troublemaker = troublemaker
+        scheduler._qqfarm_friend_chain_deferred_troublemaker_args = (
+            scheduler,
+            first_frame,
+        )
+        runner.__globals__.update({
+            "_invoke_friend_guard_action": (
+                lambda action, target, args, kwargs: action(*args, **kwargs)
+            ),
+            "_friend_trouble_counter_snapshot": lambda owner: counter["value"],
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda owner, frame: moves.append(frame)
+                or (True, "visual.adjacent-friend-card")
+            ),
+            "_get_frame_from_bot": lambda owner: second_frame,
+            "_friend_guard_friend_ui_state": lambda frame: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_write": lambda message: None,
+        })
+
+        self.assertTrue(runner(scheduler, first_frame))
+        self.assertEqual([first_frame, second_frame], calls)
+        self.assertEqual([first_frame], moves)
+        self.assertEqual(1, counter["value"])
+        self.assertTrue(scheduler._qqfarm_friend_chain_troublemaker_ran)
+
+    def test_deferred_troublemaker_default_full_miss_is_bounded_to_three_friends(self):
+        runner = load_function("_run_deferred_friend_troublemaker")
+        self.assertIsNotNone(runner)
+        calls = []
+        moves = []
+        frames = [object(), object(), object(), object(), object()]
+
+        class Scheduler:
+            _qqfarm_friend_chain_pending = False
+            _qqfarm_friend_chain_exhausted = True
+            _qqfarm_friend_chain_deferred_troublemaker_args = ()
+            _qqfarm_friend_chain_deferred_troublemaker_kwargs = {}
+
+        scheduler = Scheduler()
+
+        def troublemaker(target):
+            calls.append(target)
+            return False
+
+        scheduler._qqfarm_friend_chain_deferred_troublemaker = troublemaker
+        scheduler._qqfarm_friend_chain_deferred_troublemaker_args = (scheduler,)
+        capture_index = {"value": 1}
+
+        def capture(owner):
+            index = min(capture_index["value"], len(frames) - 1)
+            capture_index["value"] += 1
+            return frames[index]
+
+        runner.__globals__.update({
+            "_invoke_friend_guard_action": (
+                lambda action, target, args, kwargs: action(*args, **kwargs)
+            ),
+            "_friend_trouble_counter_snapshot": lambda owner: 0,
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda owner, frame: moves.append(frame)
+                or (True, "visual.adjacent-friend-card")
+            ),
+            "_get_frame_from_bot": capture,
+            "_friend_guard_friend_ui_state": lambda frame: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_write": lambda message: None,
+        })
+
+        self.assertFalse(runner(scheduler, frames[0]))
+        self.assertEqual(3, len(calls))
+        self.assertEqual(2, len(moves))
 
     def test_deferred_troublemaker_false_result_remains_retryable(self):
         runner = load_function("_run_deferred_friend_troublemaker")
@@ -4432,6 +5159,48 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             getattr(scheduler, "_qqfarm_friend_chain_troublemaker_ran", False)
         )
 
+    def test_deferred_troublemaker_full_miss_uses_cooldown_before_rescanning(self):
+        runner = load_function("_run_deferred_friend_troublemaker")
+        self.assertIsNotNone(runner)
+        calls = []
+
+        class Scheduler:
+            _qqfarm_friend_chain_pending = False
+            _qqfarm_friend_chain_exhausted = True
+            _qqfarm_friend_chain_deferred_troublemaker_args = ()
+            _qqfarm_friend_chain_deferred_troublemaker_kwargs = {}
+            friend_troublemaker_full_miss_cooldown_seconds = 90.0
+
+        scheduler = Scheduler()
+
+        def troublemaker(target):
+            calls.append(target)
+            return False
+
+        scheduler._qqfarm_friend_chain_deferred_troublemaker = troublemaker
+        scheduler._qqfarm_friend_chain_deferred_troublemaker_args = (scheduler,)
+        runner.__globals__.update({
+            "_invoke_friend_guard_action": (
+                lambda action, target, args, kwargs: action(*args, **kwargs)
+            ),
+            "_friend_trouble_counter_snapshot": lambda owner: 0,
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda owner, frame: (False, "")
+            ),
+            "_friend_watchdog_now": lambda: 100.0,
+            "_write": lambda message: None,
+        })
+
+        self.assertFalse(runner(scheduler, object()))
+        self.assertEqual(1, len(calls))
+        self.assertGreater(
+            getattr(scheduler, "_qqfarm_troublemaker_full_miss_until", 0.0),
+            100.0,
+        )
+
+        scheduler._qqfarm_friend_chain_exhausted = True
+        self.assertFalse(runner(scheduler, object()))
+        self.assertEqual(1, len(calls))
     def test_deferred_troublemaker_counter_increment_marks_success(self):
         runner = load_function("_run_deferred_friend_troublemaker")
         self.assertIsNotNone(runner)
@@ -4464,6 +5233,375 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertTrue(
             getattr(scheduler, "_qqfarm_friend_chain_troublemaker_ran", False)
         )
+
+    def test_private_native_home_check_is_registered_for_visual_gating(self):
+        source = HOOK.read_text(encoding="utf-8-sig")
+        tree = ast.parse(source, filename=str(HOOK))
+        value = None
+        for node in tree.body:
+            if not isinstance(node, ast.Assign):
+                continue
+            if any(
+                isinstance(target, ast.Name)
+                and target.id == "_FRIEND_HOME_FUNC_NAMES"
+                for target in node.targets
+            ):
+                value = ast.literal_eval(node.value.args[0])
+                break
+        self.assertIsNotNone(value)
+        self.assertIn("_has_go_home_icon", value)
+
+    def test_private_native_home_check_rejects_self_surface_false_positive(self):
+        namespace = load_functions("_wrap_friend_home_func")
+        calls = []
+        frame = type("Frame", (), {"shape": (800, 428, 3)})()
+        scheduler = types.SimpleNamespace()
+        namespace.update({
+            "_friend_guard_context": lambda args, kwargs: scheduler,
+            "_friend_chain_should_block_home": lambda context: False,
+            "_friend_guard_friend_ui_state": lambda candidate: False,
+            "_get_frame_from_bot": lambda context: frame,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        def native_home(owner, game_frame):
+            calls.append(game_frame)
+            return True
+
+        wrapped, changed = namespace["_wrap_friend_home_func"](
+            native_home, "FarmBotCV._has_go_home_icon"
+        )
+
+        self.assertTrue(changed)
+        self.assertFalse(wrapped(scheduler, frame))
+        self.assertEqual([], calls)
+        self.assertEqual(100.0, scheduler._qqfarm_native_home_false_positive_ts)
+
+    def test_native_home_check_rejects_self_surface_false_positive(self):
+        namespace = load_functions("_wrap_friend_home_func")
+        calls = []
+        frame = type("Frame", (), {"shape": (800, 428, 3)})()
+        scheduler = types.SimpleNamespace()
+        namespace.update({
+            "_friend_guard_context": lambda args, kwargs: scheduler,
+            "_friend_chain_should_block_home": lambda context: False,
+            "_friend_guard_friend_ui_state": lambda candidate: False,
+            "_get_frame_from_bot": lambda context: frame,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        def native_home(owner, game_frame):
+            calls.append(game_frame)
+            return True
+
+        wrapped, changed = namespace["_wrap_friend_home_func"](
+            native_home, "FarmBotCV.check_go_home_icon"
+        )
+
+        self.assertTrue(changed)
+        self.assertFalse(wrapped(scheduler, frame))
+        self.assertEqual([], calls)
+        self.assertEqual(100.0, scheduler._qqfarm_native_home_false_positive_ts)
+
+    def test_native_home_false_positive_clears_friend_state_immediately(self):
+        namespace = load_functions("_wrap_friend_home_func")
+        frame = type("Frame", (), {"shape": (800, 428, 3)})()
+        finalized = []
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_active=True,
+            _qqfarm_friend_chain_exhausted=False,
+            _qqfarm_cycle_branch_hint="friend",
+            _qqfarm_friend_cycle_seen=True,
+        )
+
+        def finalize(owner):
+            finalized.append(owner)
+            owner._qqfarm_friend_chain_pending = False
+            owner._qqfarm_friend_chain_active = False
+            owner._qqfarm_friend_chain_exhausted = False
+            return True
+
+        namespace.update({
+            "_friend_guard_context": lambda args, kwargs: scheduler,
+            "_friend_chain_should_block_home": lambda context: False,
+            "_friend_guard_friend_ui_state": lambda candidate: False,
+            "_get_frame_from_bot": lambda context: frame,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_finalize_friend_chain_after_troublemaker": finalize,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        wrapped, _ = namespace["_wrap_friend_home_func"](
+            lambda owner, game_frame: True,
+            "FarmBotCV.check_go_home_icon",
+        )
+
+        self.assertFalse(wrapped(scheduler, frame))
+        self.assertEqual([scheduler], finalized)
+        self.assertEqual("self", scheduler._qqfarm_cycle_branch_hint)
+        self.assertFalse(scheduler._qqfarm_friend_cycle_seen)
+        self.assertFalse(scheduler._qqfarm_friend_chain_pending)
+        self.assertFalse(scheduler._qqfarm_friend_chain_active)
+        self.assertTrue(getattr(scheduler, "_qqfarm_force_self_cycle_next", False))
+
+    def test_native_home_false_positive_clears_active_run_cycle_context(self):
+        namespace = load_functions("_wrap_friend_home_func")
+        frame = type("Frame", (), {"shape": (800, 428, 3)})()
+        native_owner = types.SimpleNamespace(
+            _qqfarm_friend_cycle_seen=True,
+            _qqfarm_cycle_branch_hint="friend",
+        )
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_active=True,
+            _qqfarm_friend_chain_exhausted=False,
+            _qqfarm_friend_cycle_seen=True,
+            _qqfarm_cycle_branch_hint="friend",
+        )
+        finalized = []
+
+        def finalize(owner):
+            finalized.append(owner)
+            owner._qqfarm_friend_chain_pending = False
+            owner._qqfarm_friend_chain_active = False
+            owner._qqfarm_friend_chain_exhausted = False
+            return True
+
+        namespace.update({
+            "_ACTIVE_RUN_CYCLE_CONTEXT": scheduler,
+            "_friend_guard_context": lambda args, kwargs: native_owner,
+            "_friend_chain_should_block_home": lambda context: False,
+            "_friend_guard_friend_ui_state": lambda candidate: False,
+            "_get_frame_from_bot": lambda context: frame,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_finalize_friend_chain_after_troublemaker": finalize,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        wrapped, _ = namespace["_wrap_friend_home_func"](
+            lambda owner, game_frame: True,
+            "FarmBotCV.check_go_home_icon",
+        )
+
+        self.assertFalse(wrapped(native_owner, frame))
+        self.assertEqual([native_owner, scheduler], finalized)
+        self.assertEqual(100.0, scheduler._qqfarm_native_home_false_positive_ts)
+        self.assertEqual("self", scheduler._qqfarm_cycle_branch_hint)
+        self.assertFalse(scheduler._qqfarm_friend_cycle_seen)
+        self.assertFalse(scheduler._qqfarm_friend_chain_pending)
+
+    def test_mark_friend_cycle_seen_ignores_recent_native_home_false_positive(self):
+        mark = load_function("_mark_friend_cycle_seen")
+        scheduler = types.SimpleNamespace(
+            _qqfarm_native_home_false_positive_ts=99.0,
+            _qqfarm_friend_cycle_seen=False,
+            _qqfarm_cycle_branch_hint="self",
+        )
+        mark.__globals__.update({
+            "_ACTIVE_RUN_CYCLE_CONTEXT": scheduler,
+            "_friend_guard_context": lambda args, kwargs: scheduler,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        found = mark((scheduler,), {})
+
+        self.assertIs(found, scheduler)
+        self.assertFalse(scheduler._qqfarm_friend_cycle_seen)
+        self.assertEqual("self", scheduler._qqfarm_cycle_branch_hint)
+
+    def test_recent_native_home_false_positive_suppresses_watchdog_friend_fallback(self):
+        namespace = load_functions("_apply_visual_friend_route_watchdog")
+        frame = object()
+        finalized = []
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_cycle_seen=True,
+            _qqfarm_native_home_false_positive_ts=99.0,
+            _qqfarm_cycle_branch_hint="friend",
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_active=True,
+            _qqfarm_friend_chain_exhausted=False,
+            _qqfarm_visual_friend_count=2,
+        )
+
+        def finalize(owner):
+            finalized.append(owner)
+            owner._qqfarm_friend_chain_pending = False
+            owner._qqfarm_friend_chain_active = False
+            owner._qqfarm_friend_chain_exhausted = False
+            return True
+
+        namespace.update({
+            "_friend_watchdog_now": lambda: 100.0,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: False,
+            "_false_friend_branch_cooldown_active": lambda *args: False,
+            "_finalize_friend_chain_after_troublemaker": finalize,
+            "_set_friend_chain_fast_interval": lambda *args: True,
+            "_friend_chain_should_block_troublemaker": (
+                lambda owner: bool(owner._qqfarm_friend_chain_pending)
+            ),
+            "_FRIEND_HOME_LAST_MATCH": {},
+            "_FRIEND_LIST_LAST_MATCH": {},
+            "_throttled_write": lambda *args, **kwargs: None,
+            "_write": lambda message: None,
+        })
+
+        result = namespace["_apply_visual_friend_route_watchdog"](
+            lambda owner: None, scheduler, "FarmBotCV.run_cycle"
+        )
+
+        self.assertFalse(result)
+        self.assertEqual([scheduler], finalized)
+        self.assertEqual("self", scheduler._qqfarm_cycle_branch_hint)
+        self.assertFalse(scheduler._qqfarm_friend_cycle_seen)
+        self.assertFalse(scheduler._qqfarm_friend_chain_pending)
+        self.assertFalse(scheduler._qqfarm_friend_chain_active)
+        self.assertEqual(0, scheduler._qqfarm_visual_friend_count)
+
+    def test_recent_native_home_false_positive_relabels_friend_log_as_self(self):
+        note = load_function("_note_runtime_cycle_branch")
+        scheduler = types.SimpleNamespace(
+            _qqfarm_native_home_false_positive_ts=99.0
+        )
+        note.__globals__.update({
+            "_ACTIVE_RUN_CYCLE_CONTEXT": scheduler,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        branch = note("\u6b63\u5728\u68c0\u67e5\u597d\u53cb\u519c\u573a\u662f\u5426\u6709\u53ef\u6267\u884c\u7684\u4efb\u52a1")
+
+        self.assertEqual("self", branch)
+        self.assertEqual("self", scheduler._qqfarm_cycle_branch_hint)
+        self.assertFalse(getattr(scheduler, "_qqfarm_friend_cycle_seen", False))
+
+    def test_native_home_check_accepts_verified_friend_surface(self):
+        namespace = load_functions("_wrap_friend_home_func")
+        calls = []
+        frame = type("Frame", (), {"shape": (800, 428, 3)})()
+        scheduler = object()
+        namespace.update({
+            "_friend_guard_context": lambda args, kwargs: scheduler,
+            "_friend_chain_should_block_home": lambda context: False,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_get_frame_from_bot": lambda context: frame,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        def native_home(owner, game_frame):
+            calls.append(game_frame)
+            return True
+
+        wrapped, _ = namespace["_wrap_friend_home_func"](
+            native_home, "FarmBotCV.check_go_home_icon"
+        )
+
+        self.assertTrue(wrapped(scheduler, frame))
+        self.assertEqual([frame], calls)
+
+    def test_two_failed_home_friend_recoveries_clear_stale_friend_branch(self):
+        namespace = load_functions(
+            "_finalize_friend_chain_after_troublemaker",
+            "_record_failed_friend_branch_recovery",
+        )
+        guard = namespace["_record_failed_friend_branch_recovery"]
+
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_exhausted=True,
+            _qqfarm_friend_chain_active=True,
+            _qqfarm_cycle_branch_hint="friend",
+            _qqfarm_friend_cycle_seen=True,
+            _qqfarm_visual_friend_count=3,
+            _qqfarm_friend_branch_last_ts=100.0,
+        )
+
+        self.assertFalse(guard(scheduler, 100.0))
+        self.assertTrue(scheduler._qqfarm_friend_chain_pending)
+        self.assertTrue(guard(scheduler, 104.0))
+        self.assertFalse(scheduler._qqfarm_friend_chain_pending)
+        self.assertFalse(scheduler._qqfarm_friend_chain_exhausted)
+        self.assertFalse(scheduler._qqfarm_friend_chain_active)
+        self.assertEqual("home", scheduler._qqfarm_cycle_branch_hint)
+        self.assertFalse(scheduler._qqfarm_friend_cycle_seen)
+        self.assertGreater(scheduler._qqfarm_false_friend_branch_block_until, 104.0)
+
+    def test_friend_chain_finalize_restores_original_check_interval(self):
+        namespace = load_functions(
+            "_set_friend_chain_fast_interval",
+            "_finalize_friend_chain_after_troublemaker",
+        )
+        scheduler = types.SimpleNamespace(
+            check_interval=0.75,
+            _qqfarm_friend_chain_original_interval=15.0,
+            _qqfarm_friend_chain_active=True,
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_exhausted=True,
+        )
+
+        finalized = namespace["_finalize_friend_chain_after_troublemaker"](scheduler)
+
+        self.assertTrue(finalized)
+        self.assertEqual(15.0, scheduler.check_interval)
+        self.assertFalse(scheduler._qqfarm_friend_chain_active)
+        self.assertFalse(hasattr(scheduler, "_qqfarm_friend_chain_original_interval"))
+
+    def test_false_friend_branch_cooldown_blocks_native_hint_on_self_surface(self):
+        guard = load_function("_false_friend_branch_cooldown_active")
+        scheduler = types.SimpleNamespace(
+            _qqfarm_false_friend_branch_block_until=112.0
+        )
+
+        self.assertTrue(guard(scheduler, False, 108.0))
+        self.assertFalse(guard(scheduler, True, 108.0))
+        self.assertFalse(guard(scheduler, False, 113.0))
+
+    def test_deferred_troublemaker_success_finalizes_friend_chain_state(self):
+        namespace = load_functions(
+            "_finalize_friend_chain_after_troublemaker",
+            "_run_deferred_friend_troublemaker",
+        )
+        runner = namespace["_run_deferred_friend_troublemaker"]
+        snapshots = iter((0, 24))
+
+        class Scheduler:
+            _qqfarm_friend_chain_pending = False
+            _qqfarm_friend_chain_exhausted = True
+            _qqfarm_friend_chain_active = True
+            _qqfarm_friend_chain_allow_home = True
+            _qqfarm_troublemaker_retry_scan_active = True
+            _qqfarm_friend_cycle_seen = True
+            _qqfarm_visual_friend_count = 3
+            _qqfarm_friend_branch_last_ts = 123.0
+            _last_friend_farm_go_home_present = True
+            _qqfarm_friend_chain_deferred_troublemaker_args = ()
+            _qqfarm_friend_chain_deferred_troublemaker_kwargs = {}
+
+        scheduler = Scheduler()
+        scheduler._qqfarm_friend_chain_deferred_troublemaker = lambda target: True
+        scheduler._qqfarm_friend_chain_deferred_troublemaker_args = (scheduler,)
+        namespace.update({
+            "_invoke_friend_guard_action": (
+                lambda action, target, args, kwargs: action(*args, **kwargs)
+            ),
+            "_friend_trouble_counter_snapshot": lambda owner: next(snapshots),
+            "_write": lambda message: None,
+        })
+
+        self.assertTrue(runner(scheduler, object()))
+        self.assertFalse(scheduler._qqfarm_friend_chain_pending)
+        self.assertFalse(scheduler._qqfarm_friend_chain_exhausted)
+        self.assertFalse(scheduler._qqfarm_friend_chain_active)
+        self.assertFalse(scheduler._qqfarm_friend_chain_allow_home)
+        self.assertFalse(scheduler._qqfarm_troublemaker_retry_scan_active)
+        self.assertFalse(scheduler._qqfarm_friend_cycle_seen)
+        self.assertEqual(0, scheduler._qqfarm_visual_friend_count)
+        self.assertEqual(0.0, scheduler._qqfarm_friend_branch_last_ts)
+        self.assertFalse(scheduler._last_friend_farm_go_home_present)
 
     def test_current_friend_action_must_disappear_before_next_navigation(self):
         namespace = load_functions("_run_friend_continuation_chain")
@@ -4630,6 +5768,50 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertTrue(wrapped(scheduler, object()))
         self.assertEqual(["fast-open"], events)
+
+    def test_recent_native_home_false_positive_skips_legacy_friend_processor(self):
+        wrapper_factory = load_function("_wrap_vip_business_func")
+        events = []
+        frame = object()
+        scheduler = types.SimpleNamespace(
+            _qqfarm_native_home_false_positive_ts=99.0,
+            _qqfarm_friend_cycle_seen=False,
+            _qqfarm_cycle_branch_hint="self",
+        )
+
+        def original(context, game_frame=None):
+            events.append("legacy-friend-processor")
+            return True
+
+        wrapper_factory.__globals__.update({
+            "_ACTIVE_RUN_CYCLE_CONTEXT": scheduler,
+            "_stop_requested_in_args": lambda args, kwargs: False,
+            "_friend_guard_context": lambda args, kwargs: scheduler,
+            "_friend_guard_list_fast_open_from_home": (
+                lambda context: events.append("fast-open") or False
+            ),
+            "_get_frame_from_bot": lambda context: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: False,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_finalize_friend_chain_after_troublemaker": lambda context: True,
+            "_force_vip_business_args": lambda args, kwargs: 0,
+            "_enter_vip_entitlement_context": lambda *args, **kwargs: [],
+            "_restore_vip_entitlement_context": lambda values: 0,
+            "_mark_friend_cycle_seen": lambda *args, **kwargs: None,
+            "_apply_friend_empty_return_home_guard": lambda *args, **kwargs: None,
+            "_friend_chain_begin_dispatch": lambda context: False,
+            "_write": lambda message: None,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+        wrapped, changed = wrapper_factory(
+            original, "module.process_friend_farm"
+        )
+
+        self.assertTrue(changed)
+        self.assertFalse(wrapped(scheduler, frame))
+        self.assertEqual(["fast-open"], events)
+        self.assertEqual("self", scheduler._qqfarm_cycle_branch_hint)
+        self.assertFalse(scheduler._qqfarm_friend_cycle_seen)
 
     def test_friend_chain_fast_interval_reduces_list_to_action_latency(self):
         activate = load_function("_set_friend_chain_fast_interval")
@@ -4920,6 +6102,88 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
 
 
 
+    def test_run_cycle_wrapper_periodically_syncs_persisted_metrics_after_cycle(self):
+        namespace = load_functions("_wrap_runtime_diag_method")
+        events = []
+        namespace.update({
+            "time": types.SimpleNamespace(
+                time=lambda: 100.0,
+                monotonic=lambda: 100.0,
+            ),
+            "_write": lambda message: None,
+            "_runtime_diag_repr": lambda value: repr(value),
+            "_runtime_diag_state": lambda value: "{}",
+            "_daily_metrics_sync_runtime": (
+                lambda context, force=False: events.append(("sync", context, force))
+            ),
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_force_self_cycle_next=False,
+            _qqfarm_cycle_branch_hint="self",
+        )
+
+        wrapped, changed = namespace["_wrap_runtime_diag_method"](
+            lambda self: events.append(("cycle", self)) or True,
+            "FarmBotCV.run_cycle",
+        )
+        result = wrapped(scheduler)
+
+        self.assertTrue(changed)
+        self.assertTrue(result)
+        self.assertEqual(("cycle", scheduler), events[0])
+        self.assertEqual(("sync", scheduler, False), events[-1])
+
+    def test_friend_entry_callable_inventory_lists_menu_friend_and_home_methods(self):
+        inventory = load_function("_friend_entry_callable_inventory")
+
+        class Scheduler:
+            def check_menu_more(self):
+                return True
+
+            def check_friend_icon(self):
+                return True
+
+            def process_self_farm(self):
+                return True
+
+            def unrelated(self):
+                return True
+
+        names = inventory(Scheduler())
+
+        self.assertIn("check_menu_more", names)
+        self.assertIn("check_friend_icon", names)
+        self.assertIn("process_self_farm", names)
+        self.assertNotIn("unrelated", names)
+
+    def test_friend_home_recovery_skips_entry_when_help_quota_exhausted(self):
+        namespace = load_functions(
+            "_friend_help_quota_active",
+            "_invoke_friend_branch_from_home",
+        )
+        calls = []
+        frame = object()
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_help_quota_exhausted=True,
+            check_friend_help_request_entry=lambda candidate: calls.append("help") or True,
+            check_friend_icon=lambda candidate: calls.append("icon") or True,
+        )
+        namespace.update({
+            "_guard_dog_ui_config_enabled": lambda: False,
+            "_guard_dog_detection_mode_config": lambda: "avatar_frame",
+            "_invoke_friend_guard_action": (
+                lambda action, target, args, kwargs: action(args[-1])
+            ),
+            "_friend_entry_callable_inventory": lambda context: (),
+            "_write": lambda message: None,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        result = namespace["_invoke_friend_branch_from_home"](scheduler, frame)
+
+        self.assertFalse(result)
+        self.assertEqual([], calls)
+
     def test_friend_home_recovery_prefers_direct_help_entry(self):
         recover = load_function("_invoke_friend_branch_from_home")
         self.assertTrue(callable(recover))
@@ -5016,6 +6280,97 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
 
 
 
+    def test_native_bottom_help_entry_falls_back_to_immediate_adjacent_friend(self):
+        wrapper_factory = load_function("_wrap_friend_next_entry_func")
+        self.assertIsNotNone(wrapper_factory)
+        frame = object()
+        scheduler = types.SimpleNamespace()
+        events = []
+
+        def original(owner, game_frame):
+            events.append(("native", game_frame))
+            return False
+
+        wrapper_factory.__globals__.update({
+            "_friend_guard_context": lambda args, kwargs: scheduler,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda owner, candidate: events.append(("adjacent", candidate))
+                or (True, "visual.adjacent-friend-card")
+            ),
+            "_write": lambda message: None,
+        })
+
+        wrapped, changed = wrapper_factory(
+            original, "FarmBotCV.check_friend_farm_bottom_help_all_entry"
+        )
+        result = wrapped(scheduler, frame)
+
+        self.assertTrue(changed)
+        self.assertTrue(result)
+        self.assertEqual([("native", frame), ("adjacent", frame)], events)
+        self.assertTrue(scheduler._qqfarm_friend_chain_pending)
+        self.assertFalse(scheduler._qqfarm_friend_chain_exhausted)
+
+    def test_native_bottom_entry_ignores_opaque_argument_and_captures_fresh_frame(self):
+        wrapper_factory = load_function("_wrap_friend_next_entry_func")
+        self.assertIsNotNone(wrapper_factory)
+        opaque_match = object()
+        fresh_frame = types.SimpleNamespace(shape=(800, 428, 3))
+        scheduler = types.SimpleNamespace()
+        captures = []
+        navigations = []
+
+        wrapper_factory.__globals__.update({
+            "_friend_guard_context": lambda args, kwargs: scheduler,
+            "_get_frame_from_bot": (
+                lambda owner: captures.append(owner) or fresh_frame
+            ),
+            "_friend_guard_friend_ui_state": (
+                lambda candidate: candidate is fresh_frame
+            ),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda owner, candidate: navigations.append(candidate)
+                or (True, "visual.adjacent-friend-card")
+            ),
+            "_write": lambda message: None,
+        })
+
+        wrapped, _ = wrapper_factory(
+            lambda owner, native_match: False,
+            "FarmBotCV.check_friend_farm_bottom_help_all_entry",
+        )
+
+        self.assertTrue(wrapped(scheduler, opaque_match))
+        self.assertEqual([scheduler], captures)
+        self.assertEqual([fresh_frame], navigations)
+
+    def test_native_bottom_entry_does_not_navigate_on_self_surface(self):
+        wrapper_factory = load_function("_wrap_friend_next_entry_func")
+        self.assertIsNotNone(wrapper_factory)
+        frame = object()
+        scheduler = types.SimpleNamespace()
+        events = []
+        wrapper_factory.__globals__.update({
+            "_friend_guard_context": lambda args, kwargs: scheduler,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: False,
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda owner, candidate: events.append("adjacent")
+                or (True, "visual.adjacent-friend-card")
+            ),
+            "_write": lambda message: None,
+        })
+
+        wrapped, _ = wrapper_factory(
+            lambda owner, game_frame: False,
+            "FarmBotCV.check_friend_farm_bottom_help_all_entry",
+        )
+
+        self.assertFalse(wrapped(scheduler, frame))
+        self.assertEqual([], events)
+
     def test_native_go_home_is_blocked_while_friend_chain_is_pending(self):
         namespace = load_functions(
             "_friend_guard_context",
@@ -5102,6 +6457,21 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual("home-ok", wrapped(scheduler, frame))
         self.assertEqual([(scheduler, frame)], calls)
 
+    def test_troublemaker_retry_scan_blocks_home_without_explicit_authorization(self):
+        namespace = load_functions(
+            "_friend_chain_should_block_troublemaker",
+            "_friend_chain_should_block_home",
+        )
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_chain_pending=False,
+            _qqfarm_friend_chain_active=False,
+            _qqfarm_friend_chain_exhausted=True,
+            _qqfarm_friend_chain_allow_home=False,
+            _qqfarm_troublemaker_retry_scan_active=True,
+        )
+
+        self.assertTrue(namespace["_friend_chain_should_block_home"](scheduler))
+
     def test_explicit_home_authorization_overrides_pending_friend_chain(self):
         namespace = load_functions(
             "_friend_guard_context",
@@ -5128,6 +6498,22 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
 
         self.assertEqual("authorized-home", wrapped(scheduler))
         self.assertEqual([scheduler], calls)
+
+    def test_troublemaker_home_authorization_overrides_retry_scan_gate(self):
+        should_block = load_function("_friend_chain_should_block_home")
+        self.assertIsNotNone(should_block)
+        scheduler = types.SimpleNamespace(
+            _qqfarm_troublemaker_retry_scan_active=True,
+            _qqfarm_friend_chain_allow_home=True,
+            _qqfarm_friend_chain_pending=False,
+            _qqfarm_friend_chain_active=False,
+            _qqfarm_friend_chain_exhausted=True,
+        )
+        should_block.__globals__["_friend_chain_should_block_troublemaker"] = (
+            lambda context: False
+        )
+
+        self.assertFalse(should_block(scheduler))
 
     def test_deferred_troublemaker_temporarily_authorizes_home_and_restores(self):
         runner = load_function("_run_deferred_friend_troublemaker")
@@ -5221,6 +6607,81 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             seen,
         )
 
+    def test_daily_metrics_sync_preserves_same_day_action_counters_across_files(self):
+        import json
+        import tempfile
+
+        sync = load_function("_daily_metrics_sync_runtime")
+        self.assertIsNotNone(sync)
+        sync.__globals__.update({
+            "_DAILY_METRICS_LAST_SYNC_TS": 0.0,
+            "_write": lambda message: None,
+        })
+        day = "2026-07-29"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            local_path = Path(temp_dir) / "local.json"
+            portable_path = Path(temp_dir) / "portable.json"
+            local_path.write_text(json.dumps({
+                "friend_help_daily_count": 82,
+                "friend_help_daily_date": day,
+                "friend_trouble_daily_count": 24,
+                "friend_trouble_daily_date": day,
+                "self_actions_daily_count": 23,
+                "self_actions_daily_date": day,
+                "instances": {
+                    "1": {
+                        "friend_help_daily_count": 82,
+                        "friend_help_daily_date": day,
+                        "friend_trouble_daily_count": 24,
+                        "friend_trouble_daily_date": day,
+                        "self_actions_daily_count": 23,
+                        "self_actions_daily_date": day,
+                    }
+                },
+            }), encoding="utf-8")
+            portable_path.write_text(json.dumps({
+                "friend_help_daily_count": 4,
+                "friend_help_daily_date": day,
+                "friend_trouble_daily_count": 0,
+                "friend_trouble_daily_date": day,
+                "self_actions_daily_count": 2,
+                "self_actions_daily_date": day,
+                "instances": {"1": {}},
+            }), encoding="utf-8")
+            context = types.SimpleNamespace(
+                instance_id="1",
+                friend_help_daily_count=4,
+                friend_help_daily_date=day,
+                friend_trouble_daily_count=0,
+                friend_trouble_daily_date=day,
+                self_actions_daily_count=2,
+                self_actions_daily_date=day,
+                _instance_metrics={"1": {"date": day}},
+            )
+
+            summary = sync(
+                context,
+                counter_paths=[local_path, portable_path],
+                csv_paths=[],
+                today=day,
+                force=True,
+            )
+
+            self.assertEqual(82, summary.get("friend_help_daily_count"))
+            self.assertEqual(24, summary.get("friend_trouble_daily_count"))
+            self.assertEqual(23, summary.get("self_actions_daily_count"))
+            self.assertEqual(82, context.friend_help_daily_count)
+            self.assertEqual(24, context.friend_trouble_daily_count)
+            self.assertEqual(23, context.self_actions_daily_count)
+            for path in (local_path, portable_path):
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                self.assertEqual(82, payload["friend_help_daily_count"])
+                self.assertEqual(24, payload["friend_trouble_daily_count"])
+                self.assertEqual(23, payload["self_actions_daily_count"])
+                self.assertEqual(
+                    24, payload["instances"]["1"]["gui_metrics"]["troublemaker_count"]
+                )
+
     def test_visual_watchdog_pending_chain_logs_empty_reason_without_runtime_error(self):
         namespace = load_functions("_apply_visual_friend_route_watchdog")
         frame = object()
@@ -5256,6 +6717,2139 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             "UnboundLocalError" in message
             for message in logs
         ))
+
+
+    def test_full_drag_planting_outcome_starts_short_replant_cooldown(self):
+        note = load_function("_note_runtime_planting_outcome")
+        self.assertIsNotNone(note)
+        note.__globals__["_LAST_SUCCESSFUL_FULL_PLANTING_TS"] = 0.0
+        note.__globals__["time"] = types.SimpleNamespace(time=lambda: 100.0)
+
+        note("拖拽播种已覆盖全地块")
+
+        self.assertEqual(100.0, note.__globals__["_LAST_SUCCESSFUL_FULL_PLANTING_TS"])
+
+    def test_home_planting_cooldown_skips_false_empty_land_rescan(self):
+        wrapper = load_function("_wrap_home_planting_cooldown")
+        self.assertIsNotNone(wrapper)
+        calls = []
+        wrapper.__globals__.update({
+            "time": types.SimpleNamespace(time=lambda: 150.0),
+            "_LAST_SUCCESSFUL_FULL_PLANTING_TS": 100.0,
+            "_write": lambda message: None,
+        })
+        wrapped, changed = wrapper(
+            lambda owner, frame=None: calls.append((owner, frame)) or True,
+            "fixture.handle_home_planting",
+        )
+        scheduler = types.SimpleNamespace(
+            planting_post_success_cooldown_seconds=120.0,
+            _qqfarm_single_harvest_planting_pending=False,
+        )
+
+        self.assertTrue(changed)
+        self.assertFalse(wrapped(scheduler, "frame"))
+        self.assertEqual([], calls)
+
+        scheduler._qqfarm_single_harvest_planting_pending = True
+        self.assertTrue(wrapped(scheduler, "frame"))
+        self.assertEqual([(scheduler, "frame")], calls)
+
+    def test_planting_callable_inventory_finds_obfuscated_backpack_seed_helper(self):
+        namespace = load_functions("_planting_callable_inventory")
+
+        def obfuscated_helper():
+            return "背包种子优先后仍有空地待处理"
+
+        def unrelated_helper():
+            return "friend navigation"
+
+        module = types.SimpleNamespace(
+            __name__="bot.synthetic_planting",
+            _q_backpack=obfuscated_helper,
+            unrelated=unrelated_helper,
+        )
+
+        inventory = namespace.get("_planting_callable_inventory")
+        self.assertTrue(callable(inventory))
+        entries = inventory(module)
+        paths = [str(entry.get("path", "")) for entry in entries]
+
+        self.assertTrue(any(path.endswith("._q_backpack") for path in paths))
+        self.assertFalse(any(path.endswith(".unrelated") for path in paths))
+        matched = next(entry for entry in entries if entry["path"].endswith("._q_backpack"))
+        self.assertIn("背包种子优先", matched["details"])
+
+    def test_planting_callable_inventory_never_disassembles_protected_callables(self):
+        namespace = load_functions("_planting_callable_inventory")
+
+        def protected_helper():
+            return "backpack_seed_priority"
+
+        module = types.SimpleNamespace(
+            __name__="bot.synthetic_protected_planting",
+            _q_protected=protected_helper,
+        )
+        import dis
+
+        calls = []
+        original_dis = dis.dis
+
+        def forbidden_disassembly(*args, **kwargs):
+            calls.append((args, kwargs))
+            raise AssertionError("protected callables must not be disassembled")
+
+        dis.dis = forbidden_disassembly
+        try:
+            entries = namespace["_planting_callable_inventory"](module)
+        finally:
+            dis.dis = original_dis
+
+        self.assertTrue(entries)
+        self.assertEqual([], calls)
+        self.assertFalse(any("disassembly" in entry["details"] for entry in entries))
+
+    def test_backpack_priority_wrapper_clamps_long_panel_settle(self):
+        namespace = load_functions("_wrap_backpack_seed_priority_planting_fast")
+        wrapper = namespace.get("_wrap_backpack_seed_priority_planting_fast")
+        self.assertTrue(callable(wrapper))
+
+        calls = []
+        logs = []
+        expected = (True, [], False, None, True)
+
+        def original(bot, lands, panel_settle):
+            calls.append((bot, lands, panel_settle))
+            return expected
+
+        namespace["_write"] = lambda message: logs.append(message)
+        wrapped, changed = wrapper(original, "synthetic.backpack")
+        owner = object()
+        lands = [{"center": (100, 200)}]
+
+        result = wrapped(owner, lands, 1.5)
+
+        self.assertTrue(changed)
+        self.assertIs(expected, result)
+        self.assertEqual(1, len(calls))
+        self.assertIs(owner, calls[0][0])
+        self.assertIs(lands, calls[0][1])
+        self.assertAlmostEqual(0.65, calls[0][2], places=6)
+        self.assertTrue(any("1.500->0.650" in message for message in logs))
+
+    def _synthetic_seed_panel_frame(self):
+        import cv2
+        import numpy as np
+
+        frame = np.full((800, 428, 3), (145, 190, 105), dtype=np.uint8)
+        cv2.rectangle(frame, (8, 480), (420, 595), (78, 75, 72), -1)
+        for index, ratio in enumerate((0.159, 0.318, 0.477, 0.637, 0.796), start=1):
+            center = (int(round(428 * ratio)), int(round(800 * 0.639)))
+            cv2.ellipse(frame, center, (22, 12), 0, 0, 360, (205, 228, 241), -1)
+            cv2.putText(
+                frame, str(index), (center[0] - 5, center[1] + 6),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (55, 60, 70), 1, cv2.LINE_AA,
+            )
+        return frame
+
+    def test_fast_seed_badges_detect_fixed_panel_slots_without_ocr(self):
+        namespace = load_functions(
+            "_seed_panel_strip_visible",
+            "_fast_seed_badge_candidates_from_frame",
+        )
+        frame = self._synthetic_seed_panel_frame()
+
+        candidates = namespace["_fast_seed_badge_candidates_from_frame"](frame)
+
+        self.assertEqual(5, len(candidates))
+        self.assertEqual([68, 136, 204, 273, 341], [item["center"][0] for item in candidates])
+        self.assertTrue(all(item["count"] >= 1 for item in candidates))
+
+    def test_fast_seed_badge_wrapper_skips_native_ocr_for_visible_panel(self):
+        namespace = load_functions(
+            "_seed_panel_strip_visible",
+            "_fast_seed_badge_candidates_from_frame",
+            "_wrap_seed_quantity_badges_fast",
+        )
+        calls = []
+        logs = []
+
+        def original(bot, frame, seed_roi=None):
+            calls.append((bot, frame, seed_roi))
+            return []
+
+        namespace["_write"] = lambda message: logs.append(message)
+        wrapped, changed = namespace["_wrap_seed_quantity_badges_fast"](
+            original, "synthetic.seed_badges"
+        )
+        bot = types.SimpleNamespace(_qqfarm_backpack_profile_active=True)
+
+        result = wrapped(bot, self._synthetic_seed_panel_frame(), None)
+
+        self.assertTrue(changed)
+        self.assertEqual([], calls)
+        self.assertEqual(5, len(result))
+        self.assertGreater(bot._qqfarm_backpack_candidates_seen_ts, 0)
+        self.assertTrue(any("fast seed badges" in message for message in logs))
+
+    def test_empty_land_crop_filter_rejects_planted_false_positive_and_keeps_bare_tiles(self):
+        helper = load_function("_empty_land_candidate_has_crop_cover")
+        self.assertIsNotNone(helper)
+        import cv2
+
+        planted = cv2.imread(str(FIXTURES / "planted_land_false_positive_crop.png"))
+        purple = cv2.imread(str(FIXTURES / "empty_land_true_purple_crop.png"))
+        yellow = cv2.imread(str(FIXTURES / "empty_land_true_yellow_crop.png"))
+
+        self.assertTrue(helper(planted, (36, 36)))
+        self.assertFalse(helper(purple, (36, 36)))
+        self.assertFalse(helper(yellow, (36, 36)))
+
+    def test_empty_land_state_filters_crop_covered_candidates_before_backpack(self):
+        namespace = load_functions(
+            "_empty_land_candidate_has_crop_cover",
+            "_wrap_detect_empty_lands_state",
+        )
+        import cv2
+        import numpy as np
+
+        frame = np.hstack([
+            cv2.imread(str(FIXTURES / "planted_land_false_positive_crop.png")),
+            cv2.imread(str(FIXTURES / "empty_land_true_purple_crop.png")),
+            cv2.imread(str(FIXTURES / "empty_land_true_yellow_crop.png")),
+        ])
+        lands = [
+            {"center": (36, 36), "confidence": 0.91},
+            {"center": (108, 36), "confidence": 0.92},
+            {"center": (180, 36), "confidence": 0.93},
+        ]
+        logs = []
+        namespace["_write"] = lambda message: logs.append(message)
+        wrapped, changed = namespace["_wrap_detect_empty_lands_state"](
+            lambda bot, candidate: list(lands), "synthetic.detect_empty"
+        )
+        bot = types.SimpleNamespace()
+
+        result = wrapped(bot, frame)
+
+        self.assertTrue(changed)
+        self.assertEqual([(108, 36), (180, 36)], [item["center"] for item in result])
+        self.assertEqual(2, bot._qqfarm_recent_empty_land_count)
+        self.assertTrue(any("crop-covered false positives=1" in line for line in logs))
+
+    def test_empty_land_state_records_candidate_centers_for_live_diagnostics(self):
+        namespace = load_functions("_wrap_detect_empty_lands_state")
+        logs = []
+        lands = [
+            {"center": (101, 301), "score": 0.91},
+            {"center": [203, 407], "score": 0.92},
+            {"score": 0.93},
+        ]
+        wrapped, changed = namespace["_wrap_detect_empty_lands_state"](
+            lambda bot, frame: lands, "synthetic.detect_empty"
+        )
+        wrapped.__globals__["_write"] = lambda message: logs.append(message)
+        bot = types.SimpleNamespace()
+
+        result = wrapped(bot, object())
+
+        self.assertTrue(changed)
+        self.assertIs(lands, result)
+        self.assertEqual([(101, 301), (203, 407)], bot._qqfarm_recent_empty_land_centers)
+        self.assertTrue(any("v220 empty land candidates" in line for line in logs))
+
+    def test_multi_empty_land_batch_skips_redundant_label_ocr(self):
+        namespace = load_functions(
+            "_wrap_detect_empty_lands_state",
+            "_wrap_backpack_empty_land_label_fast",
+        )
+        logs = []
+        namespace["_write"] = lambda message: logs.append(message)
+        lands = [{"center": (100 + index * 10, 300)} for index in range(6)]
+        detect_wrapped, _ = namespace["_wrap_detect_empty_lands_state"](
+            lambda bot, frame: lands, "synthetic.detect_empty"
+        )
+        label_calls = []
+        label_wrapped, _ = namespace["_wrap_backpack_empty_land_label_fast"](
+            lambda *args, **kwargs: label_calls.append((args, kwargs)) or (False, "slow", 0.0, None),
+            "synthetic.label_ocr",
+        )
+        bot = types.SimpleNamespace(_qqfarm_backpack_profile_active=False)
+
+        self.assertIs(lands, detect_wrapped(bot, object()))
+        result = label_wrapped(bot, object(), (123, 456), context="planting")
+
+        self.assertEqual((True, "hook-batch-preverified-empty-land", 1.0, 123), result)
+        self.assertEqual([], label_calls)
+        self.assertTrue(any("batch preverified empty land" in message for message in logs))
+
+    def test_recent_backpack_inventory_defers_shop_purchase(self):
+        namespace = load_functions("_wrap_buy_seed_for_crop_backpack_guard")
+        calls = []
+        logs = []
+        namespace["_write"] = lambda message: logs.append(message)
+
+        def original(bot, crop_name, count):
+            calls.append((crop_name, count))
+            return True
+
+        wrapped, changed = namespace["_wrap_buy_seed_for_crop_backpack_guard"](
+            original, "synthetic.buy_seed"
+        )
+        import time
+        bot = types.SimpleNamespace(_qqfarm_backpack_candidates_seen_ts=time.time())
+
+        result = wrapped(bot, "???", 15)
+
+        self.assertTrue(changed)
+        self.assertFalse(result)
+        self.assertEqual([], calls)
+        self.assertEqual(1, bot.planting_buy_retry_no_buy_quota)
+        self.assertTrue(any("deferred seed shop" in message for message in logs))
+
+    def test_quad_confirm_template_uses_contextual_lower_threshold(self):
+        namespace = load_functions("_wrap_planting_template_center_fast")
+        calls = []
+
+        def original(bot, frame, template_id, threshold=0.75):
+            calls.append((template_id, threshold))
+            return (10, 20)
+
+        wrapped, changed = namespace["_wrap_planting_template_center_fast"](
+            original, "synthetic.template_center"
+        )
+        self.assertTrue(changed)
+
+        wrapped(object(), object(), "act_seeds_btn_ok", 0.78)
+        wrapped(object(), object(), "unrelated", 0.78)
+
+        self.assertAlmostEqual(0.62, calls[0][1], places=6)
+        self.assertAlmostEqual(0.78, calls[1][1], places=6)
+
+    def test_player_level_uses_config_cache_before_slow_ocr(self):
+        namespace = load_functions("_configured_player_level", "_wrap_player_level_fast")
+        namespace["_active_planting_sections"] = lambda: ["instance.1.planting", "planting"]
+        namespace["_cfg_get"] = lambda sections, key, default: "120"
+        namespace["_write"] = lambda message: None
+        calls = []
+
+        def original(bot, game_frame=None, fallback_to_config=True):
+            calls.append((game_frame, fallback_to_config))
+            return 121
+
+        wrapped, changed = namespace["_wrap_player_level_fast"](
+            original, "synthetic.player_level"
+        )
+        bot = types.SimpleNamespace()
+
+        self.assertTrue(changed)
+        self.assertEqual(120, wrapped(bot, object(), True))
+        self.assertEqual(120, wrapped(bot, object(), True))
+        self.assertEqual([], calls)
+
+        bot._qqfarm_player_level_next_probe_ts = 0.0
+        self.assertEqual(121, wrapped(bot, object(), True))
+        self.assertEqual(1, len(calls))
+
+    def test_fertilizer_template_wrapper_uses_lower_contextual_threshold(self):
+        namespace = load_functions("_wrap_fertilizer_template_fast")
+        observed = []
+
+        def original(bot, frame, fertilizer_type, seed_roi=None):
+            observed.append(bot.fertilizer_one_frame_threshold)
+            return None, 0.61
+
+        wrapped, changed = namespace["_wrap_fertilizer_template_fast"](
+            original, "synthetic.fertilizer"
+        )
+        bot = types.SimpleNamespace(fertilizer_one_frame_threshold=0.72)
+
+        self.assertTrue(changed)
+        self.assertEqual((None, 0.61), wrapped(bot, object(), "one", None))
+        self.assertEqual([0.62], observed)
+        self.assertEqual(0.72, bot.fertilizer_one_frame_threshold)
+
+    def test_backpack_profile_helper_records_only_active_backpack_calls(self):
+        namespace = load_functions("_wrap_backpack_profile_helper")
+        wrapper = namespace.get("_wrap_backpack_profile_helper")
+        self.assertTrue(callable(wrapper))
+
+        def original(bot, value):
+            return value + 1
+
+        wrapped, changed = wrapper(original, "synthetic.seed_ocr")
+        active = types.SimpleNamespace(
+            _qqfarm_backpack_profile_active=True,
+            _qqfarm_backpack_profile={},
+        )
+        inactive = types.SimpleNamespace(
+            _qqfarm_backpack_profile_active=False,
+            _qqfarm_backpack_profile={},
+        )
+
+        self.assertTrue(changed)
+        self.assertEqual(4, wrapped(active, 3))
+        self.assertEqual(5, wrapped(inactive, 4))
+        self.assertIn("synthetic.seed_ocr", active._qqfarm_backpack_profile)
+        stats = active._qqfarm_backpack_profile["synthetic.seed_ocr"]
+        self.assertEqual(1, stats["count"])
+        self.assertGreaterEqual(stats["total"], 0.0)
+        self.assertEqual({}, inactive._qqfarm_backpack_profile)
+
+    def test_backpack_preverified_empty_land_skips_slow_label_ocr(self):
+        namespace = load_functions("_wrap_backpack_empty_land_label_fast")
+        wrapper = namespace.get("_wrap_backpack_empty_land_label_fast")
+        self.assertTrue(callable(wrapper))
+
+        calls = []
+        logs = []
+        fallback = (False, "native-miss", 0.0, None)
+
+        def original(bot, frame, land_center, context=""):
+            calls.append((bot, frame, land_center, context))
+            return fallback
+
+        namespace["_write"] = lambda message: logs.append(message)
+        wrapped, changed = wrapper(original, "synthetic.empty_land_label")
+        active = types.SimpleNamespace(_qqfarm_backpack_profile_active=True)
+        inactive = types.SimpleNamespace(_qqfarm_backpack_profile_active=False)
+        frame = object()
+
+        result = wrapped(active, frame, (123, 456), context="? 1 ????")
+
+        self.assertTrue(changed)
+        self.assertEqual((True, "hook-backpack-preverified-empty-land", 1.0, 123), result)
+        self.assertEqual([], calls)
+        self.assertTrue(any("v197 backpack preverified empty land" in message for message in logs))
+
+        self.assertIs(fallback, wrapped(inactive, frame, (123, 456), context="????"))
+        self.assertIs(fallback, wrapped(active, frame, None, context="????"))
+        self.assertEqual(2, len(calls))
+
+    def test_backpack_no_seed_hint_wrapper_saves_active_seed_panel_frame(self):
+        namespace = load_functions("_wrap_backpack_no_seed_hint_fast")
+        wrapper = namespace.get("_wrap_backpack_no_seed_hint_fast")
+        self.assertTrue(callable(wrapper))
+        saved = []
+        frame = object()
+        native_result = (False, "", 0.0)
+        namespace["_save_backpack_seed_panel_debug_frame"] = (
+            lambda candidate: saved.append(candidate) or "backpack-seed-panel-live.png"
+        )
+        namespace["_write"] = lambda message: None
+        wrapped, changed = wrapper(
+            lambda bot, candidate, seed_roi=None: native_result,
+            "synthetic.no_seed_hint",
+        )
+        active = types.SimpleNamespace(_qqfarm_backpack_profile_active=True)
+
+        self.assertTrue(changed)
+        self.assertIs(native_result, wrapped(active, frame, (10, 20, 30, 40)))
+        self.assertEqual([frame], saved)
+    def test_backpack_no_seed_hint_ocr_preserves_native_result_for_active_branch(self):
+        namespace = load_functions("_wrap_backpack_no_seed_hint_fast")
+        wrapper = namespace.get("_wrap_backpack_no_seed_hint_fast")
+        self.assertTrue(callable(wrapper))
+
+        calls = []
+        logs = []
+        native_result = (True, "??????", 0.99)
+
+        def original(bot, frame, seed_roi=None):
+            calls.append((bot, frame, seed_roi))
+            return native_result
+
+        namespace["_write"] = lambda message: logs.append(message)
+        wrapped, changed = wrapper(original, "synthetic.no_seed_hint")
+        active = types.SimpleNamespace(_qqfarm_backpack_profile_active=True)
+        frame = object()
+
+        self.assertTrue(changed)
+        self.assertIs(native_result, wrapped(active, frame, (10, 20, 30, 40)))
+        self.assertEqual(1, len(calls))
+        self.assertTrue(any("v202 restored native no-seed OCR" in line for line in logs))
+
+    def test_fast_planting_switch_disables_expensive_enhanced_land_ocr(self):
+        switch_value = load_function("_fast_planting_switch_value")
+        self.assertIsNotNone(switch_value)
+
+        self.assertFalse(switch_value("enhance_empty_land_detection", True))
+        self.assertTrue(switch_value("enable_daily_radish_exp", True))
+
+    def test_visible_seed_inventory_skips_slow_no_seed_ocr(self):
+        namespace = load_functions(
+            "_seed_panel_strip_visible",
+            "_fast_seed_badge_candidates_from_frame",
+            "_wrap_backpack_no_seed_hint_fast",
+        )
+        calls = []
+        logs = []
+
+        def original(bot, frame, seed_roi=None):
+            calls.append((bot, frame, seed_roi))
+            return True, "no-seed", 0.99
+
+        namespace["_save_backpack_seed_panel_debug_frame"] = lambda frame: ""
+        namespace["_write"] = lambda message: logs.append(message)
+        wrapped, changed = namespace["_wrap_backpack_no_seed_hint_fast"](
+            original, "synthetic.no_seed_hint"
+        )
+        bot = types.SimpleNamespace(
+            _qqfarm_backpack_profile_active=True,
+            _qqfarm_recent_empty_land_count=16,
+        )
+
+        result = wrapped(bot, self._synthetic_seed_panel_frame(), None)
+
+        self.assertTrue(changed)
+        self.assertEqual((False, "hook-visible-seed-inventory", 1.0), result)
+        self.assertEqual([], calls)
+        self.assertTrue(any("visible seed inventory" in line for line in logs))
+
+    def test_fast_seed_badges_use_land_capacity_instead_of_magic_999(self):
+        namespace = load_functions(
+            "_seed_panel_strip_visible",
+            "_fast_seed_badge_candidates_from_frame",
+            "_wrap_seed_quantity_badges_fast",
+        )
+        namespace["_write"] = lambda message: None
+        wrapped, changed = namespace["_wrap_seed_quantity_badges_fast"](
+            lambda *args, **kwargs: [], "synthetic.seed_badges"
+        )
+        bot = types.SimpleNamespace(
+            _qqfarm_backpack_profile_active=True,
+            _qqfarm_recent_empty_land_count=16,
+        )
+
+        result = wrapped(bot, self._synthetic_seed_panel_frame(), None)
+
+        self.assertTrue(changed)
+        self.assertEqual([16] * 5, [item["count"] for item in result])
+        self.assertTrue(all(item["count"] != 999 for item in result))
+
+    def test_quad_seed_blacklist_uses_contextual_lower_threshold(self):
+        namespace = load_functions("_wrap_backpack_seed_blacklist_fast")
+        self.assertIn("_wrap_backpack_seed_blacklist_fast", namespace)
+        observed = []
+
+        def original(bot, frame, seed_center, seed_roi=None):
+            observed.append(bot.act_seeds_frame_threshold)
+            return bot.act_seeds_frame_threshold <= 0.62
+
+        wrapped, changed = namespace["_wrap_backpack_seed_blacklist_fast"](
+            original, "synthetic.quad_blacklist"
+        )
+        bot = types.SimpleNamespace(act_seeds_frame_threshold=0.72)
+
+        self.assertTrue(changed)
+        self.assertTrue(wrapped(bot, object(), (68, 512), None))
+        self.assertEqual([0.62], observed)
+        self.assertEqual(0.72, bot.act_seeds_frame_threshold)
+
+    def test_compiled_steal_retries_same_friend_once_before_navigation(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        events = []
+        phase = {"second": False}
+
+        def fast_action(owner, candidate):
+            events.append("probe-second" if phase["second"] else "probe-first")
+            if phase["second"]:
+                events.append("help")
+                return True, "visual.friend_help_all"
+            return False, ""
+
+        def adjacent(owner, candidate):
+            events.append("navigate")
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": adjacent,
+            "_invoke_friend_visual_actions_before_home": fast_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda owner: True,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=1,
+            friend_chain_action_poll_limit=16,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            friend_chain_initial_idle_poll_min=8,
+            _qqfarm_friend_entry_extended_action_grace=True,
+        )
+
+        first = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, "method.check_steal_all_icon"
+        )
+
+        self.assertEqual(0, first["moves"])
+        self.assertNotIn("navigate", events)
+        self.assertTrue(scheduler._qqfarm_post_steal_help_retry_pending)
+
+        phase["second"] = True
+        second = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, "method.check_steal_all_icon"
+        )
+
+        self.assertGreaterEqual(second["actions"], 1)
+        self.assertIn("help", events)
+        if "navigate" in events:
+            self.assertLess(events.index("help"), events.index("navigate"))
+        self.assertFalse(getattr(scheduler, "_qqfarm_post_steal_help_retry_pending", False))
+
+    def test_reopened_friend_list_resets_stale_cursor_and_clicks_first_row(self):
+        namespace = load_functions("_handle_friend_list_surface")
+        clicks = []
+        frame = types.SimpleNamespace(shape=(800, 428, 3))
+        rows = [
+            {"center": (364, 289)},
+            {"center": (364, 383)},
+            {"center": (364, 478)},
+            {"center": (364, 572)},
+            {"center": (364, 667)},
+        ]
+        namespace.update({
+            "_friend_list_visit_button_rows": lambda candidate: rows,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_row_match_score": lambda candidate, row_y: 0.95,
+            "_friend_list_blocked_row_visual_hint": lambda candidate, row_y: False,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_friend_guard_post_client_click": (
+                lambda x, y, width=428, height=800: clicks.append((x, y)) or True
+            ),
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_write": lambda message: None,
+        })
+        context = types.SimpleNamespace(
+            _qqfarm_friend_list_visit_cursor=81,
+            _qqfarm_friend_entry_pending=False,
+        )
+
+        result = namespace["_handle_friend_list_surface"](context, frame)
+
+        self.assertEqual("visited", result)
+        self.assertEqual([(364, 289)], clicks)
+        self.assertEqual(0, context._qqfarm_friend_list_pending_cursor)
+        self.assertEqual(0, context._qqfarm_friend_list_visit_cursor)
+
+    def test_blocked_first_friend_row_is_skipped_immediately_for_second_row(self):
+        namespace = load_functions("_handle_friend_list_surface")
+        clicks = []
+        logs = []
+        frame = types.SimpleNamespace(shape=(800, 428, 3))
+        rows = [
+            {"center": (364, 289)},
+            {"center": (364, 383)},
+        ]
+        namespace.update({
+            "_friend_list_visit_button_rows": lambda candidate: rows,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_row_match_score": lambda candidate, row_y: 0.95,
+            "_friend_list_blocked_row_visual_hint": (
+                lambda candidate, row_y: int(row_y) == 289
+            ),
+            "_friend_watchdog_now": lambda: 100.0,
+            "_friend_guard_post_client_click": (
+                lambda x, y, width=428, height=800: clicks.append((x, y)) or True
+            ),
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_write": lambda message: logs.append(message),
+        })
+        context = types.SimpleNamespace()
+
+        result = namespace["_handle_friend_list_surface"](context, frame)
+
+        self.assertEqual("visited", result)
+        self.assertEqual([(364, 383)], clicks)
+        self.assertEqual(1, context._qqfarm_friend_list_pending_cursor)
+        self.assertEqual(1, context._qqfarm_friend_list_visit_cursor)
+        self.assertTrue(any("blocked first row" in line for line in logs))
+
+    def test_blocked_second_friend_row_never_skips_normal_first_row(self):
+        namespace = load_functions("_handle_friend_list_surface")
+        clicks = []
+        frame = types.SimpleNamespace(shape=(800, 428, 3))
+        rows = [
+            {"center": (364, 289)},
+            {"center": (364, 383)},
+        ]
+        namespace.update({
+            "_friend_list_visit_button_rows": lambda candidate: rows,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_row_match_score": lambda candidate, row_y: 0.95,
+            "_friend_list_blocked_row_visual_hint": (
+                lambda candidate, row_y: int(row_y) == 383
+            ),
+            "_friend_watchdog_now": lambda: 100.0,
+            "_friend_guard_post_client_click": (
+                lambda x, y, width=428, height=800: clicks.append((x, y)) or True
+            ),
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_write": lambda message: None,
+        })
+        context = types.SimpleNamespace()
+
+        result = namespace["_handle_friend_list_surface"](context, frame)
+
+        self.assertEqual("visited", result)
+        self.assertEqual([(364, 289)], clicks)
+        self.assertEqual(0, context._qqfarm_friend_list_pending_cursor)
+        self.assertEqual(0, context._qqfarm_friend_list_visit_cursor)
+
+    def test_failed_first_friend_row_advances_to_second_without_closing_list(self):
+        namespace = load_functions("_handle_friend_list_surface")
+        clicks = []
+        logs = []
+        frame = types.SimpleNamespace(shape=(800, 428, 3))
+        rows = [
+            {"center": (364, 289)},
+            {"center": (364, 383)},
+        ]
+        namespace.update({
+            "_friend_list_visit_button_rows": lambda candidate: rows,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_row_match_score": lambda candidate, row_y: 0.95,
+            "_friend_list_blocked_row_visual_hint": lambda candidate, row_y: True,
+            "_friend_watchdog_now": lambda: 100.0,
+            "_friend_guard_post_client_click": (
+                lambda x, y, width=428, height=800: clicks.append((x, y)) or True
+            ),
+            "_friend_guard_clear_prequalification": lambda owner: True,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_write": lambda message: logs.append(message),
+        })
+        context = types.SimpleNamespace(
+            _qqfarm_friend_entry_pending=True,
+            _qqfarm_friend_entry_retry_count=3,
+            _qqfarm_friend_entry_clicked_ts=90.0,
+            _qqfarm_friend_entry_last_retry_ts=98.0,
+            _qqfarm_friend_list_pending_cursor=0,
+            _qqfarm_friend_list_visit_cursor=0,
+        )
+
+        result = namespace["_handle_friend_list_surface"](context, frame)
+
+        self.assertEqual("blocked-row-next", result)
+        self.assertEqual(1, context._qqfarm_friend_list_visit_cursor)
+        self.assertFalse(context._qqfarm_friend_entry_pending)
+        self.assertEqual([], clicks)
+        self.assertTrue(any("blocked row" in line for line in logs))
+
+    def test_blocked_pending_second_row_closes_list_instead_of_advancing_to_third(self):
+        namespace = load_functions("_handle_friend_list_surface")
+        clicks = []
+        logs = []
+        frame = types.SimpleNamespace(shape=(800, 428, 3))
+        rows = [
+            {"center": (364, 289)},
+            {"center": (364, 383)},
+            {"center": (364, 478)},
+        ]
+        namespace.update({
+            "_friend_list_visit_button_rows": lambda candidate: rows,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_row_match_score": lambda candidate, row_y: 0.95,
+            "_friend_list_blocked_row_visual_hint": (
+                lambda candidate, row_y: int(row_y) == 383
+            ),
+            "_friend_watchdog_now": lambda: 100.0,
+            "_friend_guard_post_client_click": (
+                lambda x, y, width=428, height=800: clicks.append((x, y)) or True
+            ),
+            "_friend_guard_clear_prequalification": lambda owner: True,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_write": lambda message: logs.append(message),
+        })
+        context = types.SimpleNamespace(
+            _qqfarm_friend_entry_pending=True,
+            _qqfarm_friend_entry_retry_count=3,
+            _qqfarm_friend_entry_clicked_ts=90.0,
+            _qqfarm_friend_entry_last_retry_ts=98.0,
+            _qqfarm_friend_list_pending_cursor=1,
+            _qqfarm_friend_list_visit_cursor=1,
+        )
+
+        result = namespace["_handle_friend_list_surface"](context, frame)
+
+        self.assertEqual("pending-row-reopen", result)
+        self.assertEqual([(405, 94)], clicks)
+        self.assertEqual(1, context._qqfarm_friend_list_visit_cursor)
+        self.assertFalse(context._qqfarm_friend_entry_pending)
+        self.assertFalse(any("to cursor=2" in line for line in logs))
+
+    def test_blocked_friend_row_template_matches_provided_status_text(self):
+        namespace = load_functions("_friend_list_blocked_row_visual_hint")
+        import cv2
+        import numpy as np
+
+        template_path = ROOT / "portable" / "friend_blocked_visit_text.png"
+        template = cv2.imread(str(template_path))
+        self.assertIsNotNone(template)
+        frame = np.full((800, 428, 3), (190, 220, 235), dtype=np.uint8)
+        row_y = 383
+        top = row_y - (template.shape[0] // 2)
+        left = 115
+        frame[
+            top:top + template.shape[0],
+            left:left + template.shape[1],
+        ] = template
+        namespace["_FRIEND_BLOCKED_VISIT_TEMPLATE_PATH"] = str(template_path)
+        namespace["_write"] = lambda message: None
+
+        self.assertTrue(
+            namespace["_friend_list_blocked_row_visual_hint"](frame, row_y)
+        )
+        self.assertFalse(
+            namespace["_friend_list_blocked_row_visual_hint"](frame, 289)
+        )
+
+    def test_blocked_visit_status_matches_anywhere_in_transition_frame(self):
+        namespace = load_functions("_friend_blocked_visit_visual_hint")
+        self.assertIn("_friend_blocked_visit_visual_hint", namespace)
+        import cv2
+        import numpy as np
+
+        template_path = ROOT / "portable" / "friend_blocked_visit_text.png"
+        template = cv2.imread(str(template_path))
+        self.assertIsNotNone(template)
+        frame = np.full((800, 428, 3), (190, 220, 235), dtype=np.uint8)
+        top, left = 310, 112
+        frame[
+            top:top + template.shape[0],
+            left:left + template.shape[1],
+        ] = template
+        namespace["_FRIEND_BLOCKED_VISIT_TEMPLATE_PATH"] = str(template_path)
+        namespace["_write"] = lambda message: None
+
+        self.assertTrue(namespace["_friend_blocked_visit_visual_hint"](frame))
+        self.assertFalse(
+            namespace["_friend_blocked_visit_visual_hint"](
+                np.full((800, 428, 3), (190, 220, 235), dtype=np.uint8)
+            )
+        )
+
+    def test_blocked_visit_toast_matches_after_adjacent_friend_navigation(self):
+        namespace = load_functions("_friend_blocked_visit_visual_hint")
+        import cv2
+        import numpy as np
+
+        template_path = ROOT / "portable" / "friend_blocked_visit_toast.png"
+        self.assertTrue(template_path.is_file())
+        template = cv2.imread(str(template_path))
+        self.assertIsNotNone(template)
+        frame = np.full((800, 428, 3), (110, 160, 140), dtype=np.uint8)
+        top, left = 350, 111
+        frame[
+            top:top + template.shape[0],
+            left:left + template.shape[1],
+        ] = template
+        namespace["_FRIEND_BLOCKED_VISIT_TEMPLATE_PATH"] = str(
+            ROOT / "portable" / "friend_blocked_visit_text.png"
+        )
+        namespace["_FRIEND_BLOCKED_VISIT_TOAST_TEMPLATE_PATH"] = str(template_path)
+        namespace["_write"] = lambda message: None
+
+        self.assertTrue(namespace["_friend_blocked_visit_visual_hint"](frame))
+
+    def test_adjacent_blocked_friend_return_home_is_terminal_not_pending(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        current_frame = object()
+        returned_home_frame = object()
+        state = {"moved": False}
+        logs = []
+
+        def adjacent(owner, candidate):
+            state["moved"] = True
+            return True, "visual.adjacent-friend-card"
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": adjacent,
+            "_invoke_friend_visual_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": (
+                lambda owner: returned_home_frame if state["moved"] else current_frame
+            ),
+            "_friend_guard_friend_ui_state": lambda candidate: candidate is current_frame,
+            "_friend_blocked_visit_visual_hint": (
+                lambda candidate: candidate is returned_home_frame
+            ),
+            "_friend_guard_sleep": lambda seconds: None,
+            "_friend_navigation_signature": lambda candidate: None,
+            "_friend_navigation_change_score": lambda signature, candidate: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda owner: True,
+            "_friend_guard_list_refresh_prequalification": lambda owner, frame: True,
+            "_write": lambda message: logs.append(message),
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=2,
+            friend_chain_action_poll_limit=16,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            _qqfarm_guard_list_prequalified=True,
+            _qqfarm_guard_list_prequalified_ts=100.0,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, current_frame, ""
+        )
+
+        self.assertEqual(1, result["moves"])
+        self.assertTrue(result["exhausted"])
+        self.assertEqual("blocked-next-friend-returned-home", result["reason"])
+        self.assertFalse(scheduler._qqfarm_friend_chain_pending)
+        self.assertTrue(any("blocked next friend" in line for line in logs))
+
+    def test_moderate_home_match_without_carousel_is_not_friend_farm(self):
+        namespace = load_functions("_friend_guard_friend_ui_state")
+        matches = iter([
+            {"matched": True, "gray": 0.82, "edge": 0.28, "center": (393, 606)},
+            {"matched": False, "gray": 0.2, "edge": 0.1, "center": None},
+        ])
+        namespace.update({
+            "_friend_guard_match_template": lambda *args, **kwargs: next(matches),
+            "_friend_selected_carousel_card_bounds": lambda frame: None,
+            "_friend_list_visit_button_rows": lambda frame: [],
+        })
+
+        self.assertFalse(namespace["_friend_guard_friend_ui_state"](object()))
+
+    def test_daily_metrics_sync_recovers_counters_from_same_day_gui_metrics(self):
+        import json
+        import tempfile
+
+        sync = load_function("_daily_metrics_sync_runtime")
+        self.assertIsNotNone(sync)
+        sync.__globals__.update({
+            "_DAILY_METRICS_LAST_SYNC_TS": 0.0,
+            "_write": lambda message: None,
+        })
+        day = "2026-07-29"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            local_path = Path(temp_dir) / "local.json"
+            portable_path = Path(temp_dir) / "portable.json"
+            payload = {
+                "friend_help_daily_count": 0,
+                "friend_help_daily_date": day,
+                "friend_trouble_daily_count": 0,
+                "friend_trouble_daily_date": day,
+                "self_actions_daily_count": 0,
+                "self_actions_daily_date": day,
+                "daily_radish_exp_count": 4,
+                "daily_radish_exp_date": day,
+                "gui_metrics": {
+                    "date": day,
+                    "friend_farming_count": 131,
+                    "troublemaker_count": 37,
+                    "self_farming_count": 39,
+                    "planting_count": 4,
+                    "radish_detect_count": 3,
+                },
+                "instances": {"1": {}},
+            }
+            local_path.write_text(json.dumps(payload), encoding="utf-8")
+            portable_path.write_text(json.dumps(payload), encoding="utf-8")
+            context = types.SimpleNamespace(
+                instance_id="1",
+                friend_help_daily_count=0,
+                friend_help_daily_date=day,
+                friend_trouble_daily_count=0,
+                friend_trouble_daily_date=day,
+                self_actions_daily_count=0,
+                self_actions_daily_date=day,
+                daily_radish_exp_count=0,
+                daily_radish_exp_date=day,
+                _instance_metrics={"1": dict(payload["gui_metrics"])},
+            )
+
+            summary = sync(
+                context,
+                counter_paths=[str(local_path), str(portable_path)],
+                csv_paths=[],
+                today=day,
+                force=True,
+            )
+
+            self.assertEqual(131, summary["friend_help_daily_count"])
+            self.assertEqual(37, summary["friend_trouble_daily_count"])
+            self.assertEqual(39, summary["self_actions_daily_count"])
+            self.assertEqual(4, summary["daily_radish_exp_count"])
+            for path in (local_path, portable_path):
+                merged = json.loads(path.read_text(encoding="utf-8"))
+                self.assertEqual(131, merged["friend_help_daily_count"])
+                self.assertEqual(37, merged["friend_trouble_daily_count"])
+                self.assertEqual(39, merged["self_actions_daily_count"])
+                self.assertEqual(4, merged["daily_radish_exp_count"])
+
+    def test_daily_metrics_sync_does_not_count_generic_planting_as_daily_radish(self):
+        import json
+        import tempfile
+
+        sync = load_function("_daily_metrics_sync_runtime")
+        self.assertIsNotNone(sync)
+        sync.__globals__.update({
+            "_DAILY_METRICS_LAST_SYNC_TS": 0.0,
+            "_write": lambda message: None,
+        })
+        day = "2026-07-29"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            counter_path = Path(temp_dir) / "daily_counters.hook.json"
+            counter_path.write_text(json.dumps({
+                "daily_radish_exp_count": 40,
+                "daily_radish_exp_date": day,
+                "gui_metrics": {
+                    "date": day,
+                    "planting_count": 62,
+                    "radish_detect_count": 62,
+                },
+                "instances": {"1": {}},
+            }), encoding="utf-8")
+            context = types.SimpleNamespace(
+                instance_id="1",
+                daily_radish_exp_count=40,
+                daily_radish_exp_date=day,
+                _instance_metrics={
+                    "1": {
+                        "date": day,
+                        "planting_count": 62,
+                        "radish_detect_count": 62,
+                    },
+                },
+            )
+
+            summary = sync(
+                context,
+                counter_paths=[str(counter_path)],
+                csv_paths=[],
+                today=day,
+                force=True,
+            )
+
+            self.assertEqual(40, summary["daily_radish_exp_count"])
+            merged = json.loads(counter_path.read_text(encoding="utf-8"))
+            self.assertEqual(40, merged["daily_radish_exp_count"])
+            self.assertEqual(40, merged["instances"]["1"]["daily_radish_exp_count"])
+            self.assertEqual(40, merged["gui_metrics"]["radish_detect_count"])
+            self.assertEqual(62, merged["gui_metrics"]["planting_count"])
+
+    def test_daily_metrics_sync_merges_same_day_daily_flow_success_dates(self):
+        import json
+        import tempfile
+
+        sync = load_function("_daily_metrics_sync_runtime")
+        self.assertIsNotNone(sync)
+        sync.__globals__.update({
+            "_DAILY_METRICS_LAST_SYNC_TS": 0.0,
+            "_write": lambda message: None,
+        })
+        day = "2026-07-29"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            local_path = Path(temp_dir) / "local.json"
+            portable_path = Path(temp_dir) / "portable.json"
+            local_path.write_text(json.dumps({
+                "task_last_date": "",
+                "share_last_date": "",
+                "instances": {"1": {}},
+            }), encoding="utf-8")
+            portable_path.write_text(json.dumps({
+                "task_last_date": day,
+                "share_last_date": day,
+                "instances": {"1": {
+                    "task_last_date": day,
+                    "share_last_date": day,
+                }},
+            }), encoding="utf-8")
+            context = types.SimpleNamespace(
+                instance_id="1",
+                task_last_date="",
+                share_last_date="",
+                _instance_metrics={"1": {"date": day}},
+            )
+
+            sync(
+                context,
+                counter_paths=[str(local_path), str(portable_path)],
+                csv_paths=[],
+                today=day,
+                force=True,
+            )
+
+            self.assertEqual(day, context.task_last_date)
+            self.assertEqual(day, context.share_last_date)
+            for path in (local_path, portable_path):
+                merged = json.loads(path.read_text(encoding="utf-8"))
+                self.assertEqual(day, merged["task_last_date"])
+                self.assertEqual(day, merged["share_last_date"])
+                self.assertEqual(day, merged["instances"]["1"]["task_last_date"])
+                self.assertEqual(day, merged["instances"]["1"]["share_last_date"])
+
+    def test_daily_metrics_default_sync_writes_hook_owned_durable_mirrors(self):
+        import json
+        import os
+        import tempfile
+        from unittest import mock
+
+        sync = load_function("_daily_metrics_sync_runtime")
+        self.assertIsNotNone(sync)
+        sync.__globals__.update({
+            "_DAILY_METRICS_LAST_SYNC_TS": 0.0,
+            "_write": lambda message: None,
+        })
+        day = "2026-07-29"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            local = root / "Local"
+            fake_hook = root / "portable" / "hook.py"
+            fake_hook.parent.mkdir(parents=True, exist_ok=True)
+            local.mkdir(parents=True, exist_ok=True)
+            sync.__globals__["__file__"] = str(fake_hook)
+            context = types.SimpleNamespace(
+                instance_id="1",
+                friend_help_daily_count=12,
+                friend_help_daily_date=day,
+                friend_trouble_daily_count=3,
+                friend_trouble_daily_date=day,
+                self_actions_daily_count=7,
+                self_actions_daily_date=day,
+                daily_radish_exp_count=2,
+                daily_radish_exp_date=day,
+                _instance_metrics={"1": {"date": day}},
+            )
+            with mock.patch.dict(os.environ, {"LOCALAPPDATA": str(local)}):
+                sync(
+                    context,
+                    counter_paths=None,
+                    csv_paths=[],
+                    today=day,
+                    force=True,
+                )
+
+            mirrors = (
+                local / "qq-farm-bot-rev" / "daily_counters.hook.json",
+                fake_hook.parent / "UserData" / "legacy-qq-farm-bot-rev" /
+                "daily_counters.hook.json",
+            )
+            for mirror in mirrors:
+                self.assertTrue(mirror.is_file(), str(mirror))
+                data = json.loads(mirror.read_text(encoding="utf-8"))
+                self.assertEqual(12, data["friend_help_daily_count"])
+                self.assertEqual(3, data["friend_trouble_daily_count"])
+                self.assertEqual(7, data["self_actions_daily_count"])
+                self.assertEqual(2, data["daily_radish_exp_count"])
+
+    def test_first_friend_waits_for_delayed_help_after_compiled_steal_before_navigation(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        events = []
+        action_calls = []
+
+        def fast_action(owner, candidate):
+            action_calls.append(candidate)
+            events.append("probe")
+            if len(action_calls) == 5:
+                events.append("help")
+                return True, "visual.friend_help_all"
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda *args, **kwargs: events.append("navigate") or (False, "")
+            ),
+            "_invoke_friend_visual_actions_before_home": fast_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: False,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=1,
+            friend_chain_action_poll_limit=16,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, "method.check_steal_all_icon"
+        )
+
+        self.assertGreaterEqual(len(action_calls), 5)
+        self.assertIn("help", events)
+        if "navigate" in events:
+            self.assertLess(events.index("help"), events.index("navigate"))
+        self.assertGreaterEqual(result["actions"], 1)
+        self.assertEqual("visual.friend_help_all", result["last_label"])
+
+    def test_first_friend_rechecks_delayed_help_even_when_compiled_label_is_help(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        events = []
+        action_calls = []
+
+        def fast_action(owner, candidate):
+            action_calls.append(candidate)
+            events.append("probe")
+            if len(action_calls) == 5:
+                events.append("help")
+                return True, "visual.friend_help_all"
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda *args, **kwargs: events.append("navigate") or (False, "")
+            ),
+            "_invoke_friend_visual_actions_before_home": fast_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda owner: True,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=1,
+            friend_chain_action_poll_limit=16,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            friend_chain_initial_idle_poll_min=8,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, "visual.friend_help_all"
+        )
+
+        self.assertGreaterEqual(len(action_calls), 5)
+        self.assertIn("help", events)
+        if "navigate" in events:
+            self.assertLess(events.index("help"), events.index("navigate"))
+        self.assertGreaterEqual(result["actions"], 1)
+        self.assertEqual("visual.friend_help_all", result["last_label"])
+
+    def test_first_friend_waits_for_delayed_help_button_before_navigation(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        calls = []
+        moves = []
+
+        def fast_action(owner, candidate):
+            calls.append(candidate)
+            if len(calls) == 5:
+                return True, "visual.friend_help_all"
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda *args, **kwargs: moves.append("adjacent") or (False, "")
+            ),
+            "_invoke_friend_visual_actions_before_home": fast_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: False,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=1,
+            friend_chain_action_poll_limit=16,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, ""
+        )
+
+        self.assertGreaterEqual(len(calls), 5)
+        self.assertGreaterEqual(result["actions"], 1)
+        self.assertEqual("visual.friend_help_all", result["last_label"])
+
+    def test_guard_list_first_friend_waits_through_full_render_grace_before_navigation(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        events = []
+        action_calls = []
+
+        def fast_action(owner, candidate):
+            action_calls.append(candidate)
+            events.append("probe")
+            if len(action_calls) == 11:
+                events.append("help")
+                return True, "visual.friend_help_all"
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda *args, **kwargs: events.append("navigate") or (False, "")
+            ),
+            "_invoke_friend_visual_actions_before_home": fast_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda owner: True,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=1,
+            friend_chain_action_poll_limit=16,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            friend_chain_initial_idle_poll_min=8,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, ""
+        )
+
+        self.assertGreaterEqual(len(action_calls), 11)
+        self.assertIn("help", events)
+        if "navigate" in events:
+            self.assertLess(events.index("help"), events.index("navigate"))
+        self.assertGreaterEqual(result["actions"], 1)
+        self.assertEqual("visual.friend_help_all", result["last_label"])
+
+    def test_guard_list_first_friend_waits_for_very_late_help_before_navigation(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        events = []
+        action_calls = []
+
+        def fast_action(owner, candidate):
+            action_calls.append(candidate)
+            events.append("probe")
+            if len(action_calls) == 20:
+                events.append("help")
+                return True, "visual.friend_help_all"
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda *args, **kwargs: events.append("navigate") or (False, "")
+            ),
+            "_invoke_friend_visual_actions_before_home": fast_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda owner: True,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=1,
+            friend_chain_action_poll_limit=16,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            friend_chain_initial_idle_poll_min=8,
+            _qqfarm_friend_entry_extended_action_grace=True,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, ""
+        )
+
+        self.assertGreaterEqual(len(action_calls), 20)
+        self.assertIn("help", events)
+        if "navigate" in events:
+            self.assertLess(events.index("help"), events.index("navigate"))
+        self.assertGreaterEqual(result["actions"], 1)
+        self.assertEqual("visual.friend_help_all", result["last_label"])
+
+    def test_next_friend_waits_for_very_late_help_after_navigation(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        state = {"navigated": False, "post_navigation_probes": 0}
+        events = []
+
+        def fast_action(owner, candidate):
+            if not state["navigated"]:
+                return False, ""
+            state["post_navigation_probes"] += 1
+            events.append("probe-next")
+            if state["post_navigation_probes"] == 20:
+                events.append("help-next")
+                return True, "visual.friend_help_all"
+            return False, ""
+
+        def adjacent(owner, candidate):
+            state["navigated"] = True
+            events.append("navigate")
+            return True, "visual.adjacent-friend-card"
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": adjacent,
+            "_invoke_friend_visual_actions_before_home": fast_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_friend_navigation_signature": lambda candidate: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_friend_guard_list_prequalified_entry_active": lambda owner: True,
+            "_friend_guard_list_refresh_prequalification": lambda owner, candidate: True,
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=1,
+            friend_chain_action_poll_limit=16,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            friend_chain_initial_idle_poll_min=8,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, "visual.friend_help_all"
+        )
+
+        self.assertGreaterEqual(state["post_navigation_probes"], 20)
+        self.assertIn("help-next", events)
+        self.assertGreaterEqual(result["actions"], 1)
+        self.assertEqual("visual.friend_help_all", result["last_label"])
+
+    def test_initial_guard_help_rejection_retries_same_first_friend_before_navigation(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        moves = []
+        action_calls = []
+
+        def fast_action(owner, candidate):
+            action_calls.append(candidate)
+            owner._qqfarm_guard_dog_help_skipped = True
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda *args, **kwargs: moves.append("adjacent") or (True, "next")
+            ),
+            "_invoke_friend_visual_actions_before_home": fast_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=3,
+            friend_chain_action_poll_limit=16,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            _qqfarm_guard_list_prequalified=True,
+            _qqfarm_guard_list_prequalified_ts=100.0,
+        )
+
+        result = namespace["_run_friend_continuation_chain"](
+            scheduler, frame, ""
+        )
+
+        self.assertGreaterEqual(len(action_calls), 1)
+        self.assertEqual([], moves)
+        self.assertFalse(result["exhausted"])
+        self.assertEqual("initial-guard-approval-pending", result["reason"])
+        self.assertTrue(scheduler._qqfarm_friend_chain_pending)
+
+    def test_initial_guard_help_rejection_advances_after_bounded_pending_retries(self):
+        namespace = load_functions("_run_friend_continuation_chain")
+        frame = object()
+        moves = []
+
+        def fast_action(owner, candidate):
+            owner._qqfarm_guard_dog_help_skipped = True
+            return False, ""
+
+        namespace.update({
+            "_invoke_friend_next_actionable_entry": lambda *args, **kwargs: (False, ""),
+            "_invoke_friend_adjacent_card_navigation": (
+                lambda owner, candidate: moves.append(candidate)
+                or (True, "visual.adjacent-friend-card")
+            ),
+            "_invoke_friend_visual_actions_before_home": fast_action,
+            "_invoke_friend_actions_before_home": lambda *args, **kwargs: (False, ""),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_sleep": lambda seconds: None,
+            "_friend_navigation_signature": lambda candidate: None,
+            "_friend_navigation_change_score": lambda signature, candidate: None,
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_set_friend_chain_fast_interval": lambda owner, active: True,
+            "_is_stop_requested_like": lambda owner: False,
+            "_guard_dog_ui_config_enabled": lambda: True,
+            "_guard_dog_detection_mode_config": lambda: "friend_guard_list",
+            "_write": lambda message: None,
+        })
+        scheduler = types.SimpleNamespace(
+            bottom_friend_list_help_all_limit=1,
+            friend_chain_action_poll_limit=16,
+            friend_chain_primary_navigation_poll_limit=2,
+            friend_chain_idle_confirmations=2,
+            friend_chain_guard_pending_retry_limit=3,
+            _qqfarm_guard_list_prequalified=True,
+            _qqfarm_guard_list_prequalified_ts=100.0,
+        )
+
+        first = namespace["_run_friend_continuation_chain"](scheduler, frame, "")
+        second = namespace["_run_friend_continuation_chain"](scheduler, frame, "")
+        third = namespace["_run_friend_continuation_chain"](scheduler, frame, "")
+
+        self.assertEqual([], moves[:0])
+        self.assertEqual("initial-guard-approval-pending", first["reason"])
+        self.assertEqual("initial-guard-approval-pending", second["reason"])
+        self.assertGreaterEqual(len(moves), 1)
+        self.assertNotEqual("initial-guard-approval-pending", third["reason"])
+    def test_runtime_go_home_threshold_floor_updates_loaded_threshold_holders(self):
+        apply_floor = load_function("_apply_runtime_go_home_threshold_floor")
+        threshold_holder = types.SimpleNamespace(go_home_frame=0.70)
+        scheduler = types.SimpleNamespace(
+            go_home_frame_threshold=0.70,
+            config={"threshold": {"go_home_frame": 0.70}},
+            thresholds=threshold_holder,
+        )
+
+        changed = apply_floor(scheduler, 0.79)
+
+        self.assertGreaterEqual(changed, 3)
+        self.assertEqual(0.79, scheduler.go_home_frame_threshold)
+        self.assertEqual(0.79, scheduler.config["threshold"]["go_home_frame"])
+        self.assertEqual(0.79, threshold_holder.go_home_frame)
+
+    def test_run_cycle_forces_one_self_pass_after_false_friend_branch(self):
+        namespace = load_functions("_wrap_runtime_diag_method")
+        frame = object()
+        events = []
+
+        class Scheduler:
+            _qqfarm_force_self_cycle_next = True
+            _qqfarm_cycle_branch_hint = "friend"
+            _qqfarm_friend_cycle_seen = True
+
+            def process_self_farm(self, game_frame):
+                events.append(("self", game_frame))
+                return "self-done"
+
+        scheduler = Scheduler()
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: 100.0),
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_guard_friend_ui_state": lambda candidate: False,
+            "_invoke_friend_guard_action": (
+                lambda action, target, args, kwargs: action(args[-1])
+            ),
+            "_set_friend_chain_fast_interval": (
+                lambda owner, active: events.append(("fast", active)) or True
+            ),
+            "_write": lambda message: None,
+            "_runtime_diag_repr": lambda value: repr(value),
+            "_runtime_diag_state": lambda value: "{}",
+        })
+
+        def original_run_cycle(owner):
+            events.append(("original", owner))
+            return "original"
+
+        wrapped, changed = namespace["_wrap_runtime_diag_method"](
+            original_run_cycle, "FarmBotCV.run_cycle"
+        )
+        result = wrapped(scheduler)
+
+        self.assertTrue(changed)
+        self.assertEqual("self-done", result)
+        self.assertEqual([("fast", False), ("self", frame)], events)
+        self.assertFalse(scheduler._qqfarm_force_self_cycle_next)
+        self.assertEqual("self", scheduler._qqfarm_cycle_branch_hint)
+        self.assertFalse(scheduler._qqfarm_friend_cycle_seen)
+
+    def test_run_cycle_waits_for_pending_friend_list_transition_before_native_flow(self):
+        namespace = load_functions("_wrap_runtime_diag_method")
+        frame = object()
+        native_calls = []
+        watchdog_calls = []
+        logs = []
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: 101.0),
+            "_write": lambda message: logs.append(message),
+            "_runtime_diag_repr": lambda value: repr(value),
+            "_runtime_diag_state": lambda value: "{}",
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_run_share_prompt_recovery": lambda owner: False,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_list_visit_button_rows": lambda candidate: [],
+            "_handle_friend_list_surface": lambda owner, candidate: None,
+            "_friend_guard_clear_prequalification": lambda owner: False,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_apply_visual_friend_route_watchdog": (
+                lambda fn, owner, label, force_recovery=False:
+                watchdog_calls.append((owner, label, force_recovery)) or False
+            ),
+            "_ACTIVE_RUN_CYCLE_CONTEXT": None,
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_entry_pending=True,
+            _qqfarm_friend_entry_clicked_ts=100.0,
+            friend_list_entry_settle_seconds=2.8,
+            friend_list_entry_timeout_seconds=8.0,
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_exhausted=False,
+        )
+
+        def native_run_cycle(owner):
+            native_calls.append(owner)
+            return "native"
+
+        wrapped, changed = namespace["_wrap_runtime_diag_method"](
+            native_run_cycle, "FarmBotCV.run_cycle"
+        )
+        result = wrapped(scheduler)
+
+        self.assertTrue(changed)
+        self.assertFalse(result)
+        self.assertEqual([], native_calls)
+        self.assertEqual([], watchdog_calls)
+        self.assertTrue(scheduler._qqfarm_friend_entry_pending)
+        self.assertTrue(any("friend-list transition" in message for message in logs))
+
+    def test_run_cycle_starts_first_friend_early_when_action_button_is_visible(self):
+        namespace = load_functions("_wrap_runtime_diag_method")
+        frame = object()
+        watchdog_calls = []
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: 101.0),
+            "_write": lambda message: None,
+            "_runtime_diag_repr": lambda value: repr(value),
+            "_runtime_diag_state": lambda value: "{}",
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_run_share_prompt_recovery": lambda owner: False,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_list_visit_button_rows": lambda candidate: [],
+            "_handle_friend_list_surface": lambda owner, candidate: None,
+            "_friend_guard_clear_prequalification": lambda owner: False,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_friend_guard_help_button_match": (
+                lambda candidate: {"matched": True, "center": (213, 597)}
+            ),
+            "_friend_guard_steal_button_match": (
+                lambda candidate: {"matched": False}
+            ),
+            "_apply_visual_friend_route_watchdog": (
+                lambda fn, owner, label, force_recovery=False:
+                watchdog_calls.append((owner, label, force_recovery)) or False
+            ),
+            "_daily_metrics_sync_runtime": lambda owner, force=False: {},
+            "_ACTIVE_RUN_CYCLE_CONTEXT": None,
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_entry_pending=True,
+            _qqfarm_friend_entry_clicked_ts=100.0,
+            friend_list_entry_settle_seconds=2.8,
+            friend_list_entry_timeout_seconds=8.0,
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_exhausted=False,
+        )
+
+        wrapped, _ = namespace["_wrap_runtime_diag_method"](
+            lambda owner: "native", "FarmBotCV.run_cycle"
+        )
+        result = wrapped(scheduler)
+
+        self.assertFalse(result)
+        self.assertFalse(scheduler._qqfarm_friend_entry_pending)
+        self.assertEqual([(scheduler, "FarmBotCV.run_cycle", True)], watchdog_calls)
+
+    def test_run_cycle_keeps_pending_friend_entry_when_surface_is_not_ready_after_settle(self):
+        namespace = load_functions("_wrap_runtime_diag_method")
+        frame = object()
+        native_calls = []
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: 103.0),
+            "_write": lambda message: None,
+            "_runtime_diag_repr": lambda value: repr(value),
+            "_runtime_diag_state": lambda value: "{}",
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_run_share_prompt_recovery": lambda owner: False,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_list_visit_button_rows": lambda candidate: [],
+            "_handle_friend_list_surface": lambda owner, candidate: None,
+            "_friend_guard_clear_prequalification": lambda owner: False,
+            "_friend_guard_friend_ui_state": lambda candidate: False,
+            "_ACTIVE_RUN_CYCLE_CONTEXT": None,
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_entry_pending=True,
+            _qqfarm_friend_entry_clicked_ts=100.0,
+            friend_list_entry_settle_seconds=2.8,
+            friend_list_entry_timeout_seconds=8.0,
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_exhausted=False,
+        )
+
+        def native_run_cycle(owner):
+            native_calls.append(owner)
+            return "native"
+
+        wrapped, _ = namespace["_wrap_runtime_diag_method"](
+            native_run_cycle, "FarmBotCV.run_cycle"
+        )
+        result = wrapped(scheduler)
+
+        self.assertFalse(result)
+        self.assertEqual([], native_calls)
+        self.assertTrue(scheduler._qqfarm_friend_entry_pending)
+
+    def test_run_cycle_releases_timed_out_friend_entry_for_native_recovery(self):
+        namespace = load_functions("_wrap_runtime_diag_method")
+        frame = object()
+        native_calls = []
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: 109.0),
+            "_write": lambda message: None,
+            "_runtime_diag_repr": lambda value: repr(value),
+            "_runtime_diag_state": lambda value: "{}",
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_run_share_prompt_recovery": lambda owner: False,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_list_visit_button_rows": lambda candidate: [],
+            "_handle_friend_list_surface": lambda owner, candidate: None,
+            "_friend_guard_clear_prequalification": lambda owner: False,
+            "_friend_guard_friend_ui_state": lambda candidate: False,
+            "_apply_visual_friend_route_watchdog": lambda *args, **kwargs: False,
+            "_daily_metrics_sync_runtime": lambda owner, force=False: {},
+            "_ACTIVE_RUN_CYCLE_CONTEXT": None,
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_entry_pending=True,
+            _qqfarm_friend_entry_clicked_ts=100.0,
+            friend_list_entry_settle_seconds=2.8,
+            friend_list_entry_timeout_seconds=8.0,
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_exhausted=False,
+        )
+
+        def native_run_cycle(owner):
+            native_calls.append(owner)
+            return "native"
+
+        wrapped, _ = namespace["_wrap_runtime_diag_method"](
+            native_run_cycle, "FarmBotCV.run_cycle"
+        )
+        result = wrapped(scheduler)
+
+        self.assertEqual("native", result)
+        self.assertEqual([scheduler], native_calls)
+        self.assertFalse(scheduler._qqfarm_friend_entry_pending)
+
+    def test_run_cycle_confirms_pending_friend_entry_after_settle_before_watchdog(self):
+        namespace = load_functions("_wrap_runtime_diag_method")
+        frame = object()
+        watchdog_calls = []
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: 103.0),
+            "_write": lambda message: None,
+            "_runtime_diag_repr": lambda value: repr(value),
+            "_runtime_diag_state": lambda value: "{}",
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_run_share_prompt_recovery": lambda owner: False,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_list_visit_button_rows": lambda candidate: [],
+            "_handle_friend_list_surface": lambda owner, candidate: None,
+            "_friend_guard_clear_prequalification": lambda owner: False,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_apply_visual_friend_route_watchdog": (
+                lambda fn, owner, label, force_recovery=False:
+                watchdog_calls.append((owner, label, force_recovery)) or False
+            ),
+            "_daily_metrics_sync_runtime": lambda owner, force=False: {},
+            "_ACTIVE_RUN_CYCLE_CONTEXT": None,
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_entry_pending=True,
+            _qqfarm_friend_entry_clicked_ts=100.0,
+            friend_list_entry_settle_seconds=2.8,
+            friend_list_entry_timeout_seconds=8.0,
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_exhausted=False,
+        )
+
+        wrapped, changed = namespace["_wrap_runtime_diag_method"](
+            lambda owner: "native", "FarmBotCV.run_cycle"
+        )
+        result = wrapped(scheduler)
+
+        self.assertTrue(changed)
+        self.assertFalse(result)
+        self.assertFalse(scheduler._qqfarm_friend_entry_pending)
+        self.assertEqual([(scheduler, "FarmBotCV.run_cycle", True)], watchdog_calls)
+
+    def test_run_cycle_preflight_owns_visible_friend_farm_before_native_unknown_flow(self):
+        namespace = load_functions("_wrap_runtime_diag_method")
+        frame = object()
+        native_calls = []
+        watchdog_calls = []
+        sync_calls = []
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: 100.0),
+            "_write": lambda message: None,
+            "_runtime_diag_repr": lambda value: repr(value),
+            "_runtime_diag_state": lambda value: "{}",
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_run_share_prompt_recovery": lambda owner: False,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_list_visit_button_rows": lambda candidate: [],
+            "_handle_friend_list_surface": lambda owner, candidate: None,
+            "_friend_guard_clear_prequalification": lambda owner: False,
+            "_friend_guard_friend_ui_state": lambda candidate: True,
+            "_apply_visual_friend_route_watchdog": (
+                lambda fn, owner, label, force_recovery=False:
+                watchdog_calls.append((owner, label, force_recovery)) or False
+            ),
+            "_daily_metrics_sync_runtime": (
+                lambda owner, force=False: sync_calls.append((owner, force)) or {}
+            ),
+            "_ACTIVE_RUN_CYCLE_CONTEXT": None,
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_exhausted=False,
+        )
+
+        def native_run_cycle(owner):
+            native_calls.append(owner)
+            return "native"
+
+        wrapped, changed = namespace["_wrap_runtime_diag_method"](
+            native_run_cycle, "FarmBotCV.run_cycle"
+        )
+        result = wrapped(scheduler)
+
+        self.assertTrue(changed)
+        self.assertFalse(result)
+        self.assertEqual([], native_calls)
+        self.assertEqual([(scheduler, "FarmBotCV.run_cycle", True)], watchdog_calls)
+        self.assertEqual([(scheduler, False)], sync_calls)
+        self.assertIsNone(namespace["_ACTIVE_RUN_CYCLE_CONTEXT"])
+
+    def test_run_cycle_preserves_first_friend_guard_approval_until_action(self):
+        namespace = load_functions("_wrap_runtime_diag_method")
+        seen = []
+        clear_calls = []
+        frame = object()
+
+        def clear_approval(owner):
+            clear_calls.append(owner)
+            owner._qqfarm_guard_list_prequalified = False
+            owner._qqfarm_guard_list_prequalified_ts = 0.0
+            return True
+
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: 100.0),
+            "_write": lambda message: None,
+            "_runtime_diag_repr": lambda value: repr(value),
+            "_runtime_diag_state": lambda value: "{}",
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_run_share_prompt_recovery": lambda owner: False,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_list_visit_button_rows": lambda candidate: [],
+            "_handle_friend_list_surface": lambda owner, candidate: None,
+            "_friend_guard_clear_prequalification": clear_approval,
+            "_ACTIVE_RUN_CYCLE_CONTEXT": None,
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_guard_list_prequalified=True,
+            _qqfarm_guard_list_prequalified_ts=99.0,
+            _qqfarm_friend_chain_pending=True,
+            _qqfarm_friend_chain_exhausted=False,
+        )
+
+        def run_cycle(owner):
+            seen.append(owner._qqfarm_guard_list_prequalified)
+            return "ran"
+
+        wrapped, changed = namespace["_wrap_runtime_diag_method"](
+            run_cycle, "FarmBotCV.run_cycle"
+        )
+        result = wrapped(scheduler)
+
+        self.assertTrue(changed)
+        self.assertEqual("ran", result)
+        self.assertEqual([True], seen)
+        self.assertEqual([], clear_calls)
+
+
+    def test_run_cycle_preserves_guard_approval_while_friend_entry_is_pending(self):
+        namespace = load_functions("_wrap_runtime_diag_method")
+        clear_calls = []
+        frame = object()
+
+        def clear_approval(owner):
+            clear_calls.append(owner)
+            owner._qqfarm_guard_list_prequalified = False
+            owner._qqfarm_guard_list_prequalified_ts = 0.0
+            return True
+
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: 100.0),
+            "_write": lambda message: None,
+            "_runtime_diag_repr": lambda value: repr(value),
+            "_runtime_diag_state": lambda value: "{}",
+            "_restore_runtime_business_switches": lambda owner: 0,
+            "_run_share_prompt_recovery": lambda owner: False,
+            "_get_frame_from_bot": lambda owner: frame,
+            "_friend_list_visit_button_rows": lambda candidate: [],
+            "_handle_friend_list_surface": lambda owner, candidate: None,
+            "_friend_guard_clear_prequalification": clear_approval,
+            "_friend_guard_list_prequalified_entry_active": lambda owner: bool(
+                owner._qqfarm_guard_list_prequalified
+            ),
+            "_friend_guard_friend_ui_state": lambda candidate: None,
+            "_ACTIVE_RUN_CYCLE_CONTEXT": None,
+        })
+        scheduler = types.SimpleNamespace(
+            _qqfarm_guard_list_prequalified=True,
+            _qqfarm_guard_list_prequalified_ts=99.0,
+            _qqfarm_friend_chain_pending=False,
+            _qqfarm_friend_chain_exhausted=False,
+            _qqfarm_friend_entry_pending=True,
+            _qqfarm_friend_entry_clicked_ts=99.0,
+            friend_list_entry_settle_seconds=2.8,
+            friend_list_entry_timeout_seconds=8.0,
+        )
+
+        wrapped, changed = namespace["_wrap_runtime_diag_method"](
+            lambda owner: "native", "FarmBotCV.run_cycle"
+        )
+        result = wrapped(scheduler)
+
+        self.assertTrue(changed)
+        self.assertFalse(result)
+        self.assertEqual([], clear_calls)
+        self.assertTrue(scheduler._qqfarm_guard_list_prequalified)
+
+
+
+    def test_troublemaker_live_frame_geometry_finds_24_seed_land_centers(self):
+        namespace = load_functions("_collect_friend_seed_land_centers_from_frame")
+        import cv2
+
+        frame = cv2.imread(str(FIXTURES / "friend_troublemaker_live.png"))
+        self.assertIsNotNone(frame)
+        centers = namespace["_collect_friend_seed_land_centers_from_frame"](frame)
+
+        self.assertEqual(24, len(centers))
+        self.assertEqual(len(centers), len(set(centers)))
+        self.assertTrue(all(70 <= x <= 350 for x, _ in centers))
+        self.assertTrue(all(395 <= y <= 570 for _, y in centers))
+
+    def test_troublemaker_dense_crop_field_returns_crop_centers_not_right_edge_artifacts(self):
+        namespace = load_functions("_collect_friend_seed_land_centers_from_frame")
+        import cv2
+
+        frame = cv2.imread(
+            str(FIXTURES / "friend_troublemaker_dense_live_sanitized.png")
+        )
+        self.assertIsNotNone(frame)
+        centers = namespace["_collect_friend_seed_land_centers_from_frame"](frame)
+
+        self.assertGreaterEqual(len(centers), 12)
+        self.assertLessEqual(min(x for x, _ in centers), 150)
+        self.assertTrue(all(390 <= y <= 560 for _, y in centers))
+
+    def test_troublemaker_empty_soil_is_not_treated_as_planted_land(self):
+        namespace = load_functions("_collect_friend_seed_land_centers_from_frame")
+        import cv2
+
+        frame = cv2.imread(
+            str(FIXTURES / "friend_troublemaker_empty_live_sanitized.png")
+        )
+        self.assertIsNotNone(frame)
+        centers = namespace["_collect_friend_seed_land_centers_from_frame"](frame)
+
+        self.assertEqual([], centers)
+
+    def test_troublemaker_shifted_field_uses_largest_land_lattice(self):
+        namespace = load_functions("_collect_friend_seed_land_centers_from_frame")
+        import cv2
+
+        frame = cv2.imread(str(FIXTURES / "friend_troublemaker_shifted_live.png"))
+        self.assertIsNotNone(frame)
+        centers = namespace["_collect_friend_seed_land_centers_from_frame"](frame)
+
+        self.assertEqual(8, len(centers))
+        self.assertTrue(all(130 <= x <= 340 for x, _ in centers))
+        self.assertTrue(all(690 <= y <= 790 for _, y in centers))
+
+    def test_troublemaker_popup_action_detector_finds_visible_weed_or_worm_button(self):
+        detector = load_function("_detect_friend_trouble_popup_action")
+        self.assertIsNotNone(detector)
+        import cv2
+
+        popup = cv2.imread(
+            str(FIXTURES / "friend_trouble_popup_action_live_sanitized.png")
+        )
+        plain = cv2.imread(
+            str(FIXTURES / "friend_troublemaker_dense_live_sanitized.png")
+        )
+
+        match = detector(popup)
+        self.assertIsInstance(match, dict)
+        self.assertIn("center", match)
+        center_x, center_y = match["center"]
+        self.assertTrue(150 <= center_x <= 270)
+        self.assertTrue(510 <= center_y <= 555)
+        self.assertIsNone(detector(plain))
+
+    def test_troublemaker_button_picker_uses_popup_action_fallback_when_native_misses(self):
+        namespace = load_functions(
+            "_detect_friend_trouble_popup_action",
+            "_wrap_troublemaker_button_picker",
+        )
+        import cv2
+
+        frame = cv2.imread(
+            str(FIXTURES / "friend_trouble_popup_action_live_sanitized.png")
+        )
+        logs = []
+        namespace["_write"] = lambda message: logs.append(message)
+        wrapped = namespace["_wrap_troublemaker_button_picker"](
+            lambda owner, popup_frame, roi: None
+        )
+        result = wrapped(object(), frame, (100, 400, 320, 560))
+
+        self.assertIsInstance(result, dict)
+        self.assertIn("center", result)
+        self.assertTrue(any("v200 trouble popup action fallback" in line for line in logs))
+
+    def test_troublemaker_seed_land_wrapper_uses_geometry_when_native_returns_empty(self):
+        namespace = load_functions(
+            "_collect_friend_seed_land_centers_from_frame",
+            "_wrap_troublemaker_seed_land_collector",
+        )
+        import cv2
+
+        frame = cv2.imread(str(FIXTURES / "friend_troublemaker_live.png"))
+        calls = []
+
+        def native(owner, game_frame):
+            calls.append((owner, game_frame))
+            return []
+
+        owner_globals = {"_FRIEND_DAILY_TROUBLE_SEED_MATCH_THRESHOLD": 0.76}
+        namespace.update({"_write": lambda message: None})
+        wrapped = namespace["_wrap_troublemaker_seed_land_collector"](
+            native, owner_globals
+        )
+        owner = object()
+        centers = wrapped(owner, frame)
+
+        self.assertEqual(24, len(centers))
+        self.assertEqual(1, len(calls))
+        self.assertEqual(0.76, owner_globals["_FRIEND_DAILY_TROUBLE_SEED_MATCH_THRESHOLD"])
+
+    def test_troublemaker_seed_land_wrapper_rejects_native_candidates_on_empty_soil(self):
+        namespace = load_functions(
+            "_collect_friend_seed_land_centers_from_frame",
+            "_wrap_troublemaker_seed_land_collector",
+        )
+        import cv2
+
+        frame = cv2.imread(
+            str(FIXTURES / "friend_troublemaker_empty_live_sanitized.png")
+        )
+        namespace.update({"_write": lambda message: None})
+        wrapped = namespace["_wrap_troublemaker_seed_land_collector"](
+            lambda owner, game_frame: [(243, 426)],
+            {"_FRIEND_DAILY_TROUBLE_SEED_MATCH_THRESHOLD": 0.76},
+        )
+
+        self.assertEqual([], wrapped(object(), frame))
+
+    def test_troublemaker_seed_land_wrapper_prefers_dense_crop_geometry_over_sparse_native(self):
+        namespace = load_functions(
+            "_collect_friend_seed_land_centers_from_frame",
+            "_wrap_troublemaker_seed_land_collector",
+        )
+        import cv2
+
+        frame = cv2.imread(
+            str(FIXTURES / "friend_troublemaker_dense_live_sanitized.png")
+        )
+        namespace.update({"_write": lambda message: None})
+        wrapped = namespace["_wrap_troublemaker_seed_land_collector"](
+            lambda owner, game_frame: [(364, 446)],
+            {"_FRIEND_DAILY_TROUBLE_SEED_MATCH_THRESHOLD": 0.76},
+        )
+        centers = wrapped(object(), frame)
+
+        self.assertGreaterEqual(len(centers), 12)
+        self.assertLessEqual(min(x for x, _ in centers), 150)
+
+    def test_troublemaker_seed_land_wrapper_preserves_native_candidates(self):
+        namespace = load_functions(
+            "_collect_friend_seed_land_centers_from_frame",
+            "_wrap_troublemaker_seed_land_collector",
+        )
+        native_centers = [(101, 420), (130, 435)]
+        namespace.update({"_write": lambda message: None})
+        wrapped = namespace["_wrap_troublemaker_seed_land_collector"](
+            lambda owner, frame: list(native_centers),
+            {"_FRIEND_DAILY_TROUBLE_SEED_MATCH_THRESHOLD": 0.76},
+        )
+
+        self.assertEqual(native_centers, wrapped(object(), object()))
 
 
 if __name__ == "__main__":

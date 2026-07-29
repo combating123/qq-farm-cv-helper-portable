@@ -88,7 +88,7 @@ def _throttled_write(key, msg, seconds=30.0):
         except BaseException:
             return False
 
-_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open')
+_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open+v147-first-friend-approval-barrier+v148-first-friend-no-skip+v149-first-friend-render-grace+v150-troublemaker-adjacent-retry+v151-troublemaker-frame-diagnostics+v152-troublemaker-frame-import+v153-troublemaker-callable-diagnostic+v154-troublemaker-helper-probes+v155-troublemaker-seed-land-compat+v156-troublemaker-geometry-preferred+v157-troublemaker-dynamic-lattice+v158-troublemaker-chain-finalize+v159-stale-friend-branch-cooldown+v160-native-home-visual-gate+v161-false-friend-log-relabel+v162-same-cycle-false-friend-clear+v163-active-cycle-false-friend-suppression+v164-skip-legacy-false-friend-processor+v165-force-self-pass-after-false-friend+v167-runtime-go-home-threshold-floor+v168-friend-entry-callable-inventory+v169-native-bottom-adjacent-fallback+v170-native-bottom-fresh-frame+v171-private-home-icon-gate+v172-force-self-after-private-home+v173-first-friend-post-steal-grace+v174-durable-action-counter-merge+v175-troublemaker-runtime-callable+v176-troublemaker-home-probe-authority+v177-single-harvest-immediate-planting+v178-run-cycle-durable-sync+v179-visual-only-friend-action-poll+v180-durable-counter-flow-mirror+v181-fast-planting-cooldown+v182-radish-counter-isolation-first-friend-grace+v183-watchdog-visual-only-probe+v184-visible-friend-preflight-owner+v185-guard-initial-next-card+v186-first-friend-render-floor+v187-troublemaker-full-miss-cooldown+v188-bounded-guard-pending-advance+v189-friend-list-entry-settle-barrier+v190-visible-first-action-early-release+v191-delayed-friend-action-grace+v192-planting-callable-inventory+v193-safe-planting-callable-inventory+v194-pending-entry-guard-approval+v195-fast-backpack-panel-settle+v196-backpack-helper-profile+v197-backpack-preverified-empty-land+v198-trouble-planted-evidence+v199-trouble-native-evidence-gate+v200-trouble-popup-action-fallback+v201-fast-no-seed-ocr+v202-restore-native-no-seed-ocr+v203-friend-list-progress-cursor+v204-backpack-panel-capture+v205-first-friend-native-miss-fallback+v206-friend-list-pending-row-retry+v207-confirmed-entry-cursor+v208-restore-normal-cycle-interval+v209-pending-row-reopen-recovery+v210-friend-help-daily-quota+v211-quota-chain-short-circuit+v212-native-help-proof-barrier+v213-about-expiry-card-cleanup+v214-about-expiry-text-fallback+v215-about-widget-diagnostic+v216-native-project-dialog+v217-friend-capture-card-restore+v218-fast-planting-inventory-chain+v219-quad-click-friend-first-blocked-row-outfit-guard+v220-empty-land-candidate-diagnostics+v221-empty-land-crop-cover-filter+v222-blocked-toast-home-terminal+v223-blocked-row-second-cap+v224-troublemaker-bounded-three')
 
 try:
     import sys, time, builtins, importlib, os
@@ -582,6 +582,10 @@ def _daily_metrics_sync_runtime(
         'date': '',
         'friend_farming_count': 0,
         'self_farming_count': 0,
+        'friend_help_daily_count': 0,
+        'friend_trouble_daily_count': 0,
+        'daily_radish_exp_count': 0,
+        'self_actions_daily_count': 0,
     }
     try:
         os_module = __import__('os')
@@ -600,23 +604,40 @@ def _daily_metrics_sync_runtime(
             counter_paths = []
             local = str(os_module.environ.get('LOCALAPPDATA', '') or '')
             if local:
+                local_counter_dir = os_module.path.join(local, 'qq-farm-bot-rev')
                 counter_paths.append(os_module.path.join(
-                    local, 'qq-farm-bot-rev', 'daily_counters.json'
+                    local_counter_dir, 'daily_counters.json'
+                ))
+                counter_paths.append(os_module.path.join(
+                    local_counter_dir, 'daily_counters.hook.json'
                 ))
             try:
                 base = os_module.path.dirname(os_module.path.abspath(__file__))
+                portable_counter_dir = os_module.path.join(
+                    base, 'UserData', 'legacy-qq-farm-bot-rev'
+                )
                 counter_paths.append(os_module.path.join(
-                    base, 'UserData', 'legacy-qq-farm-bot-rev',
-                    'daily_counters.json'
+                    portable_counter_dir, 'daily_counters.json'
+                ))
+                counter_paths.append(os_module.path.join(
+                    portable_counter_dir, 'daily_counters.hook.json'
                 ))
             except BaseException:
                 pass
         elif isinstance(counter_paths, (str, bytes, os_module.PathLike)):
             counter_paths = [counter_paths]
-        counter_paths = [
-            os_module.path.abspath(os_module.fspath(value))
-            for value in list(counter_paths or []) if value
-        ]
+        normalized_counter_paths = []
+        seen_counter_paths = set()
+        for value in list(counter_paths or []):
+            if not value:
+                continue
+            normalized_path = os_module.path.abspath(os_module.fspath(value))
+            normalized_key = os_module.path.normcase(normalized_path)
+            if normalized_key in seen_counter_paths:
+                continue
+            seen_counter_paths.add(normalized_key)
+            normalized_counter_paths.append(normalized_path)
+        counter_paths = normalized_counter_paths
 
         payloads = []
 
@@ -626,19 +647,65 @@ def _daily_metrics_sync_runtime(
             except BaseException:
                 return 0
 
+        counter_specs = (
+            ('friend_help_daily_count', 'friend_help_daily_date'),
+            ('friend_trouble_daily_count', 'friend_trouble_daily_date'),
+            ('daily_radish_exp_count', 'daily_radish_exp_date'),
+            ('self_actions_daily_count', 'self_actions_daily_date'),
+        )
+        flow_date_keys = (
+            'freebenefits_last_date', 'svip_last_date',
+            'task_last_date', 'share_last_date',
+        )
+        flow_dates = dict((key, '') for key in flow_date_keys)
+
         def _consume_counter_node(node):
             if not isinstance(node, dict):
                 return
-            if str(node.get('friend_help_daily_date', '') or '') == day:
-                summary['friend_farming_count'] = max(
-                    int(summary['friend_farming_count']),
-                    _safe_nonnegative(node.get('friend_help_daily_count', 0)),
+            for count_key, date_key in counter_specs:
+                if str(node.get(date_key, '') or '') != day:
+                    continue
+                summary[count_key] = max(
+                    int(summary.get(count_key, 0) or 0),
+                    _safe_nonnegative(node.get(count_key, 0)),
                 )
-            if str(node.get('self_actions_daily_date', '') or '') == day:
-                summary['self_farming_count'] = max(
-                    int(summary['self_farming_count']),
-                    _safe_nonnegative(node.get('self_actions_daily_count', 0)),
-                )
+            summary['friend_farming_count'] = int(
+                summary.get('friend_help_daily_count', 0) or 0
+            )
+            summary['self_farming_count'] = int(
+                summary.get('self_actions_daily_count', 0) or 0
+            )
+            for flow_key in flow_date_keys:
+                if str(node.get(flow_key, '') or '') == day:
+                    flow_dates[flow_key] = day
+
+        def _consume_metrics_node(metrics):
+            if not isinstance(metrics, dict):
+                return
+            if str(metrics.get('date', '') or '') != day:
+                return
+            summary['friend_help_daily_count'] = max(
+                int(summary.get('friend_help_daily_count', 0) or 0),
+                _safe_nonnegative(metrics.get('friend_farming_count', 0)),
+            )
+            summary['friend_trouble_daily_count'] = max(
+                int(summary.get('friend_trouble_daily_count', 0) or 0),
+                _safe_nonnegative(metrics.get('troublemaker_count', 0)),
+            )
+            summary['self_actions_daily_count'] = max(
+                int(summary.get('self_actions_daily_count', 0) or 0),
+                _safe_nonnegative(metrics.get('self_farming_count', 0)),
+            )
+            summary['daily_radish_exp_count'] = max(
+                int(summary.get('daily_radish_exp_count', 0) or 0),
+                _safe_nonnegative(metrics.get('daily_radish_exp_count', 0)),
+            )
+            summary['friend_farming_count'] = int(
+                summary.get('friend_help_daily_count', 0) or 0
+            )
+            summary['self_farming_count'] = int(
+                summary.get('self_actions_daily_count', 0) or 0
+            )
 
         for path in counter_paths:
             data = {}
@@ -652,12 +719,15 @@ def _daily_metrics_sync_runtime(
                 data = {}
             payloads.append((path, data))
             _consume_counter_node(data)
+            _consume_metrics_node(data.get('gui_metrics'))
             instances = data.get('instances') if isinstance(data, dict) else None
             if isinstance(instances, dict):
                 for instance_key, node in list(instances.items()):
                     if str(instance_key) == '__global__':
                         continue
                     _consume_counter_node(node)
+                    if isinstance(node, dict):
+                        _consume_metrics_node(node.get('gui_metrics'))
 
         count_fields = (
             'operation_count', 'self_harvest_count', 'friend_harvest_count',
@@ -685,6 +755,15 @@ def _daily_metrics_sync_runtime(
                 metrics['self_farming_count'],
                 int(summary['self_farming_count']),
             )
+            metrics['troublemaker_count'] = max(
+                metrics['troublemaker_count'],
+                int(summary.get('friend_trouble_daily_count', 0) or 0),
+            )
+            radish_count = int(summary.get('daily_radish_exp_count', 0) or 0)
+            metrics['radish_detect_count'] = radish_count
+            metrics['planting_count'] = max(
+                metrics['planting_count'], radish_count
+            )
             if not str(metrics.get('scene_hint', '') or ''):
                 metrics['scene_hint'] = 'home'
             return metrics
@@ -697,7 +776,39 @@ def _daily_metrics_sync_runtime(
             )
         except BaseException:
             instance_id = '1'
+
         live_metrics = getattr(context, '_instance_metrics', None) if context is not None else None
+        if isinstance(live_metrics, dict):
+            _consume_metrics_node(live_metrics.get(instance_id))
+
+        if context is not None:
+            context_node = {}
+            for count_key, date_key in counter_specs:
+                try:
+                    context_node[count_key] = getattr(context, count_key, 0)
+                    context_node[date_key] = getattr(context, date_key, '')
+                except BaseException:
+                    pass
+            for flow_key in flow_date_keys:
+                try:
+                    context_node[flow_key] = getattr(context, flow_key, '')
+                except BaseException:
+                    pass
+            _consume_counter_node(context_node)
+            for count_key, date_key in counter_specs:
+                try:
+                    setattr(context, count_key, int(summary.get(count_key, 0) or 0))
+                    setattr(context, date_key, day)
+                except BaseException:
+                    pass
+            for flow_key in flow_date_keys:
+                if not flow_dates.get(flow_key):
+                    continue
+                try:
+                    setattr(context, flow_key, day)
+                except BaseException:
+                    pass
+
         if isinstance(live_metrics, dict):
             live_metrics[instance_id] = _apply_metrics(live_metrics.get(instance_id))
 
@@ -705,6 +816,12 @@ def _daily_metrics_sync_runtime(
             try:
                 if not isinstance(data, dict):
                     data = {}
+                for count_key, date_key in counter_specs:
+                    data[count_key] = int(summary.get(count_key, 0) or 0)
+                    data[date_key] = day
+                for flow_key in flow_date_keys:
+                    if flow_dates.get(flow_key):
+                        data[flow_key] = day
                 data['gui_metrics'] = _apply_metrics(data.get('gui_metrics'))
                 instances = data.get('instances')
                 if not isinstance(instances, dict):
@@ -721,6 +838,12 @@ def _daily_metrics_sync_runtime(
                 if not isinstance(instance_bucket, dict):
                     instance_bucket = {}
                     instances[instance_id] = instance_bucket
+                for count_key, date_key in counter_specs:
+                    instance_bucket[count_key] = int(summary.get(count_key, 0) or 0)
+                    instance_bucket[date_key] = day
+                for flow_key in flow_date_keys:
+                    if flow_dates.get(flow_key):
+                        instance_bucket[flow_key] = day
                 instance_bucket['gui_metrics'] = _apply_metrics(
                     instance_bucket.get('gui_metrics')
                 )
@@ -1505,6 +1628,957 @@ def _configured_bool(sections, key, default=False):
         return bool(default)
 
 
+def _planting_callable_inventory(module):
+    """Return planting-related callables, including obfuscated helpers found by constants."""
+    entries = []
+    if module is None:
+        return entries
+    try:
+        import inspect
+        module_name = str(getattr(module, '__name__', '') or type(module).__name__)
+        targets = [(module, module_name)]
+        try:
+            for class_name, value in list(vars(module).items())[:800]:
+                if isinstance(value, type):
+                    targets.append((value, module_name + '.' + str(class_name)))
+        except BaseException:
+            pass
+        seen = set()
+        ascii_tokens = (
+            'plant', 'seed', 'backpack', 'empty_land', 'fertiliz', 'crop',
+            'land_count', 'seed_page', 'seed_shop', 'quad_act',
+        )
+        unicode_tokens = ('播种', '种子', '背包', '空地', '化肥', '地块')
+        for owner, prefix in targets:
+            try:
+                items = list(vars(owner).items())[:1200]
+            except BaseException:
+                continue
+            for attr_name, raw in items:
+                if isinstance(raw, (staticmethod, classmethod)):
+                    fn = raw.__func__
+                else:
+                    fn = raw
+                if not callable(fn) or isinstance(fn, type):
+                    continue
+                marker = id(fn)
+                if marker in seen:
+                    continue
+                seen.add(marker)
+                code = getattr(fn, '__code__', None)
+                if code is None:
+                    continue
+                parts = [str(attr_name), str(getattr(fn, '__name__', '') or '')]
+                try:
+                    parts.extend(str(value) for value in getattr(code, 'co_names', ()) or ())
+                except BaseException:
+                    pass
+                try:
+                    for value in getattr(code, 'co_consts', ()) or ():
+                        if isinstance(value, str):
+                            parts.append(value)
+                        elif hasattr(value, 'co_name'):
+                            parts.append(str(getattr(value, 'co_name', '') or ''))
+                            parts.extend(
+                                str(item) for item in getattr(value, 'co_names', ()) or ()
+                            )
+                            parts.extend(
+                                str(item) for item in getattr(value, 'co_consts', ()) or ()
+                                if isinstance(item, str)
+                            )
+                except BaseException:
+                    pass
+                searchable = ' '.join(parts)
+                lowered = searchable.lower()
+                if not (
+                    any(token in lowered for token in ascii_tokens)
+                    or any(token in searchable for token in unicode_tokens)
+                ):
+                    continue
+                path = prefix + '.' + str(attr_name)
+                detail_lines = ['path=' + path]
+                try:
+                    detail_lines.append('signature=' + str(inspect.signature(fn)))
+                except BaseException as error:
+                    detail_lines.append('signature-error=' + repr(error)[:240])
+                try:
+                    detail_lines.append(
+                        'varnames=' + repr(tuple(getattr(code, 'co_varnames', ()) or ()))
+                    )
+                    detail_lines.append(
+                        'names=' + repr(tuple(getattr(code, 'co_names', ()) or ()))
+                    )
+                    detail_lines.append(
+                        'consts=' + repr(tuple(getattr(code, 'co_consts', ()) or ()))[:20000]
+                    )
+                except BaseException:
+                    pass
+                entries.append({
+                    'path': path,
+                    'details': '\n'.join(detail_lines),
+                })
+        entries.sort(key=lambda item: str(item.get('path', '')))
+        return entries
+    except BaseException:
+        return entries
+
+
+_PLANTING_CALLABLE_INVENTORY_WRITTEN = set()
+
+
+def _write_planting_callable_inventory(module):
+    try:
+        module_name = str(getattr(module, '__name__', '') or type(module).__name__)
+        written = globals().get('_PLANTING_CALLABLE_INVENTORY_WRITTEN')
+        if not isinstance(written, set):
+            written = set()
+            globals()['_PLANTING_CALLABLE_INVENTORY_WRITTEN'] = written
+        if module_name in written:
+            return ''
+        entries = _planting_callable_inventory(module)
+        if not entries:
+            return ''
+        written.add(module_name)
+        target_dir = os.path.join(os.getcwd(), 'logs')
+        os.makedirs(target_dir, exist_ok=True)
+        target = os.path.join(target_dir, 'planting-callable-inventory.txt')
+        with open(target, 'a', encoding='utf-8') as stream:
+            stream.write('\n=== module ' + module_name + ' ===\n')
+            for entry in entries:
+                stream.write(str(entry.get('details', '')) + '\n\n')
+        _write(
+            'v192 planting callable inventory module=' + module_name +
+            ' entries=' + str(len(entries)) + ' target=' + target
+        )
+        return target
+    except BaseException as error:
+        try:
+            _write('v192 planting callable inventory error=' + repr(error)[:240])
+        except BaseException:
+            pass
+        return ''
+
+
+def _wrap_backpack_profile_helper(fn, name=''):
+    """Accumulate helper timings only while the backpack-priority branch is active."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_backpack_profile_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = args[0] if args else kwargs.get('bot')
+            try:
+                active = bool(getattr(bot, '_qqfarm_backpack_profile_active', False))
+            except BaseException:
+                active = False
+            if not active:
+                return fn(*args, **kwargs)
+            start = __import__('time').perf_counter()
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                elapsed = max(0.0, __import__('time').perf_counter() - start)
+                try:
+                    profile = getattr(bot, '_qqfarm_backpack_profile', None)
+                    if not isinstance(profile, dict):
+                        profile = {}
+                        setattr(bot, '_qqfarm_backpack_profile', profile)
+                    key = str(name or getattr(fn, '__name__', 'helper'))
+                    stats = profile.get(key)
+                    if not isinstance(stats, dict):
+                        stats = {'count': 0, 'total': 0.0, 'max': 0.0}
+                    stats['count'] = int(stats.get('count', 0) or 0) + 1
+                    stats['total'] = float(stats.get('total', 0.0) or 0.0) + elapsed
+                    stats['max'] = max(float(stats.get('max', 0.0) or 0.0), elapsed)
+                    profile[key] = stats
+                except BaseException:
+                    pass
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'backpack_profile_helper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_backpack_profile_wrapped__ = True
+        _wrapped.__qqfarm_backpack_profile_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+def _seed_panel_strip_visible(frame):
+    """Return whether the fixed bottom seed toolbar is visibly open."""
+    try:
+        if frame is None or getattr(frame, 'shape', None) is None:
+            return False
+        cv_module = globals().get('cv2') or __import__('cv2')
+        np_module = globals().get('np') or __import__('numpy')
+        height, width = frame.shape[:2]
+        if int(height) < 120 or int(width) < 120:
+            return False
+        x1 = max(0, int(round(float(width) * 0.04)))
+        x2 = min(int(width), int(round(float(width) * 0.92)))
+        y1 = max(0, int(round(float(height) * 0.61)))
+        y2 = min(int(height), int(round(float(height) * 0.75)))
+        roi = frame[y1:y2, x1:x2]
+        if getattr(roi, 'size', 0) <= 0:
+            return False
+        hsv = cv_module.cvtColor(roi, cv_module.COLOR_BGR2HSV)
+        dark = (hsv[:, :, 2] < 165) & (hsv[:, :, 1] < 205)
+        return bool(float(np_module.mean(dark)) >= 0.12)
+    except BaseException:
+        return False
+
+
+def _fast_seed_badge_candidates_from_frame(frame, capacity_hint=None):
+    """Detect positive seed slots from their fixed cream quantity badges."""
+    candidates = []
+    try:
+        try:
+            candidate_capacity = int(capacity_hint or 1)
+        except BaseException:
+            candidate_capacity = 1
+        candidate_capacity = max(1, min(999, candidate_capacity))
+        if not _seed_panel_strip_visible(frame):
+            return candidates
+        cv_module = globals().get('cv2') or __import__('cv2')
+        np_module = globals().get('np') or __import__('numpy')
+        height, width = frame.shape[:2]
+        hsv = cv_module.cvtColor(frame, cv_module.COLOR_BGR2HSV)
+        center_y = int(round(float(height) * 0.639))
+        radius_x = max(10, int(round(float(width) * 0.055)))
+        radius_y = max(8, int(round(float(height) * 0.018)))
+        for ratio in (0.159, 0.318, 0.477, 0.637, 0.796):
+            center_x = int(round(float(width) * ratio))
+            x1 = max(0, center_x - radius_x)
+            x2 = min(int(width), center_x + radius_x)
+            y1 = max(0, center_y - radius_y)
+            y2 = min(int(height), center_y + radius_y)
+            crop = hsv[y1:y2, x1:x2]
+            if getattr(crop, 'size', 0) <= 0:
+                continue
+            cream = cv_module.inRange(
+                crop,
+                np_module.array([5, 10, 115], dtype=np_module.uint8),
+                np_module.array([40, 175, 255], dtype=np_module.uint8),
+            )
+            cream_ratio = float(np_module.mean(cream > 0))
+            if cream_ratio < 0.22:
+                continue
+            candidates.append({
+                'count': int(candidate_capacity),
+                'center': (center_x, center_y),
+                'score': min(1.0, max(0.0, cream_ratio)),
+                'text': 'visual-positive-capacity',
+            })
+        return candidates
+    except BaseException:
+        return candidates
+
+
+def _wrap_seed_quantity_badges_fast(fn, name=''):
+    """Use fixed-slot visual evidence before invoking the slow badge OCR."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_seed_badges_fast_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = args[0] if args else kwargs.get('bot')
+            try:
+                active = bool(getattr(bot, '_qqfarm_backpack_profile_active', False))
+            except BaseException:
+                active = False
+            if not active:
+                return fn(*args, **kwargs)
+            frame = args[1] if len(args) > 1 else kwargs.get('frame')
+            panel_visible = _seed_panel_strip_visible(frame)
+            if panel_visible:
+                try:
+                    capacity_hint = int(getattr(
+                        bot, '_qqfarm_recent_empty_land_count', 0
+                    ) or 0)
+                except BaseException:
+                    capacity_hint = 0
+                fast = _fast_seed_badge_candidates_from_frame(
+                    frame, capacity_hint=max(1, capacity_hint)
+                )
+                if fast:
+                    try:
+                        now = __import__('time').time()
+                        setattr(bot, '_qqfarm_backpack_candidates_seen_ts', now)
+                        setattr(bot, '_qqfarm_backpack_candidate_centers', [x.get('center') for x in fast])
+                        _write(
+                            'v218 fast seed badges count=' + str(len(fast)) +
+                            ' name=' + str(name)
+                        )
+                    except BaseException:
+                        pass
+                    return fast
+            else:
+                try:
+                    _write('v218 seed panel not visible; skipped slow badge OCR name=' + str(name))
+                except BaseException:
+                    pass
+                return []
+            result = fn(*args, **kwargs)
+            try:
+                if result:
+                    setattr(bot, '_qqfarm_backpack_candidates_seen_ts', __import__('time').time())
+            except BaseException:
+                pass
+            return result
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'seed_badges_fast_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_seed_badges_fast_wrapped__ = True
+        _wrapped.__qqfarm_seed_badges_fast_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+def _empty_land_candidate_has_crop_cover(frame, center, threshold=0.12):
+    """Reject empty-land template hits surrounded by visible crop foliage."""
+    try:
+        if frame is None or getattr(frame, 'shape', None) is None:
+            return False
+        if not isinstance(center, (tuple, list)) or len(center) < 2:
+            return False
+        cv_module = globals().get('cv2') or __import__('cv2')
+        np_module = globals().get('np') or __import__('numpy')
+        height, width = frame.shape[:2]
+        x = int(round(float(center[0])))
+        y = int(round(float(center[1])))
+        radius = 20
+        x1 = max(0, x - radius)
+        x2 = min(int(width), x + radius + 1)
+        y1 = max(0, y - radius)
+        y2 = min(int(height), y + radius + 1)
+        roi = frame[y1:y2, x1:x2, :3]
+        if getattr(roi, 'size', 0) <= 0:
+            return False
+        hsv = cv_module.cvtColor(roi, cv_module.COLOR_BGR2HSV)
+        green = (
+            (hsv[:, :, 0] >= 30)
+            & (hsv[:, :, 0] <= 95)
+            & (hsv[:, :, 1] >= 45)
+            & (hsv[:, :, 2] >= 40)
+        )
+        green_ratio = float(np_module.mean(green))
+        return bool(green_ratio >= max(0.05, min(0.40, float(threshold))))
+    except BaseException:
+        return False
+
+
+def _wrap_detect_empty_lands_state(fn, name=''):
+    """Remember fresh multi-land detections for the following label check."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_empty_land_state_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            result = fn(*args, **kwargs)
+            bot = args[0] if args else kwargs.get('bot')
+            frame = args[1] if len(args) > 1 else kwargs.get('frame')
+            rejected_centers = []
+            try:
+                filter_fn = globals().get('_empty_land_candidate_has_crop_cover')
+                if isinstance(result, list) and callable(filter_fn):
+                    filtered = []
+                    for item in result:
+                        center = item.get('center') if isinstance(item, dict) else None
+                        if (
+                            isinstance(center, (tuple, list))
+                            and len(center) >= 2
+                            and filter_fn(frame, center)
+                        ):
+                            rejected_centers.append((
+                                int(round(float(center[0]))),
+                                int(round(float(center[1]))),
+                            ))
+                            continue
+                        filtered.append(item)
+                    result = filtered
+                    if rejected_centers:
+                        _write(
+                            'v221 empty land crop-covered false positives=' +
+                            str(len(rejected_centers)) + ' centers=' +
+                            repr(rejected_centers)[:360] + ' name=' + str(name)
+                        )
+            except BaseException:
+                rejected_centers = []
+            try:
+                count = len(result) if result is not None else 0
+                centers = []
+                for item in list(result or []):
+                    center = item.get('center') if isinstance(item, dict) else None
+                    if isinstance(center, (tuple, list)) and len(center) >= 2:
+                        centers.append((
+                            int(round(float(center[0]))),
+                            int(round(float(center[1]))),
+                        ))
+                setattr(bot, '_qqfarm_recent_empty_land_count', int(count))
+                setattr(bot, '_qqfarm_recent_empty_land_centers', centers)
+                setattr(bot, '_qqfarm_recent_empty_land_rejected_centers', rejected_centers)
+                setattr(bot, '_qqfarm_recent_empty_land_ts', __import__('time').time())
+                if count > 0:
+                    _write(
+                        'v220 empty land candidates count=' + str(int(count)) +
+                        ' centers=' + repr(centers)[:360] +
+                        ' raw=' + repr(result)[:720] +
+                        ' name=' + str(name)
+                    )
+            except BaseException:
+                pass
+            return result
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'empty_land_state_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_empty_land_state_wrapped__ = True
+        _wrapped.__qqfarm_empty_land_state_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+def _wrap_buy_seed_for_crop_backpack_guard(fn, name=''):
+    """Defer shop purchases while recently observed backpack inventory remains."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_backpack_buy_guard_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = args[0] if args else kwargs.get('bot')
+            try:
+                seen_ts = float(getattr(bot, '_qqfarm_backpack_candidates_seen_ts', 0.0) or 0.0)
+                age = max(0.0, __import__('time').time() - seen_ts) if seen_ts > 0 else 999999.0
+            except BaseException:
+                seen_ts = 0.0
+                age = 999999.0
+            if seen_ts > 0 and age <= 300.0:
+                try:
+                    setattr(
+                        bot,
+                        'planting_buy_retry_no_buy_quota',
+                        max(1, int(getattr(bot, 'planting_buy_retry_no_buy_quota', 0) or 0)),
+                    )
+                    _write(
+                        'v218 deferred seed shop because backpack inventory was seen age=' +
+                        ('%.1f' % age) + ' name=' + str(name)
+                    )
+                except BaseException:
+                    pass
+                return False
+            return fn(*args, **kwargs)
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'backpack_buy_guard_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_backpack_buy_guard_wrapped__ = True
+        _wrapped.__qqfarm_backpack_buy_guard_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+def _wrap_planting_template_center_fast(fn, name=''):
+    """Use a contextual threshold for the short-lived 2x2 confirmation popup."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_planting_template_center_fast_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            call_args = list(args or ())
+            call_kwargs = dict(kwargs or {})
+            template_id = call_args[2] if len(call_args) >= 3 else call_kwargs.get('template_id')
+            if str(template_id or '') in ('act_seeds_btn_ok', 'act_seeds_btn_close'):
+                if len(call_args) >= 4:
+                    try:
+                        call_args[3] = min(float(call_args[3]), 0.62)
+                    except BaseException:
+                        pass
+                else:
+                    try:
+                        call_kwargs['threshold'] = min(float(call_kwargs.get('threshold', 0.75)), 0.62)
+                    except BaseException:
+                        call_kwargs['threshold'] = 0.62
+            return fn(*tuple(call_args), **call_kwargs)
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'planting_template_center_fast_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_planting_template_center_fast_wrapped__ = True
+        _wrapped.__qqfarm_planting_template_center_fast_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+
+def _wrap_backpack_seed_blacklist_fast(fn, name=''):
+    """Recognize the clickable 2x2 seed before the normal drag-seed path."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_backpack_seed_blacklist_fast_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = args[0] if args else kwargs.get('bot')
+            marker = object()
+            old_value = marker
+            try:
+                old_value = getattr(bot, 'act_seeds_frame_threshold')
+            except BaseException:
+                pass
+            try:
+                current = float(old_value if old_value is not marker else 0.72)
+                setattr(bot, 'act_seeds_frame_threshold', min(current, 0.62))
+                result = fn(*args, **kwargs)
+                if result:
+                    try:
+                        _write(
+                            'v219 2x2 seed recognized before drag path name=' + str(name)
+                        )
+                    except BaseException:
+                        pass
+                return result
+            finally:
+                try:
+                    if old_value is marker:
+                        delattr(bot, 'act_seeds_frame_threshold')
+                    else:
+                        setattr(bot, 'act_seeds_frame_threshold', old_value)
+                except BaseException:
+                    pass
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'backpack_seed_blacklist_fast_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_backpack_seed_blacklist_fast_wrapped__ = True
+        _wrapped.__qqfarm_backpack_seed_blacklist_fast_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+def _configured_player_level(default=120):
+    try:
+        raw = _cfg_get(_active_planting_sections(), 'player_level', str(default))
+        value = int(float(str(raw).strip()))
+        if 1 <= value <= 999:
+            return value
+    except BaseException:
+        pass
+    return int(default)
+
+
+def _wrap_player_level_fast(fn, name=''):
+    """Use the configured/cached level and probe OCR only on a long interval."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_player_level_fast_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = args[0] if args else kwargs.get('self')
+            now = __import__('time').time()
+            has_schedule = False
+            try:
+                has_schedule = hasattr(bot, '_qqfarm_player_level_next_probe_ts')
+                next_probe = float(getattr(bot, '_qqfarm_player_level_next_probe_ts', 0.0) or 0.0)
+                cached = int(getattr(bot, '_qqfarm_player_level_cache_value', 0) or 0)
+            except BaseException:
+                next_probe = 0.0
+                cached = 0
+            if has_schedule and 1 <= cached <= 999 and now < next_probe:
+                return cached
+            if not has_schedule:
+                try:
+                    existing = int(getattr(bot, '_last_player_level_detected', 0) or 0)
+                except BaseException:
+                    existing = 0
+                value = existing if 1 <= existing <= 999 else _configured_player_level(120)
+                try:
+                    setattr(bot, '_qqfarm_player_level_cache_value', int(value))
+                    setattr(bot, '_qqfarm_player_level_next_probe_ts', now + 3600.0)
+                    setattr(bot, '_last_player_level_detect_source', 'hook-config-cache')
+                    _write('v218 player level fast cache=' + str(value) + ' name=' + str(name))
+                except BaseException:
+                    pass
+                return int(value)
+            result = fn(*args, **kwargs)
+            try:
+                value = int(result or 0)
+            except BaseException:
+                value = 0
+            if not 1 <= value <= 999:
+                value = _configured_player_level(120)
+            try:
+                setattr(bot, '_qqfarm_player_level_cache_value', int(value))
+                setattr(bot, '_qqfarm_player_level_next_probe_ts', now + 3600.0)
+            except BaseException:
+                pass
+            return int(value)
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'player_level_fast_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_player_level_fast_wrapped__ = True
+        _wrapped.__qqfarm_player_level_fast_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+def _wrap_fertilizer_template_fast(fn, name=''):
+    """Lower only the contextual fertilizer template threshold and restore state."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_fertilizer_template_fast_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = args[0] if args else kwargs.get('bot')
+            fertilizer_type = args[2] if len(args) >= 3 else kwargs.get('fertilizer_type', 'one')
+            attr_name = (
+                'fertilizer_more_frame_threshold'
+                if str(fertilizer_type or '').strip().lower() == 'more'
+                else 'fertilizer_one_frame_threshold'
+            )
+            marker = object()
+            old_value = marker
+            try:
+                old_value = getattr(bot, attr_name)
+            except BaseException:
+                pass
+            try:
+                current = float(old_value if old_value is not marker else 0.72)
+                setattr(bot, attr_name, min(current, 0.62))
+                return fn(*args, **kwargs)
+            finally:
+                try:
+                    if old_value is marker:
+                        delattr(bot, attr_name)
+                    else:
+                        setattr(bot, attr_name, old_value)
+                except BaseException:
+                    pass
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'fertilizer_template_fast_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_fertilizer_template_fast_wrapped__ = True
+        _wrapped.__qqfarm_fertilizer_template_fast_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+def _save_backpack_seed_panel_debug_frame(frame):
+    """Persist one live backpack seed-panel frame for local detector tuning."""
+    try:
+        cached = str(globals().get('_BACKPACK_SEED_PANEL_DEBUG_PATH', '') or '')
+        if bool(globals().get('_BACKPACK_SEED_PANEL_DEBUG_SAVED', False)):
+            return cached
+        if frame is None or getattr(frame, 'shape', None) is None:
+            return ''
+        cv_module = globals().get('cv2') or __import__('cv2')
+        os_module = globals().get('os') or __import__('os')
+        base = os_module.path.dirname(os_module.path.abspath(__file__))
+        log_dir = os_module.path.join(base, 'logs')
+        os_module.makedirs(log_dir, exist_ok=True)
+        target = os_module.path.join(log_dir, 'backpack-seed-panel-live.png')
+        encoded_ok, encoded = cv_module.imencode('.png', frame)
+        if not encoded_ok:
+            return ''
+        encoded.tofile(target)
+        globals()['_BACKPACK_SEED_PANEL_DEBUG_SAVED'] = True
+        globals()['_BACKPACK_SEED_PANEL_DEBUG_PATH'] = target
+        return target
+    except BaseException:
+        return ''
+
+
+def _wrap_backpack_no_seed_hint_fast(fn, name=''):
+    """Preserve the native no-seed OCR result while profiling the backpack branch."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_backpack_no_seed_hint_fast_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = args[0] if args else kwargs.get('bot')
+            try:
+                active = bool(getattr(bot, '_qqfarm_backpack_profile_active', False))
+            except BaseException:
+                active = False
+            if active:
+                try:
+                    frame = args[1] if len(args) > 1 else kwargs.get('frame')
+                    save_fn = globals().get('_save_backpack_seed_panel_debug_frame')
+                    debug_path = save_fn(frame) if callable(save_fn) else ''
+                    if debug_path:
+                        _write('v204 backpack seed panel frame saved=' + str(debug_path))
+                except BaseException:
+                    frame = None
+                try:
+                    panel_fn = globals().get('_seed_panel_strip_visible')
+                    badges_fn = globals().get('_fast_seed_badge_candidates_from_frame')
+                    panel_visible = bool(panel_fn(frame)) if callable(panel_fn) else False
+                    try:
+                        capacity_hint = int(getattr(
+                            bot, '_qqfarm_recent_empty_land_count', 0
+                        ) or 0)
+                    except BaseException:
+                        capacity_hint = 0
+                    fast_badges = (
+                        badges_fn(frame, capacity_hint=max(1, capacity_hint))
+                        if panel_visible and callable(badges_fn) else []
+                    )
+                    if fast_badges:
+                        now_ts = __import__('time').time()
+                        setattr(bot, '_qqfarm_backpack_candidates_seen_ts', now_ts)
+                        setattr(
+                            bot,
+                            '_qqfarm_backpack_candidate_centers',
+                            [item.get('center') for item in fast_badges],
+                        )
+                        _write(
+                            'v219 visible seed inventory bypassed slow no-seed OCR '
+                            'count=' + str(len(fast_badges)) + ' name=' + str(name)
+                        )
+                        return False, 'hook-visible-seed-inventory', 1.0
+                except BaseException:
+                    pass
+            result = fn(*args, **kwargs)
+            if active:
+                try:
+                    _write(
+                        'v202 restored native no-seed OCR name=' + str(name)
+                    )
+                except BaseException:
+                    pass
+            return result
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'backpack_no_seed_hint_fast_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_backpack_no_seed_hint_fast_wrapped__ = True
+        _wrapped.__qqfarm_backpack_no_seed_hint_fast_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+def _wrap_backpack_empty_land_label_fast(fn, name=''):
+    """Trust lands already verified by the active backpack-priority branch."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_backpack_empty_land_fast_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = args[0] if args else kwargs.get('bot')
+            try:
+                active = bool(getattr(bot, '_qqfarm_backpack_profile_active', False))
+            except BaseException:
+                active = False
+            batch_preverified = False
+            try:
+                batch_count = int(getattr(bot, '_qqfarm_recent_empty_land_count', 0) or 0)
+                batch_ts = float(getattr(bot, '_qqfarm_recent_empty_land_ts', 0.0) or 0.0)
+                batch_age = max(0.0, __import__('time').time() - batch_ts) if batch_ts > 0 else 999999.0
+                batch_preverified = bool(batch_count >= 4 and batch_age <= 12.0)
+            except BaseException:
+                batch_preverified = False
+            if not active and not batch_preverified:
+                return fn(*args, **kwargs)
+
+            land_center = None
+            if len(args) >= 3:
+                land_center = args[2]
+            elif 'land_center' in kwargs:
+                land_center = kwargs.get('land_center')
+            try:
+                valid_center = (
+                    isinstance(land_center, (tuple, list))
+                    and len(land_center) >= 2
+                    and land_center[0] is not None
+                    and land_center[1] is not None
+                )
+                center_x = int(round(float(land_center[0]))) if valid_center else None
+            except BaseException:
+                valid_center = False
+                center_x = None
+            if not valid_center:
+                return fn(*args, **kwargs)
+
+            reason = (
+                'hook-backpack-preverified-empty-land'
+                if active else 'hook-batch-preverified-empty-land'
+            )
+            try:
+                _write(
+                    ('v197 backpack preverified empty land' if active else 'v218 batch preverified empty land') +
+                    '; skipped slow label OCR center=' +
+                    repr((land_center[0], land_center[1])) +
+                    ' name=' + str(name)
+                )
+            except BaseException:
+                pass
+            return True, reason, 1.0, center_x
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'backpack_empty_land_fast_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_backpack_empty_land_fast_wrapped__ = True
+        _wrapped.__qqfarm_backpack_empty_land_fast_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
+    """Cap repeated waits and report safe per-helper timings for the native branch."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_backpack_fast_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            call_args = list(args or ())
+            call_kwargs = dict(kwargs or {})
+            original_settle = None
+            effective_settle = None
+            if len(call_args) >= 3:
+                try:
+                    original_settle = float(call_args[2])
+                    effective_settle = min(original_settle, 0.65)
+                    call_args[2] = effective_settle
+                except BaseException:
+                    original_settle = None
+                    effective_settle = None
+            elif 'panel_settle' in call_kwargs:
+                try:
+                    original_settle = float(call_kwargs.get('panel_settle'))
+                    effective_settle = min(original_settle, 0.65)
+                    call_kwargs['panel_settle'] = effective_settle
+                except BaseException:
+                    original_settle = None
+                    effective_settle = None
+            bot = call_args[0] if call_args else call_kwargs.get('bot')
+            marker = object()
+            old_active = marker
+            old_profile = marker
+            if bot is not None:
+                try:
+                    old_active = getattr(bot, '_qqfarm_backpack_profile_active')
+                except BaseException:
+                    pass
+                try:
+                    old_profile = getattr(bot, '_qqfarm_backpack_profile')
+                except BaseException:
+                    pass
+                try:
+                    setattr(bot, '_qqfarm_backpack_profile_active', True)
+                    setattr(bot, '_qqfarm_backpack_profile', {})
+                except BaseException:
+                    pass
+            start = __import__('time').perf_counter()
+            result_marker = object()
+            result = result_marker
+            profile = {}
+            try:
+                result = fn(*tuple(call_args), **call_kwargs)
+            finally:
+                elapsed = max(0.0, __import__('time').perf_counter() - start)
+                if bot is not None:
+                    try:
+                        current_profile = getattr(bot, '_qqfarm_backpack_profile', {})
+                        if isinstance(current_profile, dict):
+                            profile = dict(current_profile)
+                    except BaseException:
+                        profile = {}
+                    try:
+                        if old_active is marker:
+                            delattr(bot, '_qqfarm_backpack_profile_active')
+                        else:
+                            setattr(bot, '_qqfarm_backpack_profile_active', old_active)
+                    except BaseException:
+                        pass
+                    try:
+                        if old_profile is marker:
+                            delattr(bot, '_qqfarm_backpack_profile')
+                        else:
+                            setattr(bot, '_qqfarm_backpack_profile', old_profile)
+                    except BaseException:
+                        pass
+                try:
+                    remaining = None
+                    if result is not result_marker and isinstance(result, (tuple, list)) and len(result) >= 2:
+                        remaining_value = result[1]
+                        remaining = len(remaining_value) if remaining_value is not None else 0
+                    ordered = sorted(
+                        profile.items(),
+                        key=lambda item: float((item[1] or {}).get('total', 0.0) or 0.0),
+                        reverse=True,
+                    )
+                    profile_text = ','.join(
+                        str(key).split('.')[-1] + ':' +
+                        str(int((stats or {}).get('count', 0) or 0)) + '/' +
+                        ('%.3f' % float((stats or {}).get('total', 0.0) or 0.0)) + '/' +
+                        ('%.3f' % float((stats or {}).get('max', 0.0) or 0.0))
+                        for key, stats in ordered[:12]
+                    )
+                    _write(
+                        'v195 backpack priority elapsed=' + ('%.3f' % elapsed) +
+                        ' panel_settle=' + (
+                            ('%.3f->%.3f' % (original_settle, effective_settle))
+                            if original_settle is not None and effective_settle is not None
+                            else 'unchanged'
+                        ) +
+                        ' remaining=' + repr(remaining) +
+                        ' profile=' + profile_text +
+                        ' name=' + str(name)
+                    )
+                except BaseException:
+                    pass
+            return result
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'backpack_seed_priority_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_backpack_fast_wrapped__ = True
+        _wrapped.__qqfarm_backpack_fast_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+def _fast_planting_switch_value(key, desired):
+    """Disable the per-land OCR path that stalls drag planting for tens of seconds."""
+    try:
+        if str(key or '') == 'enhance_empty_land_detection':
+            return False
+    except BaseException:
+        pass
+    return bool(desired)
+
+
 def _restore_runtime_business_switches(obj):
     changed = 0
     try:
@@ -1545,6 +2619,10 @@ def _restore_runtime_business_switches(obj):
         for sections, entries in groups:
             for key, aliases in entries:
                 desired = _configured_bool(sections, key, False)
+                try:
+                    desired = _fast_planting_switch_value(key, desired)
+                except BaseException:
+                    pass
                 try:
                     if key == 'enable_wechat_focus_guard' and obj.__class__.__name__ == 'FarmBotCV':
                         desired = bool(desired and _active_is_weixin_mode())
@@ -3617,23 +4695,46 @@ _VIP_WAREHOUSE_RETRY_MEMORY_PATH = ''
 _VIP_WAREHOUSE_RETRY_MEMORY_DIRTY = False
 _VIP_WAREHOUSE_LAST_SEQUENCE_CLASS = ''
 _VIP_WAREHOUSE_LAST_SEQUENCE_TS = 0.0
+_BACKPACK_PROFILE_FUNC_NAMES = set([
+    '_detect_seed_quantity_badges_by_ocr',
+    '_detect_empty_lands',
+    '_check_empty_land_label_with_retry',
+    '_infer_land_center_from_shovel',
+    '_detect_no_seed_hint_by_ocr',
+    '_is_backpack_seed_blacklisted_by_template',
+    '_execute_planting_by_mode',
+    '_buy_seed_for_crop',
+    '_match_template_center',
+    '_detect_fertilizer_template',
+])
+
+
 _VIP_BUSINESS_FUNC_NAMES = set([
     '_handle_home_auto_sell_fruit',
     '_run_warehouse_sell_button_sequence',
     'handle_home_maintenance',
     'handle_home_pre_planting_maintenance',
+    'handle_home_harvest',
+    'handle_home_planting',
     'process_self_farm',
     '_run_friend_daily_troublemaker',
     'process_friend_farm',
     'handle_friend_farm_actions',
     '_plant_seed_over_lands',
     '_run_auto_fertilize_after_planting',
-])
+    '_run_backpack_seed_priority_planting',
+    'get_current_player_level',
+]).union(globals().get('_BACKPACK_PROFILE_FUNC_NAMES', set()))
 _FRIEND_HOME_FUNC_NAMES = set([
     'check_go_home_icon',
+    '_has_go_home_icon',
     'go_home',
     'return_home',
     '_return_home',
+])
+_FRIEND_NEXT_ENTRY_FUNC_NAMES = set([
+    'check_friend_farm_bottom_help_all_entry',
+    'check_friend_farm_bottom_steal_entry',
 ])
 
 
@@ -4382,10 +5483,691 @@ _VIP_CONTEXT_CHILD_NAMES = (
 
 
 
+_LAST_SUCCESSFUL_FULL_PLANTING_TS = 0.0
+
+
+def _note_runtime_planting_outcome(message):
+    """Remember a verified full-land drag so false empty-land matches cool down."""
+    global _LAST_SUCCESSFUL_FULL_PLANTING_TS
+    try:
+        if '拖拽播种已覆盖全地块' not in str(message or ''):
+            return float(_LAST_SUCCESSFUL_FULL_PLANTING_TS or 0.0)
+        _LAST_SUCCESSFUL_FULL_PLANTING_TS = float(time.time())
+        context = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
+        if context is not None:
+            try:
+                setattr(context, '_qqfarm_single_harvest_planting_pending', False)
+            except BaseException:
+                pass
+        _write(
+            'v181 full-land planting cooldown armed ts=' +
+            ('%.3f' % _LAST_SUCCESSFUL_FULL_PLANTING_TS)
+        )
+    except BaseException:
+        pass
+    return float(_LAST_SUCCESSFUL_FULL_PLANTING_TS or 0.0)
+
+
+def _wrap_home_planting_cooldown(fn, name=''):
+    """Skip immediate repeat planting scans after a verified full-land drag."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_home_planting_cooldown_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            context = None
+            try:
+                context_fn = globals().get('_friend_guard_context')
+                context = context_fn(args, kwargs) if callable(context_fn) else None
+            except BaseException:
+                context = None
+            if context is None and args:
+                context = args[0]
+            try:
+                pending_single = bool(getattr(
+                    context, '_qqfarm_single_harvest_planting_pending', False
+                ))
+            except BaseException:
+                pending_single = False
+            try:
+                cooldown_seconds = float(getattr(
+                    context, 'planting_post_success_cooldown_seconds', 180.0
+                ) or 180.0)
+            except BaseException:
+                cooldown_seconds = 180.0
+            cooldown_seconds = max(30.0, min(900.0, cooldown_seconds))
+            try:
+                last_success = float(globals().get(
+                    '_LAST_SUCCESSFUL_FULL_PLANTING_TS', 0.0
+                ) or 0.0)
+                age = float(time.time()) - last_success if last_success > 0.0 else -1.0
+            except BaseException:
+                age = -1.0
+            if not pending_single and 0.0 <= age < cooldown_seconds:
+                try:
+                    _throttled_write(
+                        'v181-planting-cooldown',
+                        'v181 skipped repeat planting scan age=' + ('%.1f' % age) +
+                        ' cooldown=' + ('%.1f' % cooldown_seconds),
+                        15.0,
+                    )
+                except BaseException:
+                    pass
+                return False
+            return fn(*args, **kwargs)
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'home_planting_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__qqfarm_home_planting_cooldown_wrapped__ = True
+        _wrapped.__qqfarm_home_planting_cooldown_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+_SINGLE_HARVEST_EVENT_TOKEN = 0
+
+
+def _note_runtime_single_harvest_outcome(message):
+    """Record the native single-harvest branch so planting can run immediately."""
+    global _SINGLE_HARVEST_EVENT_TOKEN
+    try:
+        if '?????????' not in str(message or ''):
+            return int(_SINGLE_HARVEST_EVENT_TOKEN or 0)
+        _SINGLE_HARVEST_EVENT_TOKEN = int(
+            _SINGLE_HARVEST_EVENT_TOKEN or 0
+        ) + 1
+    except BaseException:
+        pass
+    return int(_SINGLE_HARVEST_EVENT_TOKEN or 0)
+
+
+def _wrap_home_harvest_planting_trigger(fn, name=''):
+    """Convert a verified single harvest into an immediate harvest planting quota."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_single_harvest_planting_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            before_token = int(globals().get(
+                '_SINGLE_HARVEST_EVENT_TOKEN', 0
+            ) or 0)
+            result = fn(*args, **kwargs)
+            after_token = int(globals().get(
+                '_SINGLE_HARVEST_EVENT_TOKEN', 0
+            ) or 0)
+            if after_token <= before_token:
+                return result
+            try:
+                context_fn = globals().get('_friend_guard_context')
+                context = (
+                    context_fn(args, kwargs) if callable(context_fn) else None
+                )
+            except BaseException:
+                context = None
+            if context is not None:
+                try:
+                    quota = max(0, int(getattr(
+                        context, 'planting_harvest_quota', 0
+                    ) or 0))
+                except BaseException:
+                    quota = 0
+                try:
+                    setattr(context, 'planting_harvest_quota', max(1, quota))
+                    setattr(
+                        context, '_qqfarm_single_harvest_planting_pending', True
+                    )
+                except BaseException:
+                    pass
+            try:
+                _write(
+                    'v177 single harvest queued planting source=' + str(name) +
+                    ' quota=' + str(getattr(
+                        context, 'planting_harvest_quota', 1
+                    ))
+                )
+            except BaseException:
+                pass
+            return True
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'home_harvest_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__qqfarm_single_harvest_planting_wrapped__ = True
+        _wrapped.__qqfarm_single_harvest_planting_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+def _collect_friend_seed_land_centers_from_frame(frame):
+    """Recover planted-land centers by selecting the largest coherent farm lattice."""
+    try:
+        shape = getattr(frame, 'shape', None)
+        if shape is None or len(shape) < 2:
+            return []
+        frame_h, frame_w = int(shape[0]), int(shape[1])
+        if frame_h < 240 or frame_w < 160:
+            return []
+        cv_module = globals().get('cv2') or __import__('cv2')
+        np_module = globals().get('np') or globals().get('numpy') or __import__('numpy')
+        x0 = max(0, min(frame_w - 1, int(round(frame_w * 0.04))))
+        x1 = max(x0 + 1, min(frame_w, int(round(frame_w * 0.99))))
+        y0 = max(0, min(frame_h - 1, int(round(frame_h * 0.38))))
+        y1 = max(y0 + 1, min(frame_h, int(round(frame_h * 0.99))))
+        roi = frame[y0:y1, x0:x1]
+        if getattr(roi, 'size', 0) <= 0:
+            return []
+        if len(getattr(roi, 'shape', ())) == 2:
+            roi_bgr = cv_module.cvtColor(roi, cv_module.COLOR_GRAY2BGR)
+        elif int(roi.shape[2]) == 4:
+            roi_bgr = cv_module.cvtColor(roi, cv_module.COLOR_BGRA2BGR)
+        else:
+            roi_bgr = roi
+        hsv = cv_module.cvtColor(roi_bgr, cv_module.COLOR_BGR2HSV)
+        mask = cv_module.inRange(
+            hsv,
+            np_module.array([10, 85, 120], dtype=np_module.uint8),
+            np_module.array([179, 255, 255], dtype=np_module.uint8),
+        )
+        kernel = np_module.ones((3, 3), dtype=np_module.uint8)
+        mask = cv_module.morphologyEx(mask, cv_module.MORPH_CLOSE, kernel)
+        contour_result = cv_module.findContours(
+            mask, cv_module.RETR_LIST, cv_module.CHAIN_APPROX_SIMPLE
+        )
+        contours = contour_result[-2]
+        scale_x = max(0.01, float(frame_w) / 428.0)
+        scale_y = max(0.01, float(frame_h) / 800.0)
+        area_scale = scale_x * scale_y
+        candidates = []
+        for contour in contours:
+            bx, by, bw, bh = cv_module.boundingRect(contour)
+            area = float(cv_module.contourArea(contour))
+            norm_w = float(bw) / scale_x
+            norm_h = float(bh) / scale_y
+            norm_area = area / area_scale
+            if not (23.0 <= norm_w <= 55.0):
+                continue
+            if not (10.0 <= norm_h <= 38.0):
+                continue
+            if not (110.0 <= norm_area <= 950.0):
+                continue
+            center = (
+                int(round(x0 + bx + (bw / 2.0))),
+                int(round(y0 + by + (bh / 2.0))),
+            )
+            if any(
+                abs(center[0] - old[0]) <= max(3, int(round(6 * scale_x)))
+                and abs(center[1] - old[1]) <= max(3, int(round(5 * scale_y)))
+                for old in candidates
+            ):
+                continue
+            candidates.append(center)
+        if len(candidates) < 3:
+            return []
+        candidates.sort(key=lambda value: (value[0], value[1]))
+        adjacency = [set() for _ in candidates]
+        for left_index, left in enumerate(candidates):
+            for right_index in range(left_index + 1, len(candidates)):
+                right = candidates[right_index]
+                dx = abs(float(left[0] - right[0])) / scale_x
+                dy = abs(float(left[1] - right[1])) / scale_y
+                same_row = dy <= 7.0 and 45.0 <= dx <= 105.0
+                diagonal = 10.0 <= dy <= 30.0 and 20.0 <= dx <= 52.0
+                if not (same_row or diagonal):
+                    continue
+                adjacency[left_index].add(right_index)
+                adjacency[right_index].add(left_index)
+        components = []
+        seen = set()
+        for index in range(len(candidates)):
+            if index in seen:
+                continue
+            pending = [index]
+            seen.add(index)
+            component = []
+            while pending:
+                current = pending.pop()
+                component.append(candidates[current])
+                for linked in adjacency[current]:
+                    if linked in seen:
+                        continue
+                    seen.add(linked)
+                    pending.append(linked)
+            components.append(component)
+        components = [component for component in components if len(component) >= 3]
+        if not components:
+            return []
+        components.sort(
+            key=lambda component: (
+                len(component),
+                sum(point[1] for point in component) / float(len(component)),
+            ),
+            reverse=True,
+        )
+        centers = components[0]
+        centers.sort(key=lambda value: (value[1], value[0]))
+        if len(centers) > 36:
+            return []
+
+        evidence_centers = []
+        patch_radius_x = max(6, int(round(12.0 * scale_x)))
+        patch_radius_y = max(6, int(round(12.0 * scale_y)))
+        for center_x, center_y in centers:
+            roi_x = int(center_x) - x0
+            roi_y = int(center_y) - y0
+            px0 = max(0, roi_x - patch_radius_x)
+            px1 = min(int(hsv.shape[1]), roi_x + patch_radius_x + 1)
+            py0 = max(0, roi_y - patch_radius_y)
+            py1 = min(int(hsv.shape[0]), roi_y + patch_radius_y + 1)
+            patch = hsv[py0:py1, px0:px1]
+            if getattr(patch, 'size', 0) <= 0:
+                continue
+            green_mask = (
+                (patch[:, :, 0] >= 35)
+                & (patch[:, :, 0] <= 100)
+                & (patch[:, :, 1] >= 60)
+                & (patch[:, :, 2] >= 40)
+            )
+            green_score = float(np_module.count_nonzero(green_mask)) / float(
+                max(1, int(green_mask.size))
+            )
+            if green_score >= 0.025:
+                evidence_centers.append((int(center_x), int(center_y)))
+
+        dense_mask = cv_module.inRange(
+            hsv,
+            np_module.array([130, 90, 80], dtype=np_module.uint8),
+            np_module.array([179, 255, 255], dtype=np_module.uint8),
+        )
+        dense_gate = np_module.zeros_like(dense_mask)
+        gate_x0 = max(0, min(int(dense_mask.shape[1]) - 1, int(round(frame_w * 0.08)) - x0))
+        gate_x1 = max(gate_x0 + 1, min(int(dense_mask.shape[1]), int(round(frame_w * 0.92)) - x0))
+        gate_y0 = max(0, min(int(dense_mask.shape[0]) - 1, int(round(frame_h * 0.45)) - y0))
+        gate_y1 = max(gate_y0 + 1, min(int(dense_mask.shape[0]), int(round(frame_h * 0.70)) - y0))
+        dense_gate[gate_y0:gate_y1, gate_x0:gate_x1] = dense_mask[
+            gate_y0:gate_y1, gate_x0:gate_x1
+        ]
+        dense_kernel = np_module.ones(
+            (max(5, int(round(15 * scale_y))), max(5, int(round(15 * scale_x)))),
+            dtype=np_module.uint8,
+        )
+        dense_close_kernel = np_module.ones(
+            (max(7, int(round(19 * scale_y))), max(7, int(round(19 * scale_x)))),
+            dtype=np_module.uint8,
+        )
+        dense_gate = cv_module.dilate(dense_gate, dense_kernel, iterations=1)
+        dense_gate = cv_module.morphologyEx(
+            dense_gate, cv_module.MORPH_CLOSE, dense_close_kernel
+        )
+        dense_contours = cv_module.findContours(
+            dense_gate, cv_module.RETR_EXTERNAL, cv_module.CHAIN_APPROX_SIMPLE
+        )[-2]
+        dense_best = None
+        for contour in dense_contours:
+            bx, by, bw, bh = cv_module.boundingRect(contour)
+            norm_w = float(bw) / scale_x
+            norm_h = float(bh) / scale_y
+            if norm_w < 150.0 or norm_h < 65.0:
+                continue
+            patch = hsv[by:by + bh, bx:bx + bw]
+            if getattr(patch, 'size', 0) <= 0:
+                continue
+            green_mask = (
+                (patch[:, :, 0] >= 35)
+                & (patch[:, :, 0] <= 100)
+                & (patch[:, :, 1] >= 70)
+                & (patch[:, :, 2] >= 40)
+            )
+            green_score = float(np_module.count_nonzero(green_mask)) / float(
+                max(1, int(green_mask.size))
+            )
+            if green_score < 0.35:
+                continue
+            dense_score = green_score * float(max(1, bw * bh))
+            if dense_best is None or dense_score > dense_best[0]:
+                dense_best = (dense_score, bx, by, bw, bh, green_score)
+
+        if dense_best is not None:
+            _, bx, by, bw, bh, green_score = dense_best
+            dense_centers = []
+            for y_ratio in (0.35, 0.55, 0.75):
+                for x_ratio in (0.20, 0.35, 0.50, 0.65, 0.80):
+                    dense_centers.append((
+                        int(round(x0 + bx + (bw * x_ratio))),
+                        int(round(y0 + by + (bh * y_ratio))),
+                    ))
+            dense_centers.sort(key=lambda value: (value[1], value[0]))
+            try:
+                log_fn = globals().get('_write')
+                if callable(log_fn):
+                    log_fn(
+                        'v198 trouble dense crop lattice count=' +
+                        str(len(dense_centers)) + ' bbox=' +
+                        repr((x0 + bx, y0 + by, bw, bh)) +
+                        ' green=' + ('%.3f' % green_score)
+                    )
+            except BaseException:
+                pass
+            return dense_centers
+
+        if len(evidence_centers) >= 3:
+            return evidence_centers
+        try:
+            log_fn = globals().get('_write')
+            if callable(log_fn) and centers:
+                log_fn(
+                    'v198 trouble rejected empty-soil geometry count=' +
+                    str(len(centers)) + ' evidence=' + str(len(evidence_centers))
+                )
+        except BaseException:
+            pass
+        return []
+    except BaseException:
+        return []
+
+
+def _detect_friend_trouble_popup_action(frame):
+    """Detect the paired weed/worm action buttons in the visible crop popup."""
+    try:
+        shape = getattr(frame, 'shape', None)
+        if shape is None or len(shape) < 2:
+            return None
+        frame_h, frame_w = int(shape[0]), int(shape[1])
+        if frame_h < 240 or frame_w < 160:
+            return None
+        cv_module = globals().get('cv2') or __import__('cv2')
+        np_module = globals().get('np') or globals().get('numpy') or __import__('numpy')
+        if len(shape) == 2:
+            bgr = cv_module.cvtColor(frame, cv_module.COLOR_GRAY2BGR)
+        elif int(shape[2]) == 4:
+            bgr = cv_module.cvtColor(frame, cv_module.COLOR_BGRA2BGR)
+        else:
+            bgr = frame
+        hsv = cv_module.cvtColor(bgr, cv_module.COLOR_BGR2HSV)
+        x0 = max(0, min(frame_w - 1, int(round(frame_w * 0.25))))
+        x1 = max(x0 + 1, min(frame_w, int(round(frame_w * 0.75))))
+        y0 = max(0, min(frame_h - 1, int(round(frame_h * 0.58))))
+        y1 = max(y0 + 1, min(frame_h, int(round(frame_h * 0.67))))
+        roi = hsv[y0:y1, x0:x1]
+        if getattr(roi, 'size', 0) <= 0:
+            return None
+        white = cv_module.inRange(
+            roi,
+            np_module.array([0, 0, 175], dtype=np_module.uint8),
+            np_module.array([179, 105, 255], dtype=np_module.uint8),
+        )
+        contours = cv_module.findContours(
+            white, cv_module.RETR_EXTERNAL, cv_module.CHAIN_APPROX_SIMPLE
+        )[-2]
+        scale_x = max(0.01, float(frame_w) / 428.0)
+        scale_y = max(0.01, float(frame_h) / 800.0)
+        area_scale = scale_x * scale_y
+        bubbles = []
+        for contour in contours:
+            bx, by, bw, bh = cv_module.boundingRect(contour)
+            area = float(cv_module.contourArea(contour)) / area_scale
+            norm_w = float(bw) / scale_x
+            norm_h = float(bh) / scale_y
+            if not (180.0 <= area <= 850.0):
+                continue
+            if not (20.0 <= norm_w <= 42.0 and 13.0 <= norm_h <= 27.0):
+                continue
+            full_x = int(x0 + bx)
+            full_y = int(y0 + by)
+            bubbles.append((full_x, full_y, int(bw), int(bh), area))
+        best_pair = None
+        for left_index, left in enumerate(bubbles):
+            for right in bubbles[left_index + 1:]:
+                first, second = (left, right) if left[0] <= right[0] else (right, left)
+                gap = float(second[0] - first[0]) / scale_x
+                y_gap = abs(float(second[1] - first[1])) / scale_y
+                if not (45.0 <= gap <= 90.0 and y_gap <= 8.0):
+                    continue
+                score = abs(gap - 68.0) + (y_gap * 4.0)
+                if best_pair is None or score < best_pair[0]:
+                    best_pair = (score, first, second)
+        if best_pair is None:
+            return None
+        _, left, right = best_pair
+        chosen = right
+        center_x = int(round(chosen[0] + (chosen[2] / 2.0)))
+        center_y = int(round(chosen[1] + chosen[3] + (22.0 * scale_y)))
+        half_w = max(20, int(round(28.0 * scale_x)))
+        half_h = max(20, int(round(28.0 * scale_y)))
+        return {
+            'top_left': (center_x - half_w, center_y - half_h),
+            'bottom_right': (center_x + half_w, center_y + half_h),
+            'confidence': 0.99,
+            'center': (center_x, center_y),
+            'source': 'hook-trouble-popup-pair',
+        }
+    except BaseException:
+        return None
+
+
+def _wrap_troublemaker_button_picker(original):
+    """Use the visible paired popup controls when native templates miss."""
+    if not callable(original):
+        return original
+
+    def _wrapped(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if result:
+            return result
+        frame = None
+        for value in tuple(args or ()):
+            shape = getattr(value, 'shape', None)
+            if shape is not None and len(shape) >= 2:
+                frame = value
+                break
+        if frame is None:
+            for value in dict(kwargs or {}).values():
+                shape = getattr(value, 'shape', None)
+                if shape is not None and len(shape) >= 2:
+                    frame = value
+                    break
+        match = _detect_friend_trouble_popup_action(frame)
+        if match:
+            try:
+                _write(
+                    'v200 trouble popup action fallback center=' +
+                    repr(match.get('center')) + ' source=' +
+                    str(match.get('source', ''))
+                )
+            except BaseException:
+                pass
+            return match
+        return result
+
+    try:
+        _wrapped.__name__ = getattr(original, '__name__', 'trouble_button_picker_wrapper')
+        _wrapped.__qualname__ = getattr(original, '__qualname__', _wrapped.__name__)
+    except BaseException:
+        pass
+    return _wrapped
+
+
+def _wrap_troublemaker_seed_land_collector(original, owner_globals):
+    """Accept planted-land candidates only when the current frame proves vegetation."""
+    if not callable(original):
+        return original
+
+    def _wrapped(*args, **kwargs):
+        result = original(*args, **kwargs)
+        frame = None
+        for value in reversed(tuple(args or ())):
+            shape = getattr(value, 'shape', None)
+            if shape is not None and len(shape) >= 2:
+                frame = value
+                break
+        if frame is None:
+            for value in dict(kwargs or {}).values():
+                shape = getattr(value, 'shape', None)
+                if shape is not None and len(shape) >= 2:
+                    frame = value
+                    break
+        if frame is None:
+            return result
+
+        centers = _collect_friend_seed_land_centers_from_frame(frame)
+        if centers:
+            try:
+                _write(
+                    'v199 trouble seed_land frame evidence preferred count=' +
+                    str(len(centers)) + ' native=' +
+                    str(len(result) if result is not None else 0) +
+                    ' first=' + repr(centers[:4])
+                )
+            except BaseException:
+                pass
+            return centers
+        if result:
+            try:
+                _write(
+                    'v199 trouble rejected native seed_land without planted evidence count=' +
+                    str(len(result) if result is not None else 0)
+                )
+            except BaseException:
+                pass
+        return []
+
+    try:
+        _wrapped.__name__ = getattr(original, '__name__', 'trouble_seed_land_wrapper')
+        _wrapped.__qualname__ = getattr(original, '__qualname__', _wrapped.__name__)
+    except BaseException:
+        pass
+    return _wrapped
+
+
 def _diagnose_daily_troublemaker_vip_source(fn, args, kwargs, name=''):
-    # Final build: deep one-shot diagnostics removed after the exact entitlement
-    # method and security probe semantics were identified.
-    return None
+    """Write a bounded one-shot inventory of the live troublemaker callable."""
+    try:
+        if bool(globals().get('_TROUBLEMAKER_CALLABLE_DIAG_DONE', False)):
+            return None
+        globals()['_TROUBLEMAKER_CALLABLE_DIAG_DONE'] = True
+        os_module = globals().get('os') or __import__('os')
+        base = os_module.path.dirname(os_module.path.abspath(__file__))
+        log_dir = os_module.path.join(base, 'logs')
+        os_module.makedirs(log_dir, exist_ok=True)
+        target = os_module.path.join(log_dir, 'troublemaker-callable-diagnostic.txt')
+        lines = [
+            'name=' + str(name),
+            'callable=' + repr(fn),
+            'module=' + str(getattr(fn, '__module__', '')),
+            'qualname=' + str(getattr(fn, '__qualname__', '')),
+            'args=' + repr(tuple(type(value).__name__ for value in tuple(args or ()))),
+            'kwargs=' + repr(tuple(sorted(str(key) for key in dict(kwargs or {}).keys()))),
+        ]
+        code = getattr(fn, '__code__', None)
+        if code is not None:
+            try:
+                lines.append('code_names=' + repr(tuple(getattr(code, 'co_names', ()) or ())))
+                lines.append('code_consts=' + repr(tuple(getattr(code, 'co_consts', ()) or ()))[:12000])
+            except BaseException:
+                pass
+        owner_globals = getattr(fn, '__globals__', None)
+        if isinstance(owner_globals, dict):
+            def _install_probe(helper_name):
+                original = owner_globals.get(helper_name)
+                if not callable(original) or bool(getattr(
+                    original, '__qqfarm_trouble_probe_wrapped__', False
+                )):
+                    return False
+                if helper_name == '_collect_friend_seed_land_centers':
+                    _traced = _wrap_troublemaker_seed_land_collector(
+                        original, owner_globals
+                    )
+                elif helper_name == '_pick_friend_trouble_button':
+                    _traced = _wrap_troublemaker_button_picker(original)
+                else:
+                    def _traced(*probe_args, **probe_kwargs):
+                        result = original(*probe_args, **probe_kwargs)
+                        try:
+                            summaries = []
+                            for value in tuple(probe_args or ())[:5]:
+                                shape = getattr(value, 'shape', None)
+                                summaries.append(
+                                    type(value).__name__ +
+                                    ((' shape=' + repr(tuple(shape))) if shape is not None else '')
+                                )
+                            _write(
+                                'v154 trouble helper ' + helper_name +
+                                ' args=' + repr(tuple(summaries)) +
+                                ' result=' + repr(result)[:1200]
+                            )
+                        except BaseException:
+                            pass
+                        return result
+                try:
+                    _traced.__name__ = getattr(original, '__name__', helper_name)
+                    _traced.__qualname__ = getattr(original, '__qualname__', helper_name)
+                    _traced.__module__ = getattr(original, '__module__', '')
+                    _traced.__qqfarm_trouble_probe_wrapped__ = True
+                    _traced.__qqfarm_trouble_probe_original__ = original
+                except BaseException:
+                    pass
+                owner_globals[helper_name] = _traced
+                return True
+            probe_names = (
+                '_collect_friend_seed_land_centers',
+                '_pick_friend_trouble_button',
+                '_hit_friend_trouble_end',
+                '_record_friend_trouble_action',
+            )
+            installed = tuple(
+                helper_name for helper_name in probe_names
+                if _install_probe(helper_name)
+            )
+            lines.append('installed_probes=' + repr(installed))
+            lines.append('global_count=' + str(len(owner_globals)))
+            for key in sorted(owner_globals.keys(), key=lambda value: str(value)):
+                try:
+                    value = owner_globals.get(key)
+                    value_type = type(value).__name__
+                    if callable(value):
+                        detail = (
+                            str(getattr(value, '__module__', '')) + '.' +
+                            str(getattr(value, '__qualname__', getattr(value, '__name__', '')))
+                        )
+                    elif isinstance(value, (str, int, float, bool, type(None))):
+                        detail = repr(value)[:500]
+                    elif isinstance(value, dict):
+                        detail = 'dict_keys=' + repr(tuple(list(value.keys())[:80]))[:1200]
+                    elif isinstance(value, (tuple, list, set)):
+                        detail = repr(tuple(list(value)[:40]))[:1200]
+                    else:
+                        detail = repr(value)[:500]
+                    lines.append('global ' + str(key) + ' type=' + value_type + ' value=' + detail)
+                except BaseException as error:
+                    lines.append('global ' + str(key) + ' error=' + repr(error)[:220])
+        for index, value in enumerate(tuple(args or ())):
+            try:
+                attrs = []
+                data = getattr(value, '__dict__', None)
+                if isinstance(data, dict):
+                    for key in sorted(data.keys(), key=lambda item: str(item)):
+                        lowered = str(key).lower()
+                        if any(token in lowered for token in (
+                            'trouble', 'friend', 'template', 'seed', 'land', 'vip', 'counter'
+                        )):
+                            attrs.append((str(key), repr(data.get(key))[:500]))
+                lines.append('arg' + str(index) + '_attrs=' + repr(tuple(attrs))[:12000])
+            except BaseException:
+                pass
+        with open(target, 'w', encoding='utf-8') as stream:
+            stream.write('\n'.join(lines) + '\n')
+        _write('v153 troublemaker callable diagnostic saved=' + str(target))
+        return target
+    except BaseException as error:
+        try:
+            _write('v153 troublemaker callable diagnostic error=' + repr(error)[:220])
+        except BaseException:
+            pass
+        return None
 
 
 def _enter_vip_entitlement_context(fn, args, kwargs):
@@ -4536,12 +6318,54 @@ def _friend_guard_context(args, kwargs):
 
 
 def _mark_friend_cycle_seen(args, kwargs):
-    """Record that the current scheduler cycle executed the friend branch."""
+    """Record friend routing unless the same cycle rejected a false home icon."""
     try:
         context = _friend_guard_context(args, kwargs)
         if context is None:
             return None
+        active_context = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
+        now_fn = globals().get('_friend_watchdog_now')
+        now_ts = (
+            float(now_fn())
+            if callable(now_fn)
+            else float(__import__('time').time())
+        )
+        targets = []
+        for candidate in (context, active_context):
+            if candidate is None or any(
+                candidate is existing for existing in targets
+            ):
+                continue
+            targets.append(candidate)
+        recent_false_positive = any(
+            (
+                float(getattr(
+                    target, '_qqfarm_native_home_false_positive_ts', 0.0
+                ) or 0.0) > 0.0
+                and 0.0 <= (
+                    now_ts - float(getattr(
+                        target, '_qqfarm_native_home_false_positive_ts', 0.0
+                    ) or 0.0)
+                ) <= 30.0
+            )
+            for target in targets
+        )
+        if recent_false_positive:
+            for target in targets:
+                setattr(target, '_qqfarm_friend_cycle_seen', False)
+                setattr(target, '_qqfarm_cycle_branch_hint', 'self')
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v163-suppress-friend-mark-after-native-home-false-positive',
+                    'v163 suppressed friend-cycle mark after a native home-icon ' +
+                    'false positive in the same run cycle',
+                    4.0,
+                )
+            return context
         setattr(context, '_qqfarm_friend_cycle_seen', True)
+        if active_context is not None and active_context is not context:
+            setattr(active_context, '_qqfarm_friend_cycle_seen', True)
         return context
     except BaseException:
         return None
@@ -4954,8 +6778,161 @@ def _friend_guard_help_action_allowed(context, game_frame, match_center):
     return False
 
 
+def _friend_help_counter_snapshot(context, counter_paths=None, today=None):
+    """Return the largest durable same-day friend-help count for this instance."""
+    try:
+        os_module = __import__('os')
+        json_module = __import__('json')
+        time_module = __import__('time')
+        day = str(today or time_module.strftime('%Y-%m-%d'))
+        try:
+            instance_id = str(getattr(context, 'instance_id', '1') or '1')
+        except BaseException:
+            instance_id = '1'
+        maximum = 0
+
+        def _safe_count(value):
+            try:
+                return max(0, int(float(str(value or 0))))
+            except BaseException:
+                return 0
+
+        def _consume_node(node):
+            nonlocal maximum
+            if not isinstance(node, dict):
+                return
+            if str(node.get('friend_help_daily_date', '') or '') == day:
+                maximum = max(
+                    maximum,
+                    _safe_count(node.get('friend_help_daily_count', 0)),
+                )
+            metrics = node.get('gui_metrics')
+            if (
+                isinstance(metrics, dict)
+                and str(metrics.get('date', '') or '') == day
+            ):
+                maximum = max(
+                    maximum,
+                    _safe_count(metrics.get('friend_farming_count', 0)),
+                )
+
+        try:
+            context_date = str(getattr(
+                context, 'friend_help_daily_date', ''
+            ) or '')
+            if context_date == day:
+                maximum = max(maximum, _safe_count(getattr(
+                    context, 'friend_help_daily_count', 0
+                )))
+            context_metrics = getattr(context, 'gui_metrics', None)
+            if isinstance(context_metrics, dict):
+                _consume_node({'gui_metrics': context_metrics})
+        except BaseException:
+            pass
+
+        if counter_paths is None:
+            counter_paths = []
+            local = str(os_module.environ.get('LOCALAPPDATA', '') or '')
+            if local:
+                counter_paths.append(os_module.path.join(
+                    local, 'qq-farm-bot-rev', 'daily_counters.json'
+                ))
+            try:
+                base = os_module.path.dirname(os_module.path.abspath(__file__))
+                counter_paths.append(os_module.path.join(
+                    base, 'UserData', 'legacy-qq-farm-bot-rev',
+                    'daily_counters.json',
+                ))
+            except BaseException:
+                pass
+        elif isinstance(counter_paths, (str, bytes, os_module.PathLike)):
+            counter_paths = [counter_paths]
+
+        seen = set()
+        for raw_path in list(counter_paths or []):
+            try:
+                path = os_module.path.abspath(os_module.fspath(raw_path))
+                key = os_module.path.normcase(path)
+                if not path or key in seen or not os_module.path.isfile(path):
+                    continue
+                seen.add(key)
+                with open(path, 'r', encoding='utf-8-sig') as handle:
+                    payload = json_module.load(handle)
+                if not isinstance(payload, dict):
+                    continue
+                _consume_node(payload)
+                instances = payload.get('instances')
+                if isinstance(instances, dict):
+                    _consume_node(instances.get(instance_id))
+            except BaseException:
+                continue
+        return int(maximum)
+    except BaseException:
+        return 0
+
+
+def _friend_help_quota_active(context, today=None):
+    """Keep the daily quota marker active only for the day it was observed."""
+    if context is None:
+        return False
+    try:
+        if not bool(getattr(
+            context, '_qqfarm_friend_help_quota_exhausted', False
+        )):
+            return False
+        day = str(today or __import__('time').strftime('%Y-%m-%d'))
+        marker_day = str(getattr(
+            context, '_qqfarm_friend_help_quota_date', ''
+        ) or '')
+        if marker_day and marker_day != day:
+            setattr(context, '_qqfarm_friend_help_quota_exhausted', False)
+            setattr(context, '_qqfarm_friend_help_quota_date', '')
+            return False
+        return True
+    except BaseException:
+        return False
+
+
 def _invoke_friend_guard_help_visual_click(context, fresh_frame):
     try:
+        counter_fn = globals().get('_friend_help_counter_snapshot')
+        try:
+            daily_limit = int(getattr(
+                context, 'friend_help_daily_limit', 500
+            ) or 500)
+        except BaseException:
+            daily_limit = 500
+        daily_limit = max(1, daily_limit)
+        daily_count = (
+            int(counter_fn(context)) if callable(counter_fn) else 0
+        )
+        if daily_count >= daily_limit:
+            try:
+                setattr(context, '_qqfarm_friend_help_quota_exhausted', True)
+                setattr(
+                    context,
+                    '_qqfarm_friend_help_quota_date',
+                    __import__('time').strftime('%Y-%m-%d'),
+                )
+                setattr(context, '_qqfarm_friend_chain_pending', False)
+                setattr(context, '_qqfarm_friend_chain_exhausted', True)
+                setattr(context, '_qqfarm_friend_chain_allow_home', True)
+            except BaseException:
+                pass
+            message = (
+                'v210 friend help daily quota exhausted count=' +
+                str(daily_count) + '/' + str(daily_limit)
+            )
+            throttle_fn = globals().get('_throttled_write')
+            if callable(throttle_fn):
+                throttle_fn('v210-friend-help-daily-quota', message, 30.0)
+            else:
+                _write(message)
+            return False
+        try:
+            setattr(context, '_qqfarm_friend_help_quota_exhausted', False)
+        except BaseException:
+            pass
         match_fn = globals().get('_friend_guard_help_button_match')
         click_fn = globals().get('_invoke_friend_guard_match_coordinate_click')
         if not callable(match_fn) or not callable(click_fn):
@@ -5234,6 +7211,10 @@ def _invoke_friend_actions_before_home(context, fresh_frame):
     """Try fast visible actions first, then one bounded native fallback scan."""
     if context is None or fresh_frame is None:
         return False, ''
+    try:
+        setattr(context, '_qqfarm_friend_native_action_unverified', False)
+    except BaseException:
+        pass
     visual_fn = globals().get('_invoke_friend_visual_actions_before_home')
     if callable(visual_fn):
         try:
@@ -5284,6 +7265,14 @@ def _invoke_friend_actions_before_home(context, fresh_frame):
         if not callable(action):
             continue
         label = 'method.' + str(method_name)
+        native_help_count_before = None
+        if method_name == 'check_help_all_entry':
+            counter_fn = globals().get('_friend_help_counter_snapshot')
+            if callable(counter_fn):
+                try:
+                    native_help_count_before = int(counter_fn(context))
+                except BaseException:
+                    native_help_count_before = None
         try:
             result = _invoke_friend_guard_action(
                 action, None, (context, action_frame), {}
@@ -5294,6 +7283,82 @@ def _invoke_friend_actions_before_home(context, fresh_frame):
             continue
         if not result:
             continue
+        if method_name == 'check_help_all_entry':
+            capture_fn = globals().get('_get_frame_from_bot')
+            match_fn = globals().get('_friend_guard_help_button_match')
+            counter_fn = globals().get('_friend_help_counter_snapshot')
+            verification_available = bool(
+                (callable(capture_fn) and callable(match_fn))
+                or callable(counter_fn)
+            )
+            if verification_available:
+                verified = False
+                proof = ''
+                for verify_attempt in range(3):
+                    if callable(counter_fn):
+                        try:
+                            native_help_count_after = int(counter_fn(context))
+                        except BaseException:
+                            native_help_count_after = native_help_count_before
+                        if (
+                            native_help_count_before is not None
+                            and native_help_count_after is not None
+                            and native_help_count_after > native_help_count_before
+                        ):
+                            verified = True
+                            proof = 'durable-count'
+                            break
+                    post_frame = None
+                    if callable(capture_fn):
+                        try:
+                            post_frame = capture_fn(context)
+                        except BaseException:
+                            post_frame = None
+                    if post_frame is not None and callable(match_fn):
+                        try:
+                            post_match = match_fn(post_frame)
+                        except BaseException:
+                            post_match = None
+                        if (
+                            isinstance(post_match, dict)
+                            and not bool(post_match.get('matched'))
+                        ):
+                            verified = True
+                            proof = 'button-disappeared'
+                            break
+                    if verify_attempt < 2:
+                        sleep_fn = globals().get('_friend_guard_sleep')
+                        try:
+                            if callable(sleep_fn):
+                                sleep_fn(0.16 + (0.06 * verify_attempt))
+                            else:
+                                __import__('time').sleep(0.16 + (0.06 * verify_attempt))
+                        except BaseException:
+                            pass
+                if not verified:
+                    try:
+                        setattr(
+                            context,
+                            '_qqfarm_friend_native_action_unverified',
+                            True,
+                        )
+                    except BaseException:
+                        pass
+                    try:
+                        _write(
+                            'v212 friend native help claim unverified; '
+                            'keeping current friend active attempts=' +
+                            repr(attempted)[:260]
+                        )
+                    except BaseException:
+                        pass
+                    return False, ''
+                try:
+                    _write(
+                        'v212 friend native help verified proof=' + str(proof)
+                    )
+                except BaseException:
+                    pass
         try:
             now_ts = __import__('time').time()
             setattr(context, '_qqfarm_friend_action_last_ts', now_ts)
@@ -5753,6 +7818,11 @@ def _friend_chain_should_block_home(context):
     except BaseException:
         pass
     try:
+        if bool(getattr(context, '_qqfarm_troublemaker_retry_scan_active', False)):
+            return True
+    except BaseException:
+        pass
+    try:
         block_fn = globals().get('_friend_chain_should_block_troublemaker')
         if callable(block_fn):
             return bool(block_fn(context))
@@ -5778,6 +7848,84 @@ def _wrap_friend_home_func(fn, name=''):
                 context = context_fn(args, kwargs) if callable(context_fn) else None
             except BaseException:
                 context = None
+            if str(name or '').lower().endswith(
+                    ('check_go_home_icon', '_has_go_home_icon')):
+                candidate_frame = None
+                for value in reversed(tuple(args or ())):
+                    shape = getattr(value, 'shape', None)
+                    if shape is not None and len(shape) >= 2:
+                        candidate_frame = value
+                        break
+                if candidate_frame is None:
+                    for value in dict(kwargs or {}).values():
+                        shape = getattr(value, 'shape', None)
+                        if shape is not None and len(shape) >= 2:
+                            candidate_frame = value
+                            break
+                if candidate_frame is None:
+                    try:
+                        capture_fn = globals().get('_get_frame_from_bot')
+                        if callable(capture_fn):
+                            candidate_frame = capture_fn(context)
+                    except BaseException:
+                        candidate_frame = None
+                try:
+                    state_fn = globals().get('_friend_guard_friend_ui_state')
+                    verified_state = (
+                        state_fn(candidate_frame)
+                        if callable(state_fn) and candidate_frame is not None
+                        else None
+                    )
+                except BaseException:
+                    verified_state = None
+                if verified_state is False:
+                    try:
+                        now_fn = globals().get('_friend_watchdog_now')
+                        false_positive_ts = (
+                            float(now_fn())
+                            if callable(now_fn)
+                            else float(__import__('time').time())
+                        )
+                    except BaseException:
+                        false_positive_ts = 0.0
+                    try:
+                        finalize_fn = globals().get(
+                            '_finalize_friend_chain_after_troublemaker'
+                        )
+                        targets = []
+                        for candidate in (
+                            context, globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
+                        ):
+                            if candidate is None or any(
+                                candidate is existing for existing in targets
+                            ):
+                                continue
+                            targets.append(candidate)
+                        for target in targets:
+                            setattr(
+                                target, '_qqfarm_native_home_false_positive_ts',
+                                false_positive_ts,
+                            )
+                            if callable(finalize_fn):
+                                finalize_fn(target)
+                            setattr(target, '_qqfarm_cycle_branch_hint', 'self')
+                            setattr(target, '_qqfarm_friend_cycle_seen', False)
+                            setattr(target, '_qqfarm_friend_home_noop_count', 0)
+                            setattr(target, '_qqfarm_force_self_cycle_next', True)
+                    except BaseException:
+                        pass
+                    try:
+                        log_fn = globals().get('_throttled_write')
+                        if callable(log_fn):
+                            log_fn(
+                                'v160-native-home-false-positive-' + str(name),
+                                'v160 rejected native home-icon false positive on ' +
+                                'verified non-friend surface ' + str(name),
+                                4.0,
+                            )
+                    except BaseException:
+                        pass
+                    return False
             try:
                 block_fn = globals().get('_friend_chain_should_block_home')
                 blocked = bool(block_fn(context)) if callable(block_fn) else False
@@ -5817,6 +7965,107 @@ def _wrap_friend_home_func(fn, name=''):
     except BaseException:
         return fn, False
 
+
+
+def _wrap_friend_next_entry_func(fn, name=''):
+    """Recover a native bottom-entry miss by clicking the immediate next friend."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if getattr(fn, '__qqfarm_friend_next_entry_wrapped__', False):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            result = fn(*args, **kwargs)
+            if result:
+                return result
+
+            try:
+                context_fn = globals().get('_friend_guard_context')
+                context = context_fn(args, kwargs) if callable(context_fn) else None
+            except BaseException:
+                context = None
+            if context is None:
+                return result
+
+            candidate_frame = None
+            try:
+                values = list(args or ()) + list((kwargs or {}).values())
+                for value in reversed(values):
+                    if value is None or value is context:
+                        continue
+                    if getattr(value, 'shape', None) is not None:
+                        candidate_frame = value
+                        break
+            except BaseException:
+                candidate_frame = None
+            if candidate_frame is None:
+                try:
+                    capture_fn = globals().get('_get_frame_from_bot')
+                    if callable(capture_fn):
+                        candidate_frame = capture_fn(context)
+                except BaseException:
+                    candidate_frame = None
+
+            try:
+                state_fn = globals().get('_friend_guard_friend_ui_state')
+                friend_state = (
+                    state_fn(candidate_frame)
+                    if callable(state_fn) and candidate_frame is not None
+                    else None
+                )
+            except BaseException:
+                friend_state = None
+            if friend_state is not True:
+                return result
+
+            try:
+                navigate_fn = globals().get('_invoke_friend_adjacent_card_navigation')
+                navigation = (
+                    navigate_fn(context, candidate_frame)
+                    if callable(navigate_fn)
+                    else (False, '')
+                )
+                if isinstance(navigation, tuple):
+                    moved = bool(navigation[0]) if navigation else False
+                    label = str(navigation[1] or '') if len(navigation) > 1 else ''
+                else:
+                    moved = bool(navigation)
+                    label = ''
+            except BaseException:
+                moved = False
+                label = ''
+            if not moved:
+                return result
+
+            try:
+                setattr(context, '_qqfarm_friend_chain_pending', True)
+                setattr(context, '_qqfarm_friend_chain_exhausted', False)
+                setattr(context, '_qqfarm_friend_chain_active', True)
+                setattr(context, '_qqfarm_friend_chain_last_nav_label', label)
+            except BaseException:
+                pass
+            try:
+                log_fn = globals().get('_write')
+                if callable(log_fn):
+                    log_fn(
+                        'v169 native bottom entry miss recovered by immediate adjacent friend ' +
+                        str(name) + ' label=' + str(label)
+                    )
+            except BaseException:
+                pass
+            return True
+
+        try:
+            _wrapped.__name__ = getattr(fn, '__name__', 'friend_next_entry_wrapper')
+            _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+            _wrapped.__qqfarm_friend_next_entry_wrapped__ = True
+            _wrapped.__qqfarm_friend_next_entry_orig__ = fn
+        except BaseException:
+            pass
+        return _wrapped, True
+    except BaseException:
+        return fn, False
 
 
 def _friend_trouble_counter_snapshot(context, counter_paths=None, today=None):
@@ -5911,8 +8160,204 @@ def _friend_trouble_counter_snapshot(context, counter_paths=None, today=None):
     except BaseException:
         return 0
 
+def _save_troublemaker_debug_frame(frame, attempt):
+    """Persist the latest failed troublemaker frame for local visual diagnosis."""
+    try:
+        if frame is None or getattr(frame, 'shape', None) is None:
+            return ''
+        cv_module = globals().get('cv2') or __import__('cv2')
+        os_module = globals().get('os') or __import__('os')
+        base = os_module.path.dirname(os_module.path.abspath(__file__))
+        log_dir = os_module.path.join(base, 'logs')
+        os_module.makedirs(log_dir, exist_ok=True)
+        target = os_module.path.join(
+            log_dir, 'troublemaker-debug-attempt-' + str(int(attempt)) + '.png'
+        )
+        encoded_ok, encoded = cv_module.imencode('.png', frame)
+        if not encoded_ok:
+            return ''
+        encoded.tofile(target)
+        return target
+    except BaseException:
+        return ''
+
+
+def _finalize_friend_chain_after_troublemaker(context):
+    """Clear exhausted friend-chain state after troublemaker returns to the home farm."""
+    if context is None:
+        return False
+    try:
+        interval_fn = globals().get('_set_friend_chain_fast_interval')
+        if callable(interval_fn):
+            interval_fn(context, False)
+    except BaseException:
+        pass
+    values = {
+        '_qqfarm_friend_chain_pending': False,
+        '_qqfarm_friend_chain_exhausted': False,
+        '_qqfarm_friend_chain_active': False,
+        '_qqfarm_friend_chain_allow_home': False,
+        '_qqfarm_troublemaker_retry_scan_active': False,
+        '_qqfarm_friend_cycle_seen': False,
+        '_qqfarm_visual_friend_count': 0,
+        '_qqfarm_friend_branch_last_ts': 0.0,
+        '_last_friend_farm_go_home_present': False,
+        '_qqfarm_friend_action_last_label': '',
+    }
+    changed = False
+    for name, value in values.items():
+        try:
+            setattr(context, name, value)
+            changed = True
+        except BaseException:
+            pass
+    try:
+        clear_fn = globals().get('_friend_guard_clear_prequalification')
+        if callable(clear_fn):
+            clear_fn(context)
+    except BaseException:
+        pass
+    return changed
+
+
+
+def _record_failed_friend_branch_recovery(context, now_ts):
+    """Clear a stale native friend hint after two failed self-surface recoveries."""
+    if context is None:
+        return False
+    try:
+        failures = int(getattr(
+            context, '_qqfarm_friend_home_recovery_fail_count', 0
+        ) or 0) + 1
+    except BaseException:
+        failures = 1
+    try:
+        setattr(context, '_qqfarm_friend_home_recovery_fail_count', failures)
+    except BaseException:
+        pass
+    if failures < 2:
+        return False
+    finalize_fn = globals().get('_finalize_friend_chain_after_troublemaker')
+    if callable(finalize_fn):
+        finalize_fn(context)
+    try:
+        setattr(context, '_qqfarm_cycle_branch_hint', 'home')
+        setattr(context, '_qqfarm_friend_cycle_seen', False)
+        setattr(context, '_qqfarm_friend_home_noop_count', 0)
+        setattr(context, '_qqfarm_friend_home_recovery_fail_count', 0)
+        setattr(
+            context, '_qqfarm_false_friend_branch_block_until',
+            float(now_ts or 0.0) + 12.0,
+        )
+    except BaseException:
+        pass
+    return True
+
+
+def _apply_runtime_go_home_threshold_floor(context, floor=0.79):
+    """Raise every loaded native go-home threshold holder above self-farm noise."""
+    if context is None:
+        return 0
+    try:
+        minimum = max(0.0, min(1.0, float(floor)))
+    except BaseException:
+        minimum = 0.79
+    changed = 0
+
+    def _raise_attr(owner, name):
+        nonlocal changed
+        try:
+            marker = object()
+            current = getattr(owner, name, marker)
+            if current is marker:
+                return False
+            value = float(current)
+            if value >= minimum:
+                return False
+            setattr(owner, name, minimum)
+            changed += 1
+            return True
+        except BaseException:
+            return False
+
+    def _raise_mapping(mapping):
+        nonlocal changed
+        if not isinstance(mapping, dict):
+            return False
+        local_changed = False
+        for name in ('go_home_frame', 'go_home_frame_threshold', 'go_home_threshold'):
+            if name not in mapping:
+                continue
+            try:
+                if float(mapping.get(name)) >= minimum:
+                    continue
+                mapping[name] = minimum
+                changed += 1
+                local_changed = True
+            except BaseException:
+                pass
+        for nested_name in ('threshold', 'thresholds'):
+            nested = mapping.get(nested_name)
+            if isinstance(nested, dict):
+                local_changed = _raise_mapping(nested) or local_changed
+        return local_changed
+
+    try:
+        marker = object()
+        current = getattr(context, 'go_home_frame_threshold', marker)
+        if current is marker:
+            setattr(context, 'go_home_frame_threshold', minimum)
+            changed += 1
+        else:
+            _raise_attr(context, 'go_home_frame_threshold')
+    except BaseException:
+        pass
+    for name in ('go_home_frame', 'go_home_threshold', 'threshold_go_home_frame'):
+        _raise_attr(context, name)
+    for holder_name in (
+            'config', '_config', 'settings', 'bot_config',
+            'threshold', 'thresholds', '_thresholds'):
+        try:
+            holder = getattr(context, holder_name, None)
+        except BaseException:
+            holder = None
+        if holder is None:
+            continue
+        if isinstance(holder, dict):
+            _raise_mapping(holder)
+            continue
+        for name in ('go_home_frame', 'go_home_frame_threshold', 'go_home_threshold'):
+            _raise_attr(holder, name)
+        try:
+            if (
+                callable(getattr(holder, 'has_section', None))
+                and holder.has_section('threshold')
+                and callable(getattr(holder, 'getfloat', None))
+                and callable(getattr(holder, 'set', None))
+                and float(holder.getfloat('threshold', 'go_home_frame')) < minimum
+            ):
+                holder.set('threshold', 'go_home_frame', str(minimum))
+                changed += 1
+        except BaseException:
+            pass
+    return changed
+
+
+def _false_friend_branch_cooldown_active(context, visual_state, now_ts):
+    if context is None or visual_state is not False:
+        return False
+    try:
+        block_until = float(getattr(
+            context, '_qqfarm_false_friend_branch_block_until', 0.0
+        ) or 0.0)
+        return bool(block_until > float(now_ts or 0.0))
+    except BaseException:
+        return False
+
+
+
 def _run_deferred_friend_troublemaker(context, frame):
-    """Run deferred troublemaker work after friend exhaustion and verify persistence."""
+    """Run deferred troublemaker work across adjacent friends and verify persistence."""
     if context is None:
         return False
     try:
@@ -5921,6 +8366,30 @@ def _run_deferred_friend_troublemaker(context, frame):
         if not bool(getattr(context, '_qqfarm_friend_chain_exhausted', False)):
             return False
         if bool(getattr(context, '_qqfarm_friend_chain_troublemaker_ran', False)):
+            return False
+        now_fn = globals().get('_friend_watchdog_now')
+        try:
+            now_ts = (
+                float(now_fn())
+                if callable(now_fn)
+                else float(__import__('time').time())
+            )
+        except BaseException:
+            now_ts = 0.0
+        try:
+            full_miss_until = float(getattr(
+                context, '_qqfarm_troublemaker_full_miss_until', 0.0
+            ) or 0.0)
+        except BaseException:
+            full_miss_until = 0.0
+        if full_miss_until > now_ts:
+            try:
+                _write(
+                    'v187 troublemaker full-miss cooldown active remaining=' +
+                    ('%.1f' % max(0.0, full_miss_until - now_ts)) + 's'
+                )
+            except BaseException:
+                pass
             return False
         action = getattr(context, '_run_friend_daily_troublemaker', None)
         cached_action = False
@@ -5931,27 +8400,86 @@ def _run_deferred_friend_troublemaker(context, frame):
             cached_action = callable(action)
         if not callable(action):
             try:
-                _write('v132 deferred daily troublemaker callable missing; retryable=True')
+                for module_name, module in list(sys.modules.items()):
+                    if module is None or not str(module_name).startswith('bot.'):
+                        continue
+                    candidate = getattr(
+                        module, '_run_friend_daily_troublemaker', None
+                    )
+                    if not callable(candidate):
+                        continue
+                    action = candidate
+                    cached_action = True
+                    setattr(
+                        context,
+                        '_qqfarm_friend_chain_deferred_troublemaker',
+                        candidate,
+                    )
+                    setattr(
+                        context,
+                        '_qqfarm_friend_chain_deferred_troublemaker_args',
+                        (context, frame),
+                    )
+                    setattr(
+                        context,
+                        '_qqfarm_friend_chain_deferred_troublemaker_kwargs',
+                        {},
+                    )
+                    _write(
+                        'v175 deferred daily troublemaker resolved runtime callable ' +
+                        str(module_name) + '._run_friend_daily_troublemaker'
+                    )
+                    break
+            except BaseException as error:
+                try:
+                    _write(
+                        'v175 deferred troublemaker runtime resolver error=' +
+                        repr(error)[:220]
+                    )
+                except BaseException:
+                    pass
+        if not callable(action):
+            try:
+                _write('v175 deferred daily troublemaker callable missing; retryable=True')
             except BaseException:
                 pass
             return False
 
+        try:
+            retry_limit = int(getattr(
+                context, 'friend_troublemaker_adjacent_retry_limit', 3
+            ) or 3)
+        except BaseException:
+            retry_limit = 3
+        retry_limit = max(1, min(12, retry_limit))
         snapshot_fn = globals().get('_friend_trouble_counter_snapshot')
         snapshot_available = callable(snapshot_fn)
-        before_count = None
-        if snapshot_available:
-            try:
-                before_count = int(snapshot_fn(context))
-            except BaseException:
-                before_count = 0
-
-        marker = object()
-        previous_allow_home = getattr(
-            context, '_qqfarm_friend_chain_allow_home', marker
-        )
-        setattr(context, '_qqfarm_friend_chain_allow_home', True)
         invoke_fn = globals().get('_invoke_friend_guard_action')
-        try:
+        adjacent_fn = globals().get('_invoke_friend_adjacent_card_navigation')
+        capture_fn = globals().get('_get_frame_from_bot')
+        state_fn = globals().get('_friend_guard_friend_ui_state')
+        sleep_fn = globals().get('_friend_guard_sleep')
+        marker = object()
+
+        def _pause(seconds):
+            try:
+                if callable(sleep_fn):
+                    sleep_fn(seconds)
+                else:
+                    __import__('time').sleep(seconds)
+            except BaseException:
+                pass
+
+        def _restore_attr(name, previous):
+            try:
+                if previous is marker:
+                    delattr(context, name)
+                else:
+                    setattr(context, name, previous)
+            except BaseException:
+                pass
+
+        def _invoke_on_frame(current_frame):
             if cached_action:
                 try:
                     cached_args = list(getattr(
@@ -5972,77 +8500,195 @@ def _run_deferred_friend_troublemaker(context, frame):
                 for index, value in enumerate(list(cached_args)):
                     try:
                         if value is not context and hasattr(value, 'shape'):
-                            cached_args[index] = frame
+                            cached_args[index] = current_frame
                     except BaseException:
                         pass
                 for key, value in list(cached_kwargs.items()):
                     try:
                         if value is not context and hasattr(value, 'shape'):
-                            cached_kwargs[key] = frame
+                            cached_kwargs[key] = current_frame
                     except BaseException:
                         pass
                 if not cached_args:
                     cached_args = [context]
                 if callable(invoke_fn):
-                    result = invoke_fn(
+                    return invoke_fn(
                         action, None, tuple(cached_args), cached_kwargs
                     )
-                else:
-                    result = action(*tuple(cached_args), **cached_kwargs)
-            else:
-                try:
-                    if callable(invoke_fn):
-                        result = invoke_fn(action, None, (context, frame), {})
-                    else:
-                        result = action(frame)
-                except TypeError:
-                    result = action()
-        finally:
+                return action(*tuple(cached_args), **cached_kwargs)
             try:
-                if previous_allow_home is marker:
-                    delattr(context, '_qqfarm_friend_chain_allow_home')
-                else:
-                    setattr(
-                        context, '_qqfarm_friend_chain_allow_home',
-                        previous_allow_home,
-                    )
+                if callable(invoke_fn):
+                    return invoke_fn(action, None, (context, current_frame), {})
+                return action(current_frame)
+            except TypeError:
+                return action()
+
+        current_frame = frame
+        last_result = False
+        for attempt in range(retry_limit):
+            before_count = None
+            if snapshot_available:
+                try:
+                    before_count = int(snapshot_fn(context))
+                except BaseException:
+                    before_count = 0
+
+            previous_allow_home = getattr(
+                context, '_qqfarm_friend_chain_allow_home', marker
+            )
+            previous_retry_active = getattr(
+                context, '_qqfarm_troublemaker_retry_scan_active', marker
+            )
+            setattr(context, '_qqfarm_friend_chain_allow_home', True)
+            setattr(context, '_qqfarm_troublemaker_retry_scan_active', True)
+            try:
+                last_result = _invoke_on_frame(current_frame)
+            finally:
+                _restore_attr(
+                    '_qqfarm_troublemaker_retry_scan_active',
+                    previous_retry_active,
+                )
+                _restore_attr(
+                    '_qqfarm_friend_chain_allow_home', previous_allow_home
+                )
+
+            after_count = None
+            if snapshot_available:
+                try:
+                    after_count = int(snapshot_fn(context))
+                except BaseException:
+                    after_count = int(before_count or 0)
+                success = bool(after_count > int(before_count or 0))
+            else:
+                success = bool(last_result)
+            try:
+                _write(
+                    'v150 deferred daily troublemaker attempt=' +
+                    str(attempt + 1) + '/' + str(retry_limit) +
+                    ' raw=' + repr(last_result)[:180] +
+                    ' count=' + repr(before_count) + '->' + repr(after_count) +
+                    ' success=' + repr(success) +
+                    ' cached=' + repr(cached_action)
+                )
             except BaseException:
                 pass
+            if success:
+                setattr(context, '_qqfarm_friend_chain_troublemaker_ran', True)
+                try:
+                    setattr(context, '_qqfarm_troublemaker_full_miss_until', 0.0)
+                except BaseException:
+                    pass
+                finalize_fn = globals().get(
+                    '_finalize_friend_chain_after_troublemaker'
+                )
+                if callable(finalize_fn):
+                    finalize_fn(context)
+                try:
+                    _write('v158 troublemaker success finalized friend chain')
+                except BaseException:
+                    pass
+                return last_result
+            debug_frame_fn = globals().get('_save_troublemaker_debug_frame')
+            if callable(debug_frame_fn):
+                try:
+                    debug_path = debug_frame_fn(current_frame, attempt + 1)
+                    if debug_path:
+                        _write(
+                            'v151 troublemaker debug frame saved=' + str(debug_path)
+                        )
+                except BaseException:
+                    pass
+            if attempt + 1 >= retry_limit or not callable(adjacent_fn):
+                break
 
-        after_count = None
-        if snapshot_available:
             try:
-                after_count = int(snapshot_fn(context))
-            except BaseException:
-                after_count = int(before_count or 0)
-            success = bool(after_count > int(before_count or 0))
-        else:
-            # Compatibility for isolated callers that do not load the snapshot
-            # helper; production always verifies the durable counter.
-            success = bool(result)
-        setattr(context, '_qqfarm_friend_chain_troublemaker_ran', success)
+                moved_raw = adjacent_fn(context, current_frame)
+                moved = bool(moved_raw[0]) if isinstance(moved_raw, tuple) else bool(moved_raw)
+            except BaseException as error:
+                moved = False
+                try:
+                    _write('v150 troublemaker adjacent navigation error=' + repr(error)[:220])
+                except BaseException:
+                    pass
+            if not moved:
+                break
+            _pause(0.14)
+
+            next_frame = None
+            for poll in range(12):
+                try:
+                    candidate = capture_fn(context) if callable(capture_fn) else None
+                except BaseException:
+                    candidate = None
+                if candidate is not None:
+                    try:
+                        ready = state_fn(candidate) if callable(state_fn) else True
+                    except BaseException:
+                        ready = None
+                    if ready is True:
+                        next_frame = candidate
+                        break
+                if poll < 11:
+                    _pause(min(0.24, 0.08 + (0.015 * poll)))
+            if next_frame is None:
+                try:
+                    _write(
+                        'v150 troublemaker next friend surface not ready; '
+                        'leaving retryable state'
+                    )
+                except BaseException:
+                    pass
+                break
+            current_frame = next_frame
+
+        setattr(context, '_qqfarm_friend_chain_troublemaker_ran', False)
         try:
-            _write(
-                'v132 deferred daily troublemaker raw=' + repr(result)[:180] +
-                ' count=' + repr(before_count) + '->' + repr(after_count) +
-                ' success=' + repr(success) +
-                ' retryable=' + repr(not success) +
-                ' cached=' + repr(cached_action)
+            cooldown_seconds = float(getattr(
+                context, 'friend_troublemaker_full_miss_cooldown_seconds', 90.0
+            ) or 90.0)
+        except BaseException:
+            cooldown_seconds = 90.0
+        cooldown_seconds = max(10.0, min(900.0, cooldown_seconds))
+        try:
+            cooldown_now = (
+                float(now_fn())
+                if callable(now_fn)
+                else float(__import__('time').time())
+            )
+        except BaseException:
+            cooldown_now = now_ts
+        try:
+            setattr(
+                context, '_qqfarm_troublemaker_full_miss_until',
+                float(cooldown_now) + cooldown_seconds,
             )
         except BaseException:
             pass
-        return result if success else False
+        try:
+            _write(
+                'v187 deferred daily troublemaker full miss; cooldown=' +
+                ('%.1f' % cooldown_seconds) + 's'
+            )
+        except BaseException:
+            pass
+        try:
+            _write(
+                'v150 deferred daily troublemaker exhausted attempts; '
+                'success=False retryable=True'
+            )
+        except BaseException:
+            pass
+        return False
     except BaseException as error:
         try:
             setattr(context, '_qqfarm_friend_chain_troublemaker_ran', False)
         except BaseException:
             pass
         try:
-            _write('v132 deferred daily troublemaker error=' + repr(error)[:220])
+            _write('v150 deferred daily troublemaker error=' + repr(error)[:220])
         except BaseException:
             pass
         return False
-
 
 def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
     """Visit and process successive friends before allowing home recovery."""
@@ -6056,6 +8702,24 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
     }
     if context is None or start_frame is None:
         result['reason'] = 'invalid-context-or-frame'
+        return result
+    try:
+        quota_fn = globals().get('_friend_help_quota_active')
+        quota_active = bool(
+            quota_fn(context) if callable(quota_fn)
+            else getattr(context, '_qqfarm_friend_help_quota_exhausted', False)
+        )
+    except BaseException:
+        quota_active = False
+    if quota_active:
+        result['exhausted'] = True
+        result['reason'] = 'friend-help-quota-exhausted'
+        try:
+            setattr(context, '_qqfarm_friend_chain_pending', False)
+            setattr(context, '_qqfarm_friend_chain_exhausted', True)
+            setattr(context, '_qqfarm_friend_chain_allow_home', True)
+        except BaseException:
+            pass
         return result
     try:
         guard_enabled_fn = globals().get('_guard_dog_ui_config_enabled')
@@ -6080,6 +8744,17 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
     adjacent_fn = globals().get('_invoke_friend_adjacent_card_navigation')
     action_fn = globals().get('_invoke_friend_actions_before_home')
     fast_action_fn = globals().get('_invoke_friend_visual_actions_before_home')
+    try:
+        native_action_fallback_enabled = bool(
+            not callable(fast_action_fn)
+            or getattr(context, 'friend_chain_allow_native_action_fallback', False)
+        )
+    except BaseException:
+        native_action_fallback_enabled = not callable(fast_action_fn)
+    initial_native_action_fallback_enabled = bool(
+        native_action_fallback_enabled
+        or (guard_enabled and guard_mode == 'friend_guard_list')
+    )
     capture_fn = globals().get('_get_frame_from_bot')
     state_fn = globals().get('_friend_guard_friend_ui_state')
     sleep_fn = globals().get('_friend_guard_sleep')
@@ -6114,7 +8789,7 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
         action_poll_limit = int(getattr(context, 'friend_chain_action_poll_limit', 16) or 16)
     except BaseException:
         action_poll_limit = 16
-    action_poll_limit = max(16, min(36, action_poll_limit))
+    action_poll_limit = max(24, min(36, action_poll_limit))
     try:
         primary_navigation_poll_limit = int(
             getattr(context, 'friend_chain_primary_navigation_poll_limit', 4) or 4
@@ -6131,6 +8806,34 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
     except BaseException:
         idle_confirmations = 3
     idle_confirmations = max(2, min(6, idle_confirmations))
+    try:
+        initial_idle_poll_min = int(getattr(
+            context, 'friend_chain_initial_idle_poll_min', 8
+        ) or 8)
+    except BaseException:
+        initial_idle_poll_min = 8
+    initial_idle_poll_min = max(
+        idle_confirmations, min(action_poll_limit, initial_idle_poll_min)
+    )
+    if guard_enabled and guard_mode == 'friend_guard_list':
+        try:
+            extended_entry_grace = bool(getattr(
+                context, '_qqfarm_friend_entry_extended_action_grace', False
+            ))
+        except BaseException:
+            extended_entry_grace = False
+        try:
+            guard_initial_idle_poll_min = int(getattr(
+                context, 'friend_chain_guard_initial_idle_poll_min', 12
+            ) or 12)
+        except BaseException:
+            guard_initial_idle_poll_min = 12
+        if extended_entry_grace:
+            guard_initial_idle_poll_min = max(20, guard_initial_idle_poll_min)
+        initial_idle_poll_min = max(
+            initial_idle_poll_min,
+            min(action_poll_limit, max(idle_confirmations, guard_initial_idle_poll_min)),
+        )
     try:
         preference_marker = object()
         prefer_adjacent_raw = getattr(
@@ -6198,7 +8901,20 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
         except BaseException:
             return False
 
-    def _drain_current_friend_actions(frame_value, handled_label=''):
+    def _consume_native_action_unverified():
+        try:
+            unverified = bool(getattr(
+                context, '_qqfarm_friend_native_action_unverified', False
+            ))
+            if unverified:
+                setattr(context, '_qqfarm_friend_native_action_unverified', False)
+            return unverified
+        except BaseException:
+            return False
+
+    def _drain_current_friend_actions(
+        frame_value, handled_label='', initial_friend=False
+    ):
         """Finish remaining visual actions on one friend before moving right."""
         if not callable(fast_action_fn):
             return frame_value, 0, '', True, 1
@@ -6213,7 +8929,7 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
 
         handled_kinds = set()
         seed_kind = _action_kind(handled_label)
-        if seed_kind:
+        if seed_kind and not bool(initial_friend):
             handled_kinds.add(seed_kind)
         current_frame = frame_value
         added_actions = 0
@@ -6270,6 +8986,15 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                     added_actions += 1
                     newest_label = str(label_now or newest_label)
                     idle_streak = 0
+                    if action_kind == 'help':
+                        try:
+                            setattr(
+                                context,
+                                '_qqfarm_post_steal_help_retry_pending',
+                                False,
+                            )
+                        except BaseException:
+                            pass
                     if callable(write_fn):
                         try:
                             write_fn(
@@ -6302,12 +9027,108 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                     _pause(min(0.24, 0.09 + (0.015 * drain_attempt)))
                 continue
             idle_streak += 1
-            if idle_streak >= idle_confirmations:
+            post_steal_grace_active = bool(
+                seed_kind == 'steal' and int(added_actions or 0) <= 0
+            )
+            minimum_idle_polls = (
+                initial_idle_poll_min
+                if bool(initial_friend) or post_steal_grace_active
+                else idle_confirmations
+            )
+            if (
+                idle_streak >= idle_confirmations
+                and (drain_attempt + 1) >= minimum_idle_polls
+            ):
+                try:
+                    hold_initial_post_steal = bool(
+                        post_steal_grace_active
+                        and getattr(
+                            context,
+                            '_qqfarm_friend_entry_extended_action_grace',
+                            False,
+                        )
+                    )
+                except BaseException:
+                    hold_initial_post_steal = False
+                if hold_initial_post_steal:
+                    try:
+                        retry_pending = bool(getattr(
+                            context,
+                            '_qqfarm_post_steal_help_retry_pending',
+                            False,
+                        ))
+                    except BaseException:
+                        retry_pending = False
+                    if not retry_pending:
+                        try:
+                            setattr(
+                                context,
+                                '_qqfarm_post_steal_help_retry_pending',
+                                True,
+                            )
+                            if callable(write_fn):
+                                write_fn(
+                                    'v219 compiled steal completed; keeping the same '
+                                    'friend for one more help probe before navigation'
+                                )
+                        except BaseException:
+                            pass
+                        return (
+                            current_frame, added_actions, newest_label, False, surface_hits
+                        )
+                    try:
+                        setattr(
+                            context,
+                            '_qqfarm_post_steal_help_retry_pending',
+                            False,
+                        )
+                        if callable(write_fn):
+                            write_fn(
+                                'v219 post-steal help absence confirmed twice; '
+                                'adjacent navigation may continue'
+                            )
+                    except BaseException:
+                        pass
                 return (
                     current_frame, added_actions, newest_label, True, surface_hits
                 )
             if drain_attempt < action_poll_limit - 1:
                 _pause(min(0.22, 0.08 + (0.015 * drain_attempt)))
+        try:
+            hold_initial_post_steal = bool(
+                seed_kind == 'steal'
+                and int(added_actions or 0) <= 0
+                and getattr(
+                    context,
+                    '_qqfarm_friend_entry_extended_action_grace',
+                    False,
+                )
+            )
+        except BaseException:
+            hold_initial_post_steal = False
+        if hold_initial_post_steal:
+            try:
+                retry_pending = bool(getattr(
+                    context, '_qqfarm_post_steal_help_retry_pending', False
+                ))
+            except BaseException:
+                retry_pending = False
+            if not retry_pending:
+                try:
+                    setattr(context, '_qqfarm_post_steal_help_retry_pending', True)
+                    if callable(write_fn):
+                        write_fn(
+                            'v219 compiled steal probe exhausted; keeping the same '
+                            'friend for one more help probe before navigation'
+                        )
+                except BaseException:
+                    pass
+                return current_frame, added_actions, newest_label, False, surface_hits
+            try:
+                setattr(context, '_qqfarm_post_steal_help_retry_pending', False)
+            except BaseException:
+                pass
+            return current_frame, added_actions, newest_label, True, surface_hits
         return current_frame, added_actions, newest_label, False, surface_hits
 
     frame = start_frame
@@ -6344,13 +9165,26 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
     # has finished rendering.  Never advance until the current friend surface is
     # stable and every visible steal/help action on that same friend is finished.
     if last_label:
+        try:
+            initial_friend_recheck = bool(
+                guard_enabled
+                and guard_mode == 'friend_guard_list'
+                and callable(globals().get(
+                    '_friend_guard_list_prequalified_entry_active'
+                ))
+                and globals()['_friend_guard_list_prequalified_entry_active'](context)
+            )
+        except BaseException:
+            initial_friend_recheck = False
         (
             frame,
             drained_actions,
             drained_label,
             current_idle_confirmed,
             current_surface_hits,
-        ) = _drain_current_friend_actions(frame, last_label)
+        ) = _drain_current_friend_actions(
+            frame, last_label, initial_friend=initial_friend_recheck
+        )
         result['frame'] = frame
         result['actions'] += int(drained_actions or 0)
         if drained_label:
@@ -6369,6 +9203,7 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
         initial_full_probe_done = False
         initial_ready_streak = 0
         initial_guard_help_skipped = False
+        initial_native_action_unverified = False
         for initial_attempt in range(action_poll_limit):
             try:
                 initial_frame = (
@@ -6400,11 +9235,17 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                             break
                     if (
                         not initial_acted
+                        and initial_native_action_fallback_enabled
                         and not initial_full_probe_done
                         and (initial_attempt + 1) >= primary_navigation_poll_limit
                     ):
                         initial_full_probe_done = True
                         initial_acted, initial_action_label = action_fn(context, frame)
+                        if _consume_native_action_unverified():
+                            initial_native_action_unverified = True
+                            initial_acted = False
+                            initial_action_label = ''
+                            break
                         if _consume_guard_dog_help_skip():
                             initial_guard_help_skipped = True
                             break
@@ -6422,11 +9263,18 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                 if initial_acted:
                     break
                 initial_ready_streak += 1
-                if initial_ready_streak >= idle_confirmations:
+                if (
+                    initial_ready_streak >= idle_confirmations
+                    and (initial_attempt + 1) >= initial_idle_poll_min
+                ):
                     break
             if initial_attempt < action_poll_limit - 1:
                 _pause(min(0.22, 0.08 + (0.015 * initial_attempt)))
         if initial_acted:
+            try:
+                setattr(context, '_qqfarm_initial_guard_approval_pending_count', 0)
+            except BaseException:
+                pass
             result['actions'] += 1
             last_label = str(initial_action_label or '')
             result['last_label'] = last_label
@@ -6451,16 +9299,90 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                     else 'current-friend-not-idle'
                 )
                 loop_limit = 0
-        elif initial_guard_help_skipped:
-            result['reason'] = 'initial-guard-dog-help-skipped'
+        elif initial_native_action_unverified:
+            result['reason'] = 'initial-native-action-unverified'
+            loop_limit = 0
             if callable(write_fn):
                 try:
                     write_fn(
-                        'v131 guard dog rejected initial help; advancing to adjacent friend'
+                        'v212 unverified native help claim; keeping the first '
+                        'friend active without carousel navigation'
                     )
                 except BaseException:
                     pass
+        elif initial_guard_help_skipped:
+            # Guard identity can be briefly unavailable while the first farm is
+            # settling, so retry the same card a few times.  A persistent negative
+            # decision is authoritative, however: continuing to pin the same card
+            # creates an infinite empty-cycle loop even though later friends remain.
+            try:
+                pending_count = int(getattr(
+                    context, '_qqfarm_initial_guard_approval_pending_count', 0
+                ) or 0) + 1
+            except BaseException:
+                pending_count = 1
+            try:
+                pending_limit = int(getattr(
+                    context, 'friend_chain_guard_pending_retry_limit', 3
+                ) or 3)
+            except BaseException:
+                pending_limit = 3
+            pending_limit = max(1, min(8, pending_limit))
+            try:
+                setattr(
+                    context, '_qqfarm_initial_guard_approval_pending_count',
+                    pending_count,
+                )
+            except BaseException:
+                pass
+            if pending_count < pending_limit:
+                result['reason'] = 'initial-guard-approval-pending'
+                loop_limit = 0
+                if callable(write_fn):
+                    try:
+                        write_fn(
+                            'v188 initial guard approval pending; keeping the first '
+                            'friend active retry=' + str(pending_count) + '/' +
+                            str(pending_limit)
+                        )
+                    except BaseException:
+                        pass
+            else:
+                result['reason'] = 'initial-guard-rejected-advance'
+                try:
+                    setattr(
+                        context, '_qqfarm_initial_guard_approval_pending_count', 0
+                    )
+                except BaseException:
+                    pass
+                clear_fn = globals().get('_friend_guard_clear_prequalification')
+                if callable(clear_fn):
+                    try:
+                        clear_fn(context)
+                    except BaseException:
+                        pass
+                if callable(write_fn):
+                    try:
+                        write_fn(
+                            'v188 initial guard approval rejected after bounded '
+                            'retries; advancing to the next adjacent friend'
+                        )
+                    except BaseException:
+                        pass
         elif initial_ready_streak >= idle_confirmations:
+            try:
+                guard_list_initial_approved = bool(
+                    guard_enabled
+                    and guard_mode == 'friend_guard_list'
+                    and callable(globals().get(
+                        '_friend_guard_list_prequalified_entry_active'
+                    ))
+                    and globals()[
+                        '_friend_guard_list_prequalified_entry_active'
+                    ](context)
+                )
+            except BaseException:
+                guard_list_initial_approved = False
             if compiled_home_blocked:
                 # The compiled friend flow already completed its current-card
                 # action and tried to return home.  The home gate is therefore
@@ -6473,6 +9395,11 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                 except BaseException:
                     pass
                 result['reason'] = 'compiled-current-friend-complete'
+            elif guard_list_initial_approved:
+                # A whitelist-selected first friend is an identity match, not
+                # proof that this specific farm currently has an action.  Check
+                # the next bottom card before ending the ordered friend block.
+                result['reason'] = 'initial-guard-friend-no-action-continue'
             else:
                 result['exhausted'] = True
                 result['reason'] = 'initial-friend-no-action'
@@ -6565,6 +9492,8 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
         acted = False
         action_label = ''
         guard_help_skipped = False
+        native_action_unverified = False
+        blocked_next_friend_returned_home = False
         # Synthetic/unreadable captures may not expose a usable signature.  Keep
         # the legacy bounded path for those cases; real farm frames provide the
         # signature and/or selected-card geometry used by the strict stale-frame gate.
@@ -6600,6 +9529,31 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                     friend_ready_streak += 1
                 else:
                     friend_ready_streak = 0
+                    try:
+                        blocked_hint_fn = globals().get(
+                            '_friend_blocked_visit_visual_hint'
+                        )
+                        blocked_next_friend_returned_home = bool(
+                            blocked_hint_fn(candidate)
+                        ) if callable(blocked_hint_fn) else False
+                    except BaseException:
+                        blocked_next_friend_returned_home = False
+                    if blocked_next_friend_returned_home:
+                        navigation_confirmed = True
+                        if not move_counted:
+                            result['moves'] += 1
+                            move_counted = True
+                        frame = candidate
+                        result['frame'] = frame
+                        if callable(write_fn):
+                            try:
+                                write_fn(
+                                    'v219 blocked next friend returned home; '
+                                    'finishing adjacent friend chain normally'
+                                )
+                            except BaseException:
+                                pass
+                        break
                 # Never use a visible action from the first post-click frames as
                 # navigation proof.  The previous friend's button can remain on
                 # screen during the carousel transition; clicking it here advances
@@ -6697,14 +9651,28 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
                                 if _consume_guard_dog_help_skip():
                                     guard_help_skipped = True
                                     break
-                            if not acted and not full_action_probed:
+                            if (
+                                not acted
+                                and native_action_fallback_enabled
+                                and not full_action_probed
+                            ):
                                 full_action_probed = True
                                 acted, action_label = action_fn(context, frame)
+                                if _consume_native_action_unverified():
+                                    native_action_unverified = True
+                                    acted = False
+                                    action_label = ''
+                                    break
                                 if _consume_guard_dog_help_skip():
                                     guard_help_skipped = True
                                     break
                         elif not action_probed:
                             acted, action_label = action_fn(context, frame)
+                            if _consume_native_action_unverified():
+                                native_action_unverified = True
+                                acted = False
+                                action_label = ''
+                                break
                             if _consume_guard_dog_help_skip():
                                 guard_help_skipped = True
                                 break
@@ -6723,8 +9691,23 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
         if next_frame is None:
             result['reason'] = 'missing-frame-after-navigation'
             break
+        if blocked_next_friend_returned_home:
+            result['exhausted'] = True
+            result['reason'] = 'blocked-next-friend-returned-home'
+            break
         if not navigation_confirmed:
             result['reason'] = 'navigation-not-confirmed'
+            break
+        if native_action_unverified:
+            result['reason'] = 'native-action-unverified'
+            if callable(write_fn):
+                try:
+                    write_fn(
+                        'v212 unverified native help claim; keeping the current '
+                        'friend active without carousel navigation'
+                    )
+                except BaseException:
+                    pass
             break
         if guard_help_skipped:
             result['reason'] = 'guard-dog-help-skipped'
@@ -6789,6 +9772,28 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
             setattr(context, '_last_friend_farm_go_home_present', True)
         except BaseException:
             pass
+    try:
+        moved_count = int(result.get('moves', 0) or 0)
+        visible_count = int(getattr(
+            context, '_qqfarm_friend_list_visible_candidate_count', 0
+        ) or 0)
+        if moved_count > 0 and visible_count > 0:
+            current_cursor = max(0, int(getattr(
+                context, '_qqfarm_friend_list_visit_cursor', 0
+            ) or 0))
+            setattr(
+                context,
+                '_qqfarm_friend_list_visit_cursor',
+                current_cursor + moved_count,
+            )
+            if callable(write_fn):
+                write_fn(
+                    'v203 friend list cursor advanced by carousel moves=' +
+                    str(moved_count) + ' cursor=' +
+                    str(current_cursor + moved_count) + '/' + str(visible_count)
+                )
+    except BaseException:
+        pass
     if callable(write_fn):
         try:
             write_fn('v85 friend continuation summary moves=' + str(result['moves']) +
@@ -6803,6 +9808,7 @@ def _run_friend_continuation_chain(context, start_frame, last_action_label=''):
         setattr(context, '_qqfarm_friend_chain_exhausted', terminal)
         setattr(context, '_qqfarm_friend_chain_pending', not terminal)
         setattr(context, '_qqfarm_friend_chain_active', False)
+        setattr(context, '_qqfarm_friend_entry_extended_action_grace', False)
     except BaseException:
         pass
     return result
@@ -7347,6 +10353,201 @@ def _friend_list_guard_dog_score(frame, row_y):
         return 0.0
 
 
+
+def _friend_blocked_visit_visual_hint(frame, threshold=0.70):
+    """Match blocked-visit list text or the in-farm blocked toast."""
+    try:
+        cv2 = __import__('cv2')
+        np = __import__('numpy')
+        os_module = __import__('os')
+        arr = np.asarray(frame)
+        shape = getattr(arr, 'shape', None)
+        if not shape or len(shape) < 2:
+            return False
+        height, width = int(shape[0]), int(shape[1])
+        if height < 120 or width < 120:
+            return False
+        hook_file = globals().get('__file__', 'hook.py')
+        base = os_module.path.dirname(os_module.path.abspath(hook_file))
+        template_paths = [
+            (
+                'row',
+                globals().get('_FRIEND_BLOCKED_VISIT_TEMPLATE_PATH')
+                or os_module.path.join(base, 'friend_blocked_visit_text.png'),
+            ),
+            (
+                'toast',
+                globals().get('_FRIEND_BLOCKED_VISIT_TOAST_TEMPLATE_PATH')
+                or os_module.path.join(base, 'friend_blocked_visit_toast.png'),
+            ),
+        ]
+        x0 = max(0, min(width - 1, int(round(width * 0.08))))
+        x1 = max(x0 + 1, min(width, int(round(width * 0.92))))
+        y0 = max(0, min(height - 1, int(round(height * 0.12))))
+        y1 = max(y0 + 1, min(height, int(round(height * 0.88))))
+        roi = arr[y0:y1, x0:x1, :3]
+        if getattr(roi, 'size', 0) <= 0:
+            return False
+        roi_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        cache = globals().setdefault('_FRIEND_BLOCKED_VISIT_TEMPLATE_CACHE', {})
+        runtime_scale = max(0.65, min(1.65, float(width) / 428.0))
+        best = -1.0
+        best_label = ''
+        for label, template_path in template_paths:
+            cache_key = str(template_path)
+            template = cache.get(cache_key) if isinstance(cache, dict) else None
+            if template is None:
+                try:
+                    encoded = np.fromfile(cache_key, dtype=np.uint8)
+                    template = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+                except BaseException:
+                    template = None
+                if template is not None and isinstance(cache, dict):
+                    cache[cache_key] = template
+            if template is None or getattr(template, 'size', 0) <= 0:
+                continue
+            for local_scale in (0.90, 0.96, 1.0, 1.04, 1.10):
+                scale = runtime_scale * float(local_scale)
+                target_width = max(8, int(round(template.shape[1] * scale)))
+                target_height = max(6, int(round(template.shape[0] * scale)))
+                if (
+                    target_width > int(roi_gray.shape[1])
+                    or target_height > int(roi_gray.shape[0])
+                ):
+                    continue
+                resized = cv2.resize(
+                    template,
+                    (target_width, target_height),
+                    interpolation=(
+                        cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC
+                    ),
+                )
+                template_gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+                matched = cv2.matchTemplate(
+                    roi_gray, template_gray, cv2.TM_CCOEFF_NORMED
+                )
+                _, score, _, _ = cv2.minMaxLoc(matched)
+                score = float(score)
+                if score > best:
+                    best = score
+                    best_label = str(label)
+        matched = bool(best >= max(0.55, min(0.92, float(threshold))))
+        if matched:
+            try:
+                _write(
+                    'v222 blocked visit status matched kind=' + best_label +
+                    ' score=' + ('%.4f' % best)
+                )
+            except BaseException:
+                pass
+        return matched
+    except BaseException:
+        return False
+
+
+def _friend_list_blocked_row_visual_hint(frame, row_y, threshold=0.70):
+    """Match the fixed ?account blocked, visit unavailable? text on one row."""
+    try:
+        cv2 = __import__('cv2')
+        np = __import__('numpy')
+        os_module = __import__('os')
+        arr = np.asarray(frame)
+        shape = getattr(arr, 'shape', None)
+        if not shape or len(shape) < 2:
+            return False
+        height, width = int(shape[0]), int(shape[1])
+        if height < 120 or width < 120:
+            return False
+        template_path = globals().get('_FRIEND_BLOCKED_VISIT_TEMPLATE_PATH')
+        if not template_path:
+            hook_file = globals().get('__file__', 'hook.py')
+            template_path = os_module.path.join(
+                os_module.path.dirname(os_module.path.abspath(hook_file)),
+                'friend_blocked_visit_text.png',
+            )
+        try:
+            encoded = np.fromfile(str(template_path), dtype=np.uint8)
+            template = cv2.imdecode(encoded, cv2.IMREAD_COLOR)
+        except BaseException:
+            template = None
+        if template is None or getattr(template, 'size', 0) <= 0:
+            return False
+        x0 = max(0, min(width - 1, int(round(width * 0.22))))
+        x1 = max(x0 + 1, min(width, int(round(width * 0.82))))
+        y0 = max(0, min(height - 1, int(round(float(row_y) - height * 0.034))))
+        y1 = max(y0 + 1, min(height, int(round(float(row_y) + height * 0.034))))
+        roi = arr[y0:y1, x0:x1, :3]
+        if getattr(roi, 'size', 0) <= 0:
+            return False
+        roi_gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        best = -1.0
+        runtime_scale = max(0.65, min(1.65, float(width) / 428.0))
+        for local_scale in (0.90, 0.96, 1.0, 1.04, 1.10):
+            scale = runtime_scale * float(local_scale)
+            target_width = max(8, int(round(template.shape[1] * scale)))
+            target_height = max(6, int(round(template.shape[0] * scale)))
+            if target_width > int(roi_gray.shape[1]) or target_height > int(roi_gray.shape[0]):
+                continue
+            resized = cv2.resize(
+                template,
+                (target_width, target_height),
+                interpolation=(cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC),
+            )
+            template_gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+            matched = cv2.matchTemplate(roi_gray, template_gray, cv2.TM_CCOEFF_NORMED)
+            _, score, _, _ = cv2.minMaxLoc(matched)
+            best = max(best, float(score))
+        matched = bool(best >= max(0.55, min(0.92, float(threshold))))
+        if matched:
+            try:
+                _write(
+                    'v219 blocked friend row text matched row_y=' + str(int(row_y)) +
+                    ' score=' + ('%.4f' % best)
+                )
+            except BaseException:
+                pass
+        return matched
+    except BaseException:
+        return False
+
+def _commit_friend_list_entry_transition(context):
+    """Advance the friend-list cursor only after the farm surface is confirmed."""
+    if context is None:
+        return False
+    try:
+        if not bool(getattr(context, '_qqfarm_friend_entry_pending', False)):
+            return False
+        pending_cursor = max(0, int(getattr(
+            context, '_qqfarm_friend_list_pending_cursor', 0
+        ) or 0))
+        current_cursor = max(0, int(getattr(
+            context, '_qqfarm_friend_list_visit_cursor', pending_cursor
+        ) or 0))
+        confirmed_cursor = max(current_cursor, pending_cursor + 1)
+        setattr(
+            context,
+            '_qqfarm_friend_list_visit_cursor',
+            confirmed_cursor,
+        )
+        setattr(context, '_qqfarm_friend_entry_retry_count', 0)
+        setattr(context, '_qqfarm_friend_entry_last_retry_ts', 0.0)
+        writer = globals().get('_write')
+        if callable(writer):
+            writer(
+                'v207 friend list confirmed cursor pending=' +
+                str(pending_cursor) + ' next=' + str(confirmed_cursor)
+            )
+        return True
+    except BaseException as error:
+        try:
+            writer = globals().get('_write')
+            if callable(writer):
+                writer('v207 friend list cursor commit error=' + repr(error)[:180])
+        except BaseException:
+            pass
+        return False
+
+
 def _handle_friend_list_surface(context, frame):
     """Enter the first eligible friend from the list or close an empty list."""
     try:
@@ -7372,6 +10573,11 @@ def _handle_friend_list_surface(context, frame):
         target_score = 0.0
         target_row_y = 0
         scored = []
+        guard_list_candidates = []
+        guard_list_cursor = 0
+        guard_list_selection_cursor = 0
+        guard_list_pending_retry = False
+        guard_list_retry_count = 0
         if rows and guard_enabled and guard_mode == 'friend_guard_list':
             score_fn = globals().get('_friend_guard_list_row_match_score')
             for row in rows:
@@ -7384,13 +10590,9 @@ def _handle_friend_list_surface(context, frame):
                 except BaseException:
                     score = 0.0
                 scored.append((row_y, score))
-                # Preserve the visual top-to-bottom ordering.  A later stronger
-                # score must never skip the first matching actionable friend.
-                if target is None and score >= 0.72:
-                    target = row
-                    target_score = score
-                    target_row_y = row_y
-            if target is None:
+                if score >= 0.72:
+                    guard_list_candidates.append((row, score, row_y))
+            if not guard_list_candidates:
                 try:
                     writer = globals().get('_write')
                     if callable(writer):
@@ -7402,6 +10604,251 @@ def _handle_friend_list_surface(context, frame):
                 except BaseException:
                     pass
                 return 'native-guard-list'
+            try:
+                guard_list_cursor = max(0, int(getattr(
+                    context, '_qqfarm_friend_list_visit_cursor', 0
+                ) or 0))
+            except BaseException:
+                guard_list_cursor = 0
+            guard_list_selection_cursor = guard_list_cursor
+            try:
+                friend_entry_pending = bool(getattr(
+                    context, '_qqfarm_friend_entry_pending', False
+                ))
+                guard_list_retry_count = max(0, int(getattr(
+                    context, '_qqfarm_friend_entry_retry_count', 0
+                ) or 0))
+                pending_cursor = max(0, int(getattr(
+                    context,
+                    '_qqfarm_friend_list_pending_cursor',
+                    guard_list_cursor,
+                ) or 0))
+            except BaseException:
+                friend_entry_pending = False
+                guard_list_retry_count = 0
+                pending_cursor = guard_list_cursor
+            if not friend_entry_pending:
+                stale_cursor = int(guard_list_cursor)
+                guard_list_cursor = 0
+                guard_list_selection_cursor = 0
+                pending_cursor = 0
+                try:
+                    setattr(context, '_qqfarm_friend_list_visit_cursor', 0)
+                    if stale_cursor > 0:
+                        writer = globals().get('_write')
+                        if callable(writer):
+                            writer(
+                                'v219 reopened friend list reset stale cursor=' +
+                                str(stale_cursor) + '; selecting first row'
+                            )
+                except BaseException:
+                    pass
+            if friend_entry_pending:
+                guard_list_pending_retry = True
+                guard_list_selection_cursor = pending_cursor
+                try:
+                    now_fn = globals().get('_friend_watchdog_now')
+                    retry_now = float(
+                        now_fn() if callable(now_fn)
+                        else __import__('time').time()
+                    )
+                except BaseException:
+                    retry_now = 0.0
+                try:
+                    last_retry_ts = float(getattr(
+                        context, '_qqfarm_friend_entry_last_retry_ts', 0.0
+                    ) or 0.0)
+                except BaseException:
+                    last_retry_ts = 0.0
+                try:
+                    entry_clicked_ts = float(getattr(
+                        context, '_qqfarm_friend_entry_clicked_ts', 0.0
+                    ) or 0.0)
+                except BaseException:
+                    entry_clicked_ts = 0.0
+                entry_age = (
+                    max(0.0, retry_now - entry_clicked_ts)
+                    if entry_clicked_ts > 0.0 else 0.0
+                )
+                blocked_row_hint = False
+                if guard_list_retry_count >= 3 and entry_age >= 6.0:
+                    try:
+                        blocked_hint_fn = globals().get(
+                            '_friend_list_blocked_row_visual_hint'
+                        )
+                        pending_row = guard_list_candidates[
+                            pending_cursor % len(guard_list_candidates)
+                        ][2]
+                        blocked_row_hint = bool(
+                            blocked_hint_fn(frame, pending_row)
+                        ) if callable(blocked_hint_fn) else False
+                    except BaseException:
+                        blocked_row_hint = False
+                # The list-entry policy permits exactly one bypass: first row
+                # to second row when the first row is visibly blocked.  A failed
+                # second-row visit closes/reopens the list instead of skipping
+                # further friends.
+                if (
+                    blocked_row_hint
+                    and pending_cursor == 0
+                    and (pending_cursor + 1) < len(guard_list_candidates)
+                ):
+                    next_cursor = int(pending_cursor + 1)
+                    try:
+                        setattr(context, '_qqfarm_friend_entry_pending', False)
+                        setattr(context, '_qqfarm_friend_entry_retry_count', 0)
+                        setattr(context, '_qqfarm_friend_entry_clicked_ts', 0.0)
+                        setattr(context, '_qqfarm_friend_entry_last_retry_ts', 0.0)
+                        setattr(
+                            context,
+                            '_qqfarm_friend_list_visit_cursor',
+                            next_cursor,
+                        )
+                        setattr(
+                            context,
+                            '_qqfarm_friend_list_pending_cursor',
+                            next_cursor,
+                        )
+                        clear_fn = globals().get(
+                            '_friend_guard_clear_prequalification'
+                        )
+                        if callable(clear_fn):
+                            clear_fn(context)
+                    except BaseException:
+                        pass
+                    try:
+                        writer = globals().get('_write')
+                        if callable(writer):
+                            writer(
+                                'v219 blocked row did not enter friend farm; '
+                                'advancing from cursor=' + str(pending_cursor) +
+                                ' to cursor=' + str(next_cursor)
+                            )
+                    except BaseException:
+                        pass
+                    return 'blocked-row-next'
+                if guard_list_retry_count >= 3 and entry_age >= 6.0:
+                    close_x = int(round(width * 0.946))
+                    close_y = int(round(height * 0.118))
+                    recovery_click_fn = globals().get(
+                        '_friend_guard_post_client_click'
+                    )
+                    try:
+                        closed = bool(
+                            recovery_click_fn(close_x, close_y, width, height)
+                        ) if callable(recovery_click_fn) else False
+                    except TypeError:
+                        closed = bool(recovery_click_fn(close_x, close_y))
+                    except BaseException:
+                        closed = False
+                    if closed:
+                        try:
+                            setattr(context, '_qqfarm_friend_entry_pending', False)
+                            setattr(context, '_qqfarm_friend_entry_retry_count', 0)
+                            setattr(context, '_qqfarm_friend_entry_clicked_ts', 0.0)
+                            setattr(context, '_qqfarm_friend_entry_last_retry_ts', 0.0)
+                            setattr(
+                                context,
+                                '_qqfarm_friend_list_visit_cursor',
+                                int(pending_cursor),
+                            )
+                            setattr(context, '_qqfarm_friend_chain_pending', False)
+                            setattr(context, '_qqfarm_friend_cycle_seen', False)
+                            setattr(context, '_qqfarm_visual_friend_count', 0)
+                            clear_fn = globals().get(
+                                '_friend_guard_clear_prequalification'
+                            )
+                            if callable(clear_fn):
+                                clear_fn(context)
+                        except BaseException:
+                            pass
+                        try:
+                            fast_fn = globals().get(
+                                '_set_friend_chain_fast_interval'
+                            )
+                            if callable(fast_fn):
+                                fast_fn(context, False)
+                        except BaseException:
+                            pass
+                        try:
+                            writer = globals().get('_write')
+                            if callable(writer):
+                                writer(
+                                    'v209 friend list pending row reopen recovery '
+                                    'cursor=' + str(pending_cursor) +
+                                    ' age=' + ('%.3f' % entry_age) +
+                                    ' closed=True'
+                                )
+                        except BaseException:
+                            pass
+                        return 'pending-row-reopen'
+                retry_backoff_seconds = 1.5
+                if (
+                    guard_list_retry_count >= 3
+                    and last_retry_ts > 0.0
+                    and 0.0 <= (retry_now - last_retry_ts) < retry_backoff_seconds
+                ):
+                    try:
+                        writer = globals().get('_write')
+                        if callable(writer):
+                            writer(
+                                'v207 friend list pending row backoff cursor=' +
+                                str(pending_cursor) + ' retry_count=' +
+                                str(guard_list_retry_count)
+                            )
+                    except BaseException:
+                        pass
+                    return 'pending-row-backoff'
+                try:
+                    writer = globals().get('_write')
+                    if callable(writer):
+                        writer(
+                            'v207 friend list pending row retry cursor=' +
+                            str(pending_cursor) + ' attempt=' +
+                            str(min(3, guard_list_retry_count + 1)) + '/3' +
+                            (' slow=True' if guard_list_retry_count >= 3 else '')
+                        )
+                except BaseException:
+                    pass
+            if (
+                not friend_entry_pending
+                and (guard_list_selection_cursor + 1) < len(guard_list_candidates)
+            ):
+                try:
+                    blocked_hint_fn = globals().get(
+                        '_friend_list_blocked_row_visual_hint'
+                    )
+                    current_row_y = guard_list_candidates[
+                        guard_list_selection_cursor
+                    ][2]
+                    blocked_first_row = bool(
+                        blocked_hint_fn(frame, current_row_y)
+                    ) if callable(blocked_hint_fn) else False
+                except BaseException:
+                    blocked_first_row = False
+                if blocked_first_row:
+                    guard_list_selection_cursor += 1
+                    try:
+                        writer = globals().get('_write')
+                        if callable(writer):
+                            writer(
+                                'v219 blocked first row is not visitable; '
+                                'selecting second row immediately cursor=' +
+                                str(guard_list_selection_cursor)
+                            )
+                    except BaseException:
+                        pass
+            target, target_score, target_row_y = guard_list_candidates[
+                guard_list_selection_cursor % len(guard_list_candidates)
+            ]
+            try:
+                setattr(
+                    context,
+                    '_qqfarm_friend_list_visible_candidate_count',
+                    len(guard_list_candidates),
+                )
+            except BaseException:
+                pass
         elif rows and guard_enabled:
             score_fn = globals().get('_friend_list_guard_dog_score')
             for row in rows:
@@ -7431,6 +10878,13 @@ def _handle_friend_list_surface(context, frame):
                         now_fn = globals().get('_friend_watchdog_now')
                         now_ts = float(now_fn()) if callable(now_fn) else float(__import__('time').time())
                         setattr(context, '_qqfarm_friend_branch_last_ts', now_ts)
+                        setattr(context, '_qqfarm_friend_entry_pending', True)
+                        if not (
+                            guard_enabled
+                            and guard_mode == 'friend_guard_list'
+                            and guard_list_pending_retry
+                        ):
+                            setattr(context, '_qqfarm_friend_entry_clicked_ts', now_ts)
                         if guard_enabled and guard_mode == 'avatar_frame' and target_score >= 0.82:
                             setattr(context, '_qqfarm_guard_row_verified', True)
                             setattr(context, '_qqfarm_guard_row_verified_ts', now_ts)
@@ -7443,6 +10897,33 @@ def _handle_friend_list_surface(context, frame):
                             setattr(context, '_qqfarm_guard_list_prequalified_ts', now_ts)
                             setattr(context, '_qqfarm_guard_list_row_y', int(target_row_y))
                             setattr(context, '_qqfarm_guard_list_row_score', float(target_score))
+                            if guard_list_pending_retry:
+                                next_retry_count = int(guard_list_retry_count) + 1
+                            else:
+                                next_retry_count = 1
+                                setattr(
+                                    context,
+                                    '_qqfarm_friend_list_pending_cursor',
+                                    int(guard_list_selection_cursor),
+                                )
+                            setattr(
+                                context,
+                                '_qqfarm_friend_entry_retry_count',
+                                min(3, next_retry_count),
+                            )
+                            setattr(
+                                context,
+                                '_qqfarm_friend_entry_last_retry_ts',
+                                now_ts,
+                            )
+                            # The row is still pending until the friend-farm
+                            # surface is visibly confirmed.  Keeping the cursor
+                            # here prevents a lost click from skipping a friend.
+                            setattr(
+                                context,
+                                '_qqfarm_friend_list_visit_cursor',
+                                int(guard_list_selection_cursor),
+                            )
                             setattr(context, '_qqfarm_friend_chain_pending', True)
                             setattr(context, '_qqfarm_friend_chain_exhausted', False)
                             setattr(context, '_qqfarm_friend_chain_native_home_blocked', False)
@@ -7466,7 +10947,9 @@ def _handle_friend_list_surface(context, frame):
                     write_fn = globals().get('_write')
                     if callable(write_fn):
                         write_fn(
-                            'v117 friend list visit row=' + repr((click_x, click_y)) +
+                            'v203 friend list visit row=' + repr((click_x, click_y)) +
+                            ' cursor=' + str(guard_list_selection_cursor) + '/' +
+                            str(len(guard_list_candidates)) +
                             ' guard_only=' + repr(guard_enabled) +
                             ' guard_scores=' + repr(scored)[:240]
                         )
@@ -7541,7 +11024,24 @@ def _friend_guard_friend_ui_state(frame):
             home['match_mode'] = 'strong-gray-soft-edge'
         globals()['_FRIEND_HOME_LAST_MATCH'] = home
         if bool(home.get('matched')):
-            return True
+            bounds_fn = globals().get('_friend_selected_carousel_card_bounds')
+            if callable(bounds_fn):
+                try:
+                    selected_bounds = bounds_fn(frame)
+                except BaseException:
+                    selected_bounds = None
+                home_gray = float(home.get('gray', 0.0) or 0.0)
+                home_edge = float(home.get('edge', 0.0) or 0.0)
+                unmistakable_home = bool(home_gray >= 0.88 and home_edge >= 0.40)
+                if not isinstance(selected_bounds, dict) and not unmistakable_home:
+                    home = dict(home)
+                    home['matched'] = False
+                    home['rejected_reason'] = 'missing-friend-carousel'
+                    globals()['_FRIEND_HOME_LAST_MATCH'] = home
+                else:
+                    return True
+            else:
+                return True
         list_path = globals().get(
             '_FRIEND_LIST_TEMPLATE_PATH',
             os_module.path.join(os_module.getcwd(), 'friend_list_tabs.png'),
@@ -7717,10 +11217,45 @@ def _invoke_friend_guard_post_click_self(fn, context, original_args=(), original
     return result, label
 
 
+def _friend_entry_callable_inventory(context):
+    """Return relevant native entry callables for one-time runtime diagnosis."""
+    if context is None:
+        return ()
+    names = []
+    try:
+        for name in dir(context):
+            low = str(name or '').lower()
+            if not any(token in low for token in ('friend', 'menu', 'home', 'self_farm')):
+                continue
+            try:
+                value = getattr(context, name)
+            except BaseException:
+                continue
+            if callable(value):
+                names.append(str(name))
+    except BaseException:
+        return ()
+    return tuple(sorted(set(names)))
+
+
 def _invoke_friend_branch_from_home(context, fresh_frame):
     """Retry the friend entry without recursively re-entering its dispatcher."""
     if context is None or fresh_frame is None:
         return False
+    try:
+        quota_fn = globals().get('_friend_help_quota_active')
+        if bool(
+            quota_fn(context) if callable(quota_fn)
+            else getattr(context, '_qqfarm_friend_help_quota_exhausted', False)
+        ):
+            _throttled_write(
+                'v211-friend-entry-quota-blocked',
+                'v211 friend entry skipped because daily help quota is exhausted',
+                60.0,
+            )
+            return False
+    except BaseException:
+        pass
     try:
         if bool(getattr(context, '_qqfarm_friend_home_recovery_active', False)):
             return False
@@ -7728,6 +11263,18 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
         pass
     try:
         setattr(context, '_qqfarm_friend_home_recovery_active', True)
+        try:
+            inventory_fn = globals().get('_friend_entry_callable_inventory')
+            inventory = (
+                inventory_fn(context) if callable(inventory_fn) else ()
+            )
+            _throttled_write(
+                'v168-friend-entry-callable-inventory',
+                'v168 friend entry callable inventory=' + repr(inventory)[:1800],
+                120.0,
+            )
+        except BaseException:
+            pass
 
         # The compiled process_friend_farm dispatcher can route back into itself
         # when called from the run_cycle post-hook. Prefer its two direct home-page
@@ -7814,6 +11361,15 @@ def _friend_guard_list_fast_open_from_home(context):
     if context is None:
         return False
     try:
+        quota_fn = globals().get('_friend_help_quota_active')
+        if bool(
+            quota_fn(context) if callable(quota_fn)
+            else getattr(context, '_qqfarm_friend_help_quota_exhausted', False)
+        ):
+            return False
+    except BaseException:
+        pass
+    try:
         enabled_fn = globals().get('_guard_dog_ui_config_enabled')
         mode_fn = globals().get('_guard_dog_detection_mode_config')
         if not (
@@ -7893,7 +11449,9 @@ def _friend_guard_list_fast_open_from_home(context):
     return True
 
 
-def _apply_visual_friend_route_watchdog(fn, context, function_name=''):
+def _apply_visual_friend_route_watchdog(
+    fn, context, function_name='', force_recovery=False
+):
     """Run friend actions first; recover home after action follow-up or timeout."""
     try:
         if context is None:
@@ -7923,6 +11481,57 @@ def _apply_visual_friend_route_watchdog(fn, context, function_name=''):
         cycle_branch_hint = str(
             getattr(context, '_qqfarm_cycle_branch_hint', '') or ''
         ).strip().lower()
+        try:
+            false_positive_ts = float(getattr(
+                context, '_qqfarm_native_home_false_positive_ts', 0.0
+            ) or 0.0)
+        except BaseException:
+            false_positive_ts = 0.0
+        recent_native_false_positive = bool(
+            visual_state is False
+            and false_positive_ts > 0.0
+            and 0.0 <= (now_ts - false_positive_ts) <= 3.0
+        )
+        if recent_native_false_positive:
+            friend_cycle_seen = False
+            cycle_branch_hint = 'self'
+            try:
+                finalize_fn = globals().get(
+                    '_finalize_friend_chain_after_troublemaker'
+                )
+                if callable(finalize_fn):
+                    finalize_fn(context)
+                setattr(context, '_qqfarm_cycle_branch_hint', 'self')
+                setattr(context, '_qqfarm_friend_cycle_seen', False)
+                setattr(context, '_qqfarm_friend_home_noop_count', 0)
+                setattr(context, '_qqfarm_visual_friend_count', 0)
+            except BaseException:
+                pass
+            _throttled_write(
+                'v162-native-home-false-positive-same-cycle',
+                'v162 cleared stale friend state in the same cycle as the ' +
+                'native home-icon false positive',
+                4.0,
+            )
+        cooldown_fn = globals().get('_false_friend_branch_cooldown_active')
+        false_branch_blocked = bool(
+            callable(cooldown_fn)
+            and cooldown_fn(context, visual_state, now_ts)
+        )
+        if false_branch_blocked:
+            friend_cycle_seen = False
+            cycle_branch_hint = 'home'
+            try:
+                setattr(context, '_qqfarm_friend_cycle_seen', False)
+                setattr(context, '_qqfarm_cycle_branch_hint', 'home')
+                setattr(context, '_qqfarm_friend_home_noop_count', 0)
+            except BaseException:
+                pass
+            _throttled_write(
+                'v159-false-friend-branch-cooldown',
+                'v159 ignored native friend hint on verified non-friend surface',
+                4.0,
+            )
         if visual_state is False:
             if cycle_branch_hint == 'friend':
                 home_noop_count = int(
@@ -7946,15 +11555,41 @@ def _apply_visual_friend_route_watchdog(fn, context, function_name=''):
                     ) if callable(recovery_fn) else False
                     setattr(context, '_qqfarm_friend_home_noop_count', 0)
                     setattr(context, '_qqfarm_friend_home_recovery_ts', now_ts)
+                    stale_cleared = False
+                    if recovered:
+                        try:
+                            setattr(
+                                context, '_qqfarm_friend_home_recovery_fail_count', 0
+                            )
+                        except BaseException:
+                            pass
+                    else:
+                        stale_fn = globals().get(
+                            '_record_failed_friend_branch_recovery'
+                        )
+                        stale_cleared = bool(
+                            callable(stale_fn) and stale_fn(context, now_ts)
+                        )
                     _write(
                         'v120 friend branch stayed on home; recovery=' +
-                        repr(recovered) + ' hint=' + cycle_branch_hint
+                        repr(recovered) + ' hint=' + cycle_branch_hint +
+                        ' stale_cleared=' + repr(stale_cleared)
                     )
+                    if stale_cleared:
+                        _write(
+                            'v159 stale friend branch cleared after repeated ' +
+                            'home recovery misses'
+                        )
                     return False
             else:
                 setattr(context, '_qqfarm_friend_home_noop_count', 0)
         else:
             setattr(context, '_qqfarm_friend_home_noop_count', 0)
+            try:
+                setattr(context, '_qqfarm_friend_home_recovery_fail_count', 0)
+                setattr(context, '_qqfarm_false_friend_branch_block_until', 0.0)
+            except BaseException:
+                pass
         try:
             last_branch_ts = float(getattr(context, '_qqfarm_friend_branch_last_ts', 0.0) or 0.0)
         except BaseException:
@@ -8037,12 +11672,38 @@ def _apply_visual_friend_route_watchdog(fn, context, function_name=''):
         chain_reason = ''
         recovery_probe = bool(
             friend_surface
-            and (friend_cycle_seen or action_followup_ready or page_timeout_ready)
+            and (
+                bool(force_recovery)
+                or friend_cycle_seen
+                or action_followup_ready
+                or page_timeout_ready
+            )
         )
         if recovery_probe:
-            probe_fn = globals().get('_invoke_friend_actions_before_home')
+            fast_probe_fn = globals().get(
+                '_invoke_friend_visual_actions_before_home'
+            )
+            native_probe_fn = globals().get('_invoke_friend_actions_before_home')
+            probe_fn = (
+                fast_probe_fn if callable(fast_probe_fn) else native_probe_fn
+            )
             if callable(probe_fn):
                 action_result, action_label = probe_fn(context, frame)
+                try:
+                    allow_native_probe = bool(getattr(
+                        context,
+                        'friend_watchdog_allow_native_action_fallback',
+                        False,
+                    ))
+                except BaseException:
+                    allow_native_probe = False
+                if (
+                    not action_result
+                    and callable(fast_probe_fn)
+                    and callable(native_probe_fn)
+                    and allow_native_probe
+                ):
+                    action_result, action_label = native_probe_fn(context, frame)
                 if action_result:
                     setattr(context, '_qqfarm_visual_friend_count', 1)
                     next_frame = _get_frame_from_bot(context)
@@ -8094,7 +11755,12 @@ def _apply_visual_friend_route_watchdog(fn, context, function_name=''):
             friend_surface
             and not navigation_blocked
             and not continuation_exhausted
-            and (friend_cycle_seen or action_followup_ready or page_timeout_ready)
+            and (
+                bool(force_recovery)
+                or friend_cycle_seen
+                or action_followup_ready
+                or page_timeout_ready
+            )
         ):
             chain_fn = globals().get('_run_friend_continuation_chain')
             next_fn = globals().get('_invoke_friend_next_actionable_entry')
@@ -8165,7 +11831,12 @@ def _apply_visual_friend_route_watchdog(fn, context, function_name=''):
             friend_surface
             and not navigation_blocked
             and friend_count >= 2
-            and (friend_cycle_seen or action_followup_ready or page_timeout_ready)
+            and (
+                bool(force_recovery)
+                or friend_cycle_seen
+                or action_followup_ready
+                or page_timeout_ready
+            )
         )
         if not home_ready:
             return False
@@ -8532,6 +12203,82 @@ def _wrap_vip_business_func(fn, name=''):
                             )
                         except BaseException:
                             pass
+                try:
+                    active_context = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
+                    capture_fn = globals().get('_get_frame_from_bot')
+                    state_fn = globals().get('_friend_guard_friend_ui_state')
+                    now_fn = globals().get('_friend_watchdog_now')
+                    current_frame = (
+                        capture_fn(dispatch_context)
+                        if callable(capture_fn) else None
+                    )
+                    current_state = (
+                        state_fn(current_frame)
+                        if callable(state_fn) and current_frame is not None
+                        else None
+                    )
+                    now_ts = (
+                        float(now_fn())
+                        if callable(now_fn)
+                        else float(__import__('time').time())
+                    )
+                    targets = []
+                    for candidate in (dispatch_context, active_context):
+                        if candidate is None or any(
+                            candidate is existing for existing in targets
+                        ):
+                            continue
+                        targets.append(candidate)
+                    recent_native_false_positive = bool(
+                        current_state is False
+                        and any(
+                            (
+                                float(getattr(
+                                    target,
+                                    '_qqfarm_native_home_false_positive_ts',
+                                    0.0,
+                                ) or 0.0) > 0.0
+                                and 0.0 <= (
+                                    now_ts - float(getattr(
+                                        target,
+                                        '_qqfarm_native_home_false_positive_ts',
+                                        0.0,
+                                    ) or 0.0)
+                                ) <= 30.0
+                            )
+                            for target in targets
+                        )
+                    )
+                    if recent_native_false_positive:
+                        finalize_fn = globals().get(
+                            '_finalize_friend_chain_after_troublemaker'
+                        )
+                        for target in targets:
+                            if callable(finalize_fn):
+                                finalize_fn(target)
+                            setattr(target, '_qqfarm_cycle_branch_hint', 'self')
+                            setattr(target, '_qqfarm_friend_cycle_seen', False)
+                            setattr(target, '_qqfarm_force_self_cycle_next', True)
+                            fast_fn = globals().get(
+                                '_set_friend_chain_fast_interval'
+                            )
+                            if callable(fast_fn):
+                                fast_fn(target, False)
+                        _throttled_write(
+                            'v164-skip-legacy-friend-after-false-home',
+                            'v164 skipped legacy friend processor after a verified ' +
+                            'native home-icon false positive',
+                            4.0,
+                        )
+                        return False
+                except BaseException as error:
+                    try:
+                        _write(
+                            'v164 false friend processor gate error=' +
+                            repr(error)[:220]
+                        )
+                    except BaseException:
+                        pass
                 begin_fn = globals().get('_friend_chain_begin_dispatch')
                 dispatch_armed = bool(
                     begin_fn(dispatch_context)
@@ -8652,7 +12399,8 @@ def _looks_vip_business_module(mn, m):
         if not low.startswith('bot.'):
             return False
         patch_names = set(_VIP_BUSINESS_FUNC_NAMES).union(
-            set(globals().get('_FRIEND_HOME_FUNC_NAMES', set()))
+            set(globals().get('_FRIEND_HOME_FUNC_NAMES', set())),
+            set(globals().get('_FRIEND_NEXT_ENTRY_FUNC_NAMES', set())),
         )
         for n in patch_names:
             if hasattr(m, n):
@@ -8678,6 +12426,12 @@ def _patch_vip_business_loaded(tag=''):
                 continue
             local_count = 0
             try:
+                inventory_fn = globals().get('_write_planting_callable_inventory')
+                if callable(inventory_fn):
+                    inventory_fn(m)
+            except BaseException:
+                pass
+            try:
                 local_count += _force_vip_business_object(m, 0)
             except BaseException:
                 pass
@@ -8692,7 +12446,8 @@ def _patch_vip_business_loaded(tag=''):
             except BaseException:
                 pass
             patch_names = set(_VIP_BUSINESS_FUNC_NAMES).union(
-                set(globals().get('_FRIEND_HOME_FUNC_NAMES', set()))
+                set(globals().get('_FRIEND_HOME_FUNC_NAMES', set())),
+                set(globals().get('_FRIEND_NEXT_ENTRY_FUNC_NAMES', set())),
             )
             for obj, prefix, is_class_target in targets:
                 for n in list(patch_names):
@@ -8720,10 +12475,64 @@ def _patch_vip_business_loaded(tag=''):
                             continue
                         if n in globals().get('_FRIEND_HOME_FUNC_NAMES', set()):
                             new, ok = _wrap_friend_home_func(old, prefix + '.' + n)
+                        elif n in globals().get('_FRIEND_NEXT_ENTRY_FUNC_NAMES', set()):
+                            new, ok = _wrap_friend_next_entry_func(old, prefix + '.' + n)
+                        elif n == 'handle_home_harvest':
+                            new, ok = _wrap_home_harvest_planting_trigger(
+                                old, prefix + '.' + n
+                            )
+                        elif n == 'handle_home_planting':
+                            new, ok = _wrap_home_planting_cooldown(
+                                old, prefix + '.' + n
+                            )
                         elif n == '_plant_seed_over_lands':
                             new, ok = _wrap_planting_crop_context_func(old, m, prefix + '.' + n)
                         elif n == '_run_auto_fertilize_after_planting':
                             new, ok = _wrap_radish_fertilizer_func(old, m, prefix + '.' + n)
+                        elif n == '_run_backpack_seed_priority_planting':
+                            new, ok = _wrap_backpack_seed_priority_planting_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_check_empty_land_label_with_retry':
+                            new, ok = _wrap_backpack_empty_land_label_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_detect_no_seed_hint_by_ocr':
+                            new, ok = _wrap_backpack_no_seed_hint_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_detect_seed_quantity_badges_by_ocr':
+                            new, ok = _wrap_seed_quantity_badges_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_detect_empty_lands':
+                            new, ok = _wrap_detect_empty_lands_state(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_buy_seed_for_crop':
+                            new, ok = _wrap_buy_seed_for_crop_backpack_guard(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_match_template_center':
+                            new, ok = _wrap_planting_template_center_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_is_backpack_seed_blacklisted_by_template':
+                            new, ok = _wrap_backpack_seed_blacklist_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n == 'get_current_player_level':
+                            new, ok = _wrap_player_level_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_detect_fertilizer_template':
+                            new, ok = _wrap_fertilizer_template_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n in globals().get('_BACKPACK_PROFILE_FUNC_NAMES', set()):
+                            new, ok = _wrap_backpack_profile_helper(
+                                old, prefix + '.' + n
+                            )
                         else:
                             new, ok = _wrap_vip_business_func(old, prefix + '.' + n)
                         if ok:
@@ -9679,6 +13488,64 @@ def _wrap_runtime_diag_method(fn, label):
         is_run_cycle = 'run_cycle' in str(label).lower()
         if is_run_cycle:
             try:
+                threshold_fn = globals().get(
+                    '_apply_runtime_go_home_threshold_floor'
+                )
+                threshold_changes = int(
+                    threshold_fn(self_obj, 0.79)
+                    if callable(threshold_fn) else 0
+                )
+                if threshold_changes:
+                    _throttled_write(
+                        'v167-runtime-go-home-threshold-floor',
+                        'v167 raised loaded native go-home thresholds=' +
+                        str(threshold_changes) + ' floor=0.79',
+                        30.0,
+                    )
+            except BaseException:
+                pass
+        if is_run_cycle and bool(getattr(
+                self_obj, '_qqfarm_force_self_cycle_next', False)):
+            try:
+                capture_fn = globals().get('_get_frame_from_bot')
+                state_fn = globals().get('_friend_guard_friend_ui_state')
+                frame = capture_fn(self_obj) if callable(capture_fn) else None
+                visual_state = (
+                    state_fn(frame)
+                    if callable(state_fn) and frame is not None
+                    else None
+                )
+                if visual_state is False:
+                    setattr(self_obj, '_qqfarm_force_self_cycle_next', False)
+                    setattr(self_obj, '_qqfarm_cycle_branch_hint', 'self')
+                    setattr(self_obj, '_qqfarm_friend_cycle_seen', False)
+                    fast_fn = globals().get('_set_friend_chain_fast_interval')
+                    if callable(fast_fn):
+                        fast_fn(self_obj, False)
+                    action = getattr(self_obj, 'process_self_farm', None)
+                    invoke_fn = globals().get('_invoke_friend_guard_action')
+                    result = (
+                        invoke_fn(action, None, (self_obj, frame), {})
+                        if callable(action) and callable(invoke_fn)
+                        else False
+                    )
+                    _write(
+                        'v165 forced one verified self-farm pass after a false ' +
+                        'native friend branch result=' + repr(result)[:160]
+                    )
+                    return result
+                if visual_state is True:
+                    setattr(self_obj, '_qqfarm_force_self_cycle_next', False)
+            except BaseException as error:
+                try:
+                    _write(
+                        'v165 forced self-farm pass error=' +
+                        repr(error)[:220]
+                    )
+                except BaseException:
+                    pass
+        if is_run_cycle:
+            try:
                 restore_fn = globals().get('_restore_runtime_business_switches')
                 changed = int(restore_fn(self_obj) or 0) if callable(restore_fn) else 0
                 if changed:
@@ -9739,12 +13606,204 @@ def _wrap_runtime_diag_method(fn, label):
                 clear_guard_approval = globals().get(
                     '_friend_guard_clear_prequalification'
                 )
-                if callable(clear_guard_approval):
+                approval_active_fn = globals().get(
+                    '_friend_guard_list_prequalified_entry_active'
+                )
+                friend_chain_pending = bool(getattr(
+                    self_obj, '_qqfarm_friend_chain_pending', False
+                ))
+                friend_chain_exhausted = bool(getattr(
+                    self_obj, '_qqfarm_friend_chain_exhausted', False
+                ))
+                friend_entry_pending = bool(getattr(
+                    self_obj, '_qqfarm_friend_entry_pending', False
+                ))
+                preserve_guard_approval = bool(
+                    (friend_chain_pending or friend_entry_pending)
+                    and not friend_chain_exhausted
+                    and (
+                        approval_active_fn(self_obj)
+                        if callable(approval_active_fn)
+                        else bool(getattr(
+                            self_obj, '_qqfarm_guard_list_prequalified', False
+                        ))
+                    )
+                )
+                if callable(clear_guard_approval) and not preserve_guard_approval:
                     clear_guard_approval(self_obj)
+                elif preserve_guard_approval:
+                    _write(
+                        'v147 preserved first friend guard-list approval '
+                        'until the current friend action is processed'
+                    )
                 setattr(self_obj, '_qqfarm_cycle_branch_hint', '')
                 globals()['_ACTIVE_RUN_CYCLE_CONTEXT'] = self_obj
             except BaseException:
                 pass
+        if is_run_cycle:
+            try:
+                capture_fn = globals().get('_get_frame_from_bot')
+                state_fn = globals().get('_friend_guard_friend_ui_state')
+                preflight_frame = (
+                    capture_fn(self_obj) if callable(capture_fn) else None
+                )
+                preflight_state = (
+                    state_fn(preflight_frame)
+                    if callable(state_fn) and preflight_frame is not None
+                    else None
+                )
+                friend_entry_pending = bool(getattr(
+                    self_obj, '_qqfarm_friend_entry_pending', False
+                ))
+                if friend_entry_pending:
+                    try:
+                        entry_now = float(time.time())
+                    except BaseException:
+                        entry_now = 0.0
+                    try:
+                        entry_clicked_ts = float(getattr(
+                            self_obj, '_qqfarm_friend_entry_clicked_ts', 0.0
+                        ) or 0.0)
+                    except BaseException:
+                        entry_clicked_ts = 0.0
+                    if entry_clicked_ts <= 0.0:
+                        entry_clicked_ts = entry_now
+                        try:
+                            setattr(
+                                self_obj, '_qqfarm_friend_entry_clicked_ts',
+                                entry_clicked_ts,
+                            )
+                        except BaseException:
+                            pass
+                    try:
+                        entry_settle_seconds = float(getattr(
+                            self_obj, 'friend_list_entry_settle_seconds', 2.8
+                        ) or 2.8)
+                    except BaseException:
+                        entry_settle_seconds = 2.8
+                    entry_settle_seconds = max(0.4, min(6.0, entry_settle_seconds))
+                    try:
+                        entry_timeout_seconds = float(getattr(
+                            self_obj, 'friend_list_entry_timeout_seconds', 8.0
+                        ) or 8.0)
+                    except BaseException:
+                        entry_timeout_seconds = 8.0
+                    entry_timeout_seconds = max(
+                        entry_settle_seconds + 1.0,
+                        min(30.0, entry_timeout_seconds),
+                    )
+                    entry_age = max(0.0, entry_now - entry_clicked_ts)
+                    entry_action_visible = False
+                    if preflight_state is True:
+                        for match_name in (
+                            '_friend_guard_help_button_match',
+                            '_friend_guard_steal_button_match',
+                        ):
+                            match_fn = globals().get(match_name)
+                            if not callable(match_fn):
+                                continue
+                            try:
+                                match_result = match_fn(preflight_frame)
+                            except BaseException:
+                                match_result = None
+                            if (
+                                isinstance(match_result, dict) and
+                                bool(match_result.get('matched'))
+                            ):
+                                entry_action_visible = True
+                                break
+                    if entry_age < entry_settle_seconds and not entry_action_visible:
+                        _write(
+                            'v189 friend-list transition pending; waiting for first '
+                            'friend controls age=' + ('%.3f' % entry_age) +
+                            ' settle=' + ('%.3f' % entry_settle_seconds) +
+                            ' state=' + repr(preflight_state)
+                        )
+                        return False
+                    if preflight_state is True:
+                        try:
+                            commit_fn = globals().get(
+                                '_commit_friend_list_entry_transition'
+                            )
+                            if callable(commit_fn):
+                                commit_fn(self_obj)
+                        except BaseException:
+                            pass
+                        try:
+                            setattr(self_obj, '_qqfarm_friend_entry_pending', False)
+                            setattr(self_obj, '_qqfarm_friend_entry_clicked_ts', 0.0)
+                            setattr(
+                                self_obj,
+                                '_qqfarm_friend_entry_extended_action_grace',
+                                True,
+                            )
+                        except BaseException:
+                            pass
+                        if entry_action_visible and entry_age < entry_settle_seconds:
+                            _write(
+                                'v190 friend-list transition action visible early; '
+                                'releasing first-friend probe age=' +
+                                ('%.3f' % entry_age)
+                            )
+                        else:
+                            _write(
+                                'v189 friend-list transition confirmed; first friend '
+                                'action probe may start age=' + ('%.3f' % entry_age)
+                            )
+                    elif entry_age < entry_timeout_seconds:
+                        _write(
+                            'v189 friend-list transition pending; friend surface not '
+                            'ready age=' + ('%.3f' % entry_age) +
+                            ' timeout=' + ('%.3f' % entry_timeout_seconds) +
+                            ' state=' + repr(preflight_state)
+                        )
+                        return False
+                    else:
+                        try:
+                            setattr(self_obj, '_qqfarm_friend_entry_pending', False)
+                            setattr(self_obj, '_qqfarm_friend_entry_clicked_ts', 0.0)
+                            setattr(self_obj, '_qqfarm_friend_entry_retry_count', 0)
+                            setattr(self_obj, '_qqfarm_friend_entry_last_retry_ts', 0.0)
+                            setattr(
+                                self_obj,
+                                '_qqfarm_friend_entry_extended_action_grace',
+                                False,
+                            )
+                        except BaseException:
+                            pass
+                        _write(
+                            'v189 friend-list transition timed out; releasing native '
+                            'recovery age=' + ('%.3f' % entry_age) +
+                            ' state=' + repr(preflight_state)
+                        )
+                watchdog_fn = globals().get(
+                    '_apply_visual_friend_route_watchdog'
+                )
+                if preflight_state is True and callable(watchdog_fn):
+                    watchdog_result = watchdog_fn(
+                        fn, self_obj, label, force_recovery=True
+                    )
+                    sync_fn = globals().get('_daily_metrics_sync_runtime')
+                    if callable(sync_fn):
+                        sync_fn(self_obj, force=False)
+                    _write(
+                        'v184 visible friend preflight owned run_cycle result=' +
+                        repr(bool(watchdog_result))
+                    )
+                    try:
+                        if globals().get('_ACTIVE_RUN_CYCLE_CONTEXT') is self_obj:
+                            globals()['_ACTIVE_RUN_CYCLE_CONTEXT'] = None
+                    except BaseException:
+                        pass
+                    return bool(watchdog_result)
+            except BaseException as error:
+                try:
+                    _write(
+                        'v184 visible friend preflight error ' +
+                        repr(error)[:220]
+                    )
+                except BaseException:
+                    pass
         started = time.time()
         try:
             result = fn(*a, **k)
@@ -9805,6 +13864,18 @@ def _wrap_runtime_diag_method(fn, label):
             except BaseException as e:
                 try:
                     _write('v61 visual friend watchdog wrapper error ' + repr(e)[:240])
+                except BaseException:
+                    pass
+            try:
+                sync_fn = globals().get('_daily_metrics_sync_runtime')
+                if callable(sync_fn):
+                    sync_fn(self_obj, force=False)
+            except BaseException as error:
+                try:
+                    _write(
+                        'v178 run-cycle durable metrics sync error ' +
+                        repr(error)[:220]
+                    )
                 except BaseException:
                     pass
             try:
@@ -13037,6 +17108,38 @@ def _note_runtime_cycle_branch(message):
             return 'friend-guard-prequalified'
         if '\u6b63\u5728\u68c0\u67e5\u597d\u53cb\u519c\u573a\u662f\u5426\u6709\u53ef\u6267\u884c\u7684\u4efb\u52a1' in text:
             branch = 'friend'
+            if context is not None:
+                try:
+                    now_fn = globals().get('_friend_watchdog_now')
+                    now_ts = (
+                        float(now_fn())
+                        if callable(now_fn)
+                        else float(__import__('time').time())
+                    )
+                    false_positive_ts = float(getattr(
+                        context, '_qqfarm_native_home_false_positive_ts', 0.0
+                    ) or 0.0)
+                    if (
+                        false_positive_ts > 0.0
+                        and 0.0 <= (now_ts - false_positive_ts) <= 3.0
+                    ):
+                        branch = 'self'
+                        finalize_fn = globals().get(
+                            '_finalize_friend_chain_after_troublemaker'
+                        )
+                        if callable(finalize_fn):
+                            finalize_fn(context)
+                        setattr(context, '_qqfarm_friend_cycle_seen', False)
+                        log_fn = globals().get('_throttled_write')
+                        if callable(log_fn):
+                            log_fn(
+                                'v161-false-friend-log-branch',
+                                'v161 relabeled native friend branch as self after ' +
+                                'visual home false-positive rejection',
+                                4.0,
+                            )
+                except BaseException:
+                    pass
         elif '\u6b63\u5728\u68c0\u67e5\u81ea\u5bb6\u519c\u573a\u662f\u5426\u6709\u53ef\u6267\u884c\u7684\u4efb\u52a1' in text:
             branch = 'self'
         else:
@@ -13330,6 +17433,14 @@ def _install_runtime_log_patch():
                 _note_runtime_daily_task_outcome(msg)
             except BaseException:
                 pass
+            try:
+                _note_runtime_single_harvest_outcome(msg)
+            except BaseException:
+                pass
+            try:
+                _note_runtime_planting_outcome(msg)
+            except BaseException:
+                pass
             new_msg, hit = _rewrite_entitlement_log_message(msg)
             if hit:
                 return orig_info(self, new_msg, **kwargs)
@@ -13341,6 +17452,14 @@ def _install_runtime_log_patch():
                 pass
             try:
                 _note_runtime_daily_task_outcome(msg)
+            except BaseException:
+                pass
+            try:
+                _note_runtime_single_harvest_outcome(msg)
+            except BaseException:
+                pass
+            try:
+                _note_runtime_planting_outcome(msg)
             except BaseException:
                 pass
             new_msg, hit = _rewrite_entitlement_log_message(msg)

@@ -47,7 +47,148 @@ class FakeButton:
         self.clicks += 1
 
 
+class FakeSignal:
+    def __init__(self, *slots):
+        self.slots = list(slots)
+
+    def connect(self, slot):
+        self.slots.append(slot)
+
+    def disconnect(self):
+        self.slots.clear()
+
+    def emit(self):
+        for slot in list(self.slots):
+            slot(False)
+
+
+class FakeAboutButton:
+    def __init__(self, native_slot):
+        self.clicked = FakeSignal(native_slot)
+        self._properties = {}
+        self._tooltip = "\u5173\u4e8e"
+
+    def objectName(self):
+        return "githubBtn"
+
+    def text(self):
+        return ""
+
+    def toolTip(self):
+        return self._tooltip
+
+    def setToolTip(self, value):
+        self._tooltip = str(value)
+
+    def property(self, name):
+        return self._properties.get(name)
+
+    def setProperty(self, name, value):
+        self._properties[name] = value
+
+
+class FakeWidget:
+    def __init__(self, *, name="", text="", parent=None):
+        self._name = name
+        self._text = text
+        self._parent = parent
+        self.hidden = False
+        self.visible = True
+
+    def objectName(self):
+        return self._name
+
+    def text(self):
+        return self._text
+
+    def toolTip(self):
+        return ""
+
+    def parentWidget(self):
+        return self._parent
+
+    def hide(self):
+        self.hidden = True
+        self.visible = False
+
+    def setVisible(self, value):
+        self.visible = bool(value)
+
+
 class FriendGuardEditorTests(unittest.TestCase):
+    def test_about_button_replaces_native_dialog_before_first_paint(self):
+        mod = load_module()
+        events = []
+
+        def native_dialog(checked=False):
+            events.append("native")
+
+        button = FakeAboutButton(native_dialog)
+        mod._show_project_info_dialog = (
+            lambda anchor=None, opener=None: events.append(("project", anchor))
+        )
+
+        changed = mod.patch_widget(button)
+        button.clicked.emit()
+
+        self.assertEqual(1, changed)
+        self.assertNotIn("native", events)
+        self.assertEqual([("project", button)], events)
+        self.assertTrue(button.property(mod._ABOUT_MARK))
+        self.assertIn("GitHub", button.toolTip())
+
+    def test_about_button_remains_project_dialog_after_repeated_patch_passes(self):
+        mod = load_module()
+        events = []
+        button = FakeAboutButton(lambda checked=False: events.append("native"))
+        mod._show_project_info_dialog = (
+            lambda anchor=None, opener=None: events.append(("project", anchor))
+        )
+        opener = lambda url: events.append(("url", url))
+
+        mod.patch_widget(button, opener=opener)
+        mod.patch_widget(button, opener=opener)
+        button.clicked.emit()
+
+        self.assertEqual([("project", button)], events)
+
+    def test_about_expiry_title_hides_unnamed_parent_card(self):
+        mod = load_module()
+        card = FakeWidget(name="")
+        title = FakeWidget(name="aboutSectionTitle", parent=card)
+
+        mod._hide_parent_card(title)
+
+        self.assertTrue(card.hidden)
+        self.assertFalse(card.visible)
+
+    def test_about_expiry_copy_is_removed_even_without_object_name(self):
+        mod = load_module()
+        card = FakeWidget(name="")
+        title = FakeWidget(text="\u8fc7\u671f\u65f6\u95f4", parent=card)
+
+        changed = mod.patch_widget(title)
+
+        self.assertEqual(1, changed)
+        self.assertTrue(card.hidden)
+        self.assertFalse(card.visible)
+
+    def test_friend_screenshot_card_stays_visible_when_status_is_cleaned(self):
+        mod = load_module()
+        card = FakeWidget(name="templateDebugCard")
+        status = FakeWidget(
+            name="templateDebugStatus",
+            text="\u72b6\u6001\uff1a\u7b49\u5f85\u622a\u56fe",
+            parent=card,
+        )
+
+        changed = mod.patch_widget(status)
+
+        self.assertEqual(1, changed)
+        self.assertFalse(status.visible)
+        self.assertTrue(card.visible)
+        self.assertFalse(card.hidden)
+
     def test_bottom_fixed_self_profile_is_not_a_guard_candidate(self):
         mod = load_module()
         classify = mod._friend_guard_candidate_is_self_overlay

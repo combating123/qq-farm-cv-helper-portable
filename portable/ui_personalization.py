@@ -1,6 +1,7 @@
 ﻿# ASCII-only conservative personalization for the portable build.
 # The host application's native QSS and geometry are intentionally preserved.
 GITHUB_HOME = 'https://github.com/combating123'
+GITHUB_REPO = 'https://github.com/combating123/qq-farm-cv-helper-portable'
 GITHUB_USER = 'combating123'
 _PATCH_MARK = '_combating123_personalized'
 _ABOUT_MARK = '_combating123_about_refresh'
@@ -17,14 +18,13 @@ DIALOG_CHILD_QSS = ''
 COPY_MAP = {}
 
 ABOUT_HTML = r'''
-<div style="font-family:'Segoe UI','Microsoft YaHei UI',sans-serif; padding:24px; color:#1f2937;">
-  <div style="font-size:30px; font-weight:700; color:#111827;">CV Farm Assistant</div>
-  <div style="margin-top:24px; padding:18px 20px; border:1px solid #dbe4f0; border-radius:10px;">
-    <div style="font-size:12px; color:#64748b;">PROJECT OWNER</div>
-    <div style="margin-top:6px; font-size:20px; font-weight:700; color:#111827;">combating123</div>
-    <div style="margin-top:18px; font-size:12px; color:#64748b;">GITHUB</div>
-    <div style="margin-top:6px;">
-      <a style="font-size:16px; font-weight:600; color:#2563eb; text-decoration:none;" href="https://github.com/combating123">github.com/combating123</a>
+<div style="font-family:'Segoe UI','Microsoft YaHei UI',sans-serif; padding:22px; color:#1f2937;">
+  <div style="font-size:28px; font-weight:700; color:#111827;">CV Farm Assistant</div>
+  <div style="margin-top:8px; font-size:15px; color:#64748b;">QQ Farm visual automation assistant</div>
+  <div style="margin-top:22px; padding:18px 20px; border:1px solid #dbe4f0; border-radius:10px;">
+    <div style="font-size:12px; color:#64748b;">GITHUB REPOSITORY</div>
+    <div style="margin-top:8px;">
+      <a style="font-size:16px; font-weight:600; color:#2563eb; text-decoration:none;" href="https://github.com/combating123/qq-farm-cv-helper-portable">github.com/combating123/qq-farm-cv-helper-portable</a>
     </div>
   </div>
 </div>
@@ -76,10 +76,16 @@ def _hide(obj):
 
 def _hide_parent_card(obj):
     parent = _safe_call(obj, 'parentWidget')
-    if parent is not None and _name(parent) == 'aboutCard':
-        _hide(parent)
-    else:
-        _hide(obj)
+    if parent is not None:
+        parent_name = _name(parent).strip().lower()
+        parent_kind = type(parent).__name__.strip().lower()
+        if 'dialog' not in parent_kind and parent_name not in (
+            'aboutdialog', 'projectinfodialog', 'dialogroot'
+        ):
+            _hide(parent)
+            return
+    _hide(obj)
+
 
 
 def install_early_theme(QtWidgets=None):
@@ -106,6 +112,110 @@ def _schedule_about_refresh(checked=False):
             QtCore.QTimer.singleShot(delay, _patch_all_widgets)
     except BaseException:
         _patch_all_widgets()
+
+
+def _show_project_info_dialog(anchor=None, opener=None):
+    """Open project information directly, without constructing the legacy page."""
+    try:
+        QtWidgets = __import__(
+            'PySide6.QtWidgets',
+            fromlist=['QDialog', 'QFrame', 'QLabel', 'QPushButton'],
+        )
+        parent = _safe_call(anchor, 'window') if anchor is not None else None
+        dialog = QtWidgets.QDialog(parent)
+        dialog.setObjectName('projectInfoDialog')
+        dialog.setWindowTitle('\u9879\u76ee\u4fe1\u606f')
+        dialog.setModal(True)
+        dialog.resize(620, 360)
+        dialog.setMinimumSize(540, 320)
+
+        outer = QtWidgets.QVBoxLayout(dialog)
+        outer.setContentsMargins(30, 26, 30, 26)
+        outer.setSpacing(10)
+
+        eyebrow = QtWidgets.QLabel('PROJECT INFORMATION', dialog)
+        eyebrow.setObjectName('projectInfoEyebrow')
+        title = QtWidgets.QLabel('CV \u519c\u573a\u52a9\u624b', dialog)
+        title.setObjectName('projectInfoTitle')
+        summary = QtWidgets.QLabel(
+            'QQ \u519c\u573a\u89c6\u89c9\u81ea\u52a8\u5316\u52a9\u624b',
+            dialog,
+        )
+        summary.setObjectName('projectInfoSummary')
+
+        repo_card = QtWidgets.QFrame(dialog)
+        repo_card.setObjectName('projectInfoRepoCard')
+        repo_layout = QtWidgets.QVBoxLayout(repo_card)
+        repo_layout.setContentsMargins(18, 16, 18, 16)
+        repo_layout.setSpacing(7)
+        repo_caption = QtWidgets.QLabel('GITHUB REPOSITORY', repo_card)
+        repo_caption.setObjectName('projectInfoRepoCaption')
+        repo_link = QtWidgets.QLabel(
+            '<a href="' + GITHUB_REPO + '">'
+            'github.com/combating123/qq-farm-cv-helper-portable</a>',
+            repo_card,
+        )
+        repo_link.setObjectName('projectInfoRepoLink')
+        repo_link.setOpenExternalLinks(True)
+        repo_layout.addWidget(repo_caption)
+        repo_layout.addWidget(repo_link)
+
+        outer.addWidget(eyebrow)
+        outer.addWidget(title)
+        outer.addWidget(summary)
+        outer.addSpacing(10)
+        outer.addWidget(repo_card)
+        outer.addStretch(1)
+
+        actions = QtWidgets.QHBoxLayout()
+        actions.setContentsMargins(0, 0, 0, 0)
+        actions.setSpacing(10)
+        actions.addStretch(1)
+        close_button = QtWidgets.QPushButton('\u5173\u95ed', dialog)
+        close_button.setObjectName('projectInfoCloseButton')
+        open_button = QtWidgets.QPushButton('\u6253\u5f00 GitHub \u4ed3\u5e93', dialog)
+        open_button.setObjectName('projectInfoOpenButton')
+        actions.addWidget(close_button)
+        actions.addWidget(open_button)
+        outer.addLayout(actions)
+
+        dialog.setStyleSheet(
+            'QDialog#projectInfoDialog{background:#f8fafc;color:#0f172a;}'
+            'QLabel#projectInfoEyebrow{font:600 12px "Segoe UI";color:#64748b;}'
+            'QLabel#projectInfoTitle{font:700 30px "Microsoft YaHei UI";color:#0f172a;}'
+            'QLabel#projectInfoSummary{font:400 15px "Microsoft YaHei UI";color:#64748b;}'
+            'QFrame#projectInfoRepoCard{background:white;border:1px solid #dbe4f0;border-radius:10px;}'
+            'QLabel#projectInfoRepoCaption{font:600 12px "Segoe UI";color:#64748b;}'
+            'QLabel#projectInfoRepoLink{font:600 16px "Segoe UI";color:#2563eb;}'
+            'QPushButton#projectInfoCloseButton{min-width:88px;min-height:36px;padding:0 14px;'
+            'border:1px solid #cbd5e1;border-radius:7px;background:white;color:#334155;font-weight:600;}'
+            'QPushButton#projectInfoOpenButton{min-width:150px;min-height:36px;padding:0 16px;'
+            'border:0;border-radius:7px;background:#2563eb;color:white;font-weight:600;}'
+            'QPushButton#projectInfoOpenButton:hover{background:#1d4ed8;}'
+        )
+
+        callback_opener = opener or __import__('webbrowser').open
+
+        def _open_repo(checked=False, _opener=callback_opener):
+            try:
+                _opener(GITHUB_REPO)
+            except BaseException:
+                pass
+
+        open_button.clicked.connect(_open_repo)
+        close_button.clicked.connect(dialog.accept)
+        runner = getattr(dialog, 'exec', None) or getattr(dialog, 'exec_', None)
+        if callable(runner):
+            runner()
+        else:
+            dialog.show()
+        return True
+    except BaseException:
+        try:
+            (opener or __import__('webbrowser').open)(GITHUB_REPO)
+            return True
+        except BaseException:
+            return False
 
 
 def share_target_editor_copy():
@@ -680,6 +790,13 @@ def patch_widget(widget, context_getter=None, opener=None):
             _ensure_share_target_editor(widget)
             return 1
 
+        # The expiry card is created without a stable object name in some
+        # builds.  Its exact title is the reliable signal; remove the whole
+        # parent card rather than leaving the timestamp body behind.
+        if text.strip() == '\u8fc7\u671f\u65f6\u95f4':
+            _hide_parent_card(widget)
+            return 1
+
         # Clean the project-information dialog before applying the generic
         # dialog guard. Its children legitimately live under a QDialog.
         promo_blob = (text + ' ' + content).lower()
@@ -698,7 +815,9 @@ def patch_widget(widget, context_getter=None, opener=None):
             _safe_call(widget, 'setText', '\u9879\u76ee\u4fe1\u606f')
             return 1
         if name == 'templateDebugStatus':
-            _hide_parent_card(widget)
+            # This status label belongs to the friend screenshot card. Hide only
+            # the redundant status copy; keeping its parent preserves capture.
+            _hide(widget)
             return 1
         if name == 'aboutSectionTitle' and text == '\u8fc7\u671f\u65f6\u95f4':
             _hide_parent_card(widget)
@@ -734,13 +853,27 @@ def patch_widget(widget, context_getter=None, opener=None):
             _hide(widget)
             return 1
 
-        if name == 'githubBtn' and (tip == '\u5173\u4e8e' or 'about' in tip.lower()):
-            _safe_call(widget, 'setToolTip', '\u9879\u76ee\u4fe1\u606f | combating123')
+        try:
+            about_marked = bool(widget.property(_ABOUT_MARK))
+        except BaseException:
+            about_marked = False
+        if name == 'githubBtn' and (
+            tip == '\u5173\u4e8e' or 'about' in tip.lower() or about_marked
+        ):
+            _safe_call(widget, 'setToolTip', '\u9879\u76ee\u4fe1\u606f | GitHub \u4ed3\u5e93')
             try:
-                if not bool(widget.property(_ABOUT_MARK)):
+                if not about_marked:
                     signal = getattr(widget, 'clicked', None)
                     if signal is not None:
-                        signal.connect(_schedule_about_refresh)
+                        try:
+                            signal.disconnect()
+                        except BaseException:
+                            pass
+
+                        def _open_project(checked=False, _anchor=widget, _opener=opener):
+                            _show_project_info_dialog(_anchor, _opener)
+
+                        signal.connect(_open_project)
                     _safe_call(widget, 'setProperty', _ABOUT_MARK, True)
             except BaseException:
                 pass
