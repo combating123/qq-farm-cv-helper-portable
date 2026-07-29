@@ -39,6 +39,23 @@ Get-ChildItem -LiteralPath $source -Recurse -File -Force | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName -Destination $target -Force
 }
 
+$repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
+$readmeSource = Join-Path $repoRoot 'README.md'
+$changelogSource = Join-Path $repoRoot 'CHANGELOG.md'
+if (!(Test-Path -LiteralPath $readmeSource -PathType Leaf)) { throw "README missing: $readmeSource" }
+if (!(Test-Path -LiteralPath $changelogSource -PathType Leaf)) { throw "CHANGELOG missing: $changelogSource" }
+Copy-Item -LiteralPath $readmeSource -Destination (Join-Path $stageFull 'README.md') -Force
+$releaseNotesName = (
+    [char]0x7248 + [char]0x672C + [char]0x4E0E + [char]0x66F4 +
+    [char]0x65B0 + [char]0x65E5 + [char]0x5FD7 + '.md'
+)
+Copy-Item -LiteralPath $changelogSource -Destination (Join-Path $stageFull $releaseNotesName) -Force
+[IO.File]::WriteAllText(
+    (Join-Path $stageFull 'VERSION'),
+    $Version + [Environment]::NewLine,
+    [Text.UTF8Encoding]::new($false)
+)
+
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 Compress-Archive -Path (Join-Path $stageFull '*') -DestinationPath $zip -CompressionLevel Optimal
 $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
