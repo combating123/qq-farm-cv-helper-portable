@@ -8852,5 +8852,94 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual(native_centers, wrapped(object(), object()))
 
 
+    def test_cropped_friend_surface_with_visible_help_remains_actionable(self):
+        namespace = load_functions(
+            "_friend_guard_read_template",
+            "_friend_guard_match_template",
+            "_friend_guard_help_button_match",
+            "_friend_guard_steal_button_match",
+            "_friend_selected_carousel_card_bounds",
+            "_friend_list_visit_button_rows",
+            "_friend_guard_friend_ui_state",
+        )
+        import cv2
+
+        namespace["_FRIEND_GUARD_TEMPLATE_CACHE"] = {}
+        namespace["_FRIEND_HOME_TEMPLATE_PATH"] = str(
+            FIXTURES / "friend_home_button.png"
+        )
+        namespace["_FRIEND_LIST_TEMPLATE_PATH"] = str(
+            FIXTURES / "friend_list_tabs.png"
+        )
+        namespace["_FRIEND_HELP_ALL_TEMPLATE_PATH"] = str(
+            ROOT / "portable" / "friend_help_all_button.png"
+        )
+        namespace["_FRIEND_STEAL_ALL_TEMPLATE_PATH"] = str(
+            ROOT / "portable" / "friend_steal_all_button.png"
+        )
+        frame = cv2.imread(
+            str(FIXTURES / "friend_farm_current_live_sanitized.png")
+        )
+
+        self.assertIsNone(
+            namespace["_friend_selected_carousel_card_bounds"](frame)
+        )
+        self.assertTrue(
+            namespace["_friend_guard_help_button_match"](frame)["matched"]
+        )
+        self.assertIs(
+            True,
+            namespace["_friend_guard_friend_ui_state"](frame),
+            "A cropped carousel must not suppress a visible friend help action.",
+        )
+
+    def test_quad_transaction_retries_native_once_after_transient_confirm_miss(self):
+        namespace = load_functions("_wrap_quad_act_seed_transaction")
+        self.assertIn("_wrap_quad_act_seed_transaction", namespace)
+        calls = []
+        logs = []
+        namespace["_write"] = lambda message: logs.append(message)
+
+        def native(bot, *, remain_lands, panel_settle, seed_center):
+            calls.append(
+                {
+                    "threshold": bot.act_seeds_frame_threshold,
+                    "lands": list(remain_lands),
+                    "panel_settle": panel_settle,
+                    "seed_center": seed_center,
+                }
+            )
+            if len(calls) == 1:
+                return False, list(remain_lands)
+            return True, list(remain_lands)[4:]
+
+        wrapped, changed = namespace["_wrap_quad_act_seed_transaction"](
+            native, "synthetic._try_plant_quad_act_seeds"
+        )
+        bot = types.SimpleNamespace(act_seeds_frame_threshold=0.72)
+        lands = [{"center": (index, index)} for index in range(8)]
+
+        result = wrapped(
+            bot,
+            remain_lands=lands,
+            panel_settle=0.20,
+            seed_center=(68, 512),
+        )
+
+        self.assertTrue(changed)
+        self.assertEqual((True, lands[4:]), result)
+        self.assertEqual(2, len(calls))
+        self.assertEqual([0.62, 0.62], [call["threshold"] for call in calls])
+        self.assertGreaterEqual(calls[1]["panel_settle"], 0.35)
+        self.assertEqual(0.72, bot.act_seeds_frame_threshold)
+        self.assertTrue(any("2x2 transaction retry" in line for line in logs))
+
+    def test_quad_transaction_wrapper_is_wired_to_native_planting_callable(self):
+        source = HOOK.read_text(encoding="utf-8-sig")
+        self.assertIn("'_try_plant_quad_act_seeds'", source)
+        self.assertIn("elif n == '_try_plant_quad_act_seeds':", source)
+        self.assertIn("_wrap_quad_act_seed_transaction(", source)
+
+
 if __name__ == "__main__":
     unittest.main()

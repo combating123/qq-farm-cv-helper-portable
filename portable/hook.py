@@ -88,7 +88,7 @@ def _throttled_write(key, msg, seconds=30.0):
         except BaseException:
             return False
 
-_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open+v147-first-friend-approval-barrier+v148-first-friend-no-skip+v149-first-friend-render-grace+v150-troublemaker-adjacent-retry+v151-troublemaker-frame-diagnostics+v152-troublemaker-frame-import+v153-troublemaker-callable-diagnostic+v154-troublemaker-helper-probes+v155-troublemaker-seed-land-compat+v156-troublemaker-geometry-preferred+v157-troublemaker-dynamic-lattice+v158-troublemaker-chain-finalize+v159-stale-friend-branch-cooldown+v160-native-home-visual-gate+v161-false-friend-log-relabel+v162-same-cycle-false-friend-clear+v163-active-cycle-false-friend-suppression+v164-skip-legacy-false-friend-processor+v165-force-self-pass-after-false-friend+v167-runtime-go-home-threshold-floor+v168-friend-entry-callable-inventory+v169-native-bottom-adjacent-fallback+v170-native-bottom-fresh-frame+v171-private-home-icon-gate+v172-force-self-after-private-home+v173-first-friend-post-steal-grace+v174-durable-action-counter-merge+v175-troublemaker-runtime-callable+v176-troublemaker-home-probe-authority+v177-single-harvest-immediate-planting+v178-run-cycle-durable-sync+v179-visual-only-friend-action-poll+v180-durable-counter-flow-mirror+v181-fast-planting-cooldown+v182-radish-counter-isolation-first-friend-grace+v183-watchdog-visual-only-probe+v184-visible-friend-preflight-owner+v185-guard-initial-next-card+v186-first-friend-render-floor+v187-troublemaker-full-miss-cooldown+v188-bounded-guard-pending-advance+v189-friend-list-entry-settle-barrier+v190-visible-first-action-early-release+v191-delayed-friend-action-grace+v192-planting-callable-inventory+v193-safe-planting-callable-inventory+v194-pending-entry-guard-approval+v195-fast-backpack-panel-settle+v196-backpack-helper-profile+v197-backpack-preverified-empty-land+v198-trouble-planted-evidence+v199-trouble-native-evidence-gate+v200-trouble-popup-action-fallback+v201-fast-no-seed-ocr+v202-restore-native-no-seed-ocr+v203-friend-list-progress-cursor+v204-backpack-panel-capture+v205-first-friend-native-miss-fallback+v206-friend-list-pending-row-retry+v207-confirmed-entry-cursor+v208-restore-normal-cycle-interval+v209-pending-row-reopen-recovery+v210-friend-help-daily-quota+v211-quota-chain-short-circuit+v212-native-help-proof-barrier+v213-about-expiry-card-cleanup+v214-about-expiry-text-fallback+v215-about-widget-diagnostic+v216-native-project-dialog+v217-friend-capture-card-restore+v218-fast-planting-inventory-chain+v219-quad-click-friend-first-blocked-row-outfit-guard+v220-empty-land-candidate-diagnostics+v221-empty-land-crop-cover-filter+v222-blocked-toast-home-terminal+v223-blocked-row-second-cap+v224-troublemaker-bounded-three')
+_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open+v147-first-friend-approval-barrier+v148-first-friend-no-skip+v149-first-friend-render-grace+v150-troublemaker-adjacent-retry+v151-troublemaker-frame-diagnostics+v152-troublemaker-frame-import+v153-troublemaker-callable-diagnostic+v154-troublemaker-helper-probes+v155-troublemaker-seed-land-compat+v156-troublemaker-geometry-preferred+v157-troublemaker-dynamic-lattice+v158-troublemaker-chain-finalize+v159-stale-friend-branch-cooldown+v160-native-home-visual-gate+v161-false-friend-log-relabel+v162-same-cycle-false-friend-clear+v163-active-cycle-false-friend-suppression+v164-skip-legacy-false-friend-processor+v165-force-self-pass-after-false-friend+v167-runtime-go-home-threshold-floor+v168-friend-entry-callable-inventory+v169-native-bottom-adjacent-fallback+v170-native-bottom-fresh-frame+v171-private-home-icon-gate+v172-force-self-after-private-home+v173-first-friend-post-steal-grace+v174-durable-action-counter-merge+v175-troublemaker-runtime-callable+v176-troublemaker-home-probe-authority+v177-single-harvest-immediate-planting+v178-run-cycle-durable-sync+v179-visual-only-friend-action-poll+v180-durable-counter-flow-mirror+v181-fast-planting-cooldown+v182-radish-counter-isolation-first-friend-grace+v183-watchdog-visual-only-probe+v184-visible-friend-preflight-owner+v185-guard-initial-next-card+v186-first-friend-render-floor+v187-troublemaker-full-miss-cooldown+v188-bounded-guard-pending-advance+v189-friend-list-entry-settle-barrier+v190-visible-first-action-early-release+v191-delayed-friend-action-grace+v192-planting-callable-inventory+v193-safe-planting-callable-inventory+v194-pending-entry-guard-approval+v195-fast-backpack-panel-settle+v196-backpack-helper-profile+v197-backpack-preverified-empty-land+v198-trouble-planted-evidence+v199-trouble-native-evidence-gate+v200-trouble-popup-action-fallback+v201-fast-no-seed-ocr+v202-restore-native-no-seed-ocr+v203-friend-list-progress-cursor+v204-backpack-panel-capture+v205-first-friend-native-miss-fallback+v206-friend-list-pending-row-retry+v207-confirmed-entry-cursor+v208-restore-normal-cycle-interval+v209-pending-row-reopen-recovery+v210-friend-help-daily-quota+v211-quota-chain-short-circuit+v212-native-help-proof-barrier+v213-about-expiry-card-cleanup+v214-about-expiry-text-fallback+v215-about-widget-diagnostic+v216-native-project-dialog+v217-friend-capture-card-restore+v218-fast-planting-inventory-chain+v219-quad-click-friend-first-blocked-row-outfit-guard+v220-empty-land-candidate-diagnostics+v221-empty-land-crop-cover-filter+v222-blocked-toast-home-terminal+v223-blocked-row-second-cap+v224-troublemaker-bounded-three+v225-quad-confirm-retry-cropped-friend-action')
 
 try:
     import sys, time, builtins, importlib, os
@@ -2170,6 +2170,121 @@ def _wrap_backpack_seed_blacklist_fast(fn, name=''):
         return _wrapped, True
     except BaseException:
         return fn, False
+
+
+def _wrap_quad_act_seed_transaction(fn, name=''):
+    """Retry the native 2x2 select-seed-confirm transaction once on a transient miss."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_quad_transaction_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            call_args = list(args or ())
+            call_kwargs = dict(kwargs or {})
+            bot = call_args[0] if call_args else call_kwargs.get('bot')
+            remain_lands = call_kwargs.get('remain_lands')
+            if remain_lands is None and len(call_args) >= 2:
+                remain_lands = call_args[1]
+            try:
+                before_count = len(list(remain_lands or []))
+            except BaseException:
+                before_count = 0
+
+            marker = object()
+            old_threshold = marker
+            try:
+                old_threshold = getattr(bot, 'act_seeds_frame_threshold')
+            except BaseException:
+                pass
+
+            def _call_once(retry=False):
+                retry_args = list(call_args)
+                retry_kwargs = dict(call_kwargs)
+                if retry:
+                    if 'panel_settle' in retry_kwargs:
+                        try:
+                            retry_kwargs['panel_settle'] = max(
+                                0.35, float(retry_kwargs.get('panel_settle', 0.0) or 0.0)
+                            )
+                        except BaseException:
+                            retry_kwargs['panel_settle'] = 0.35
+                    elif len(retry_args) >= 3:
+                        try:
+                            retry_args[2] = max(0.35, float(retry_args[2] or 0.0))
+                        except BaseException:
+                            retry_args[2] = 0.35
+                return fn(*tuple(retry_args), **retry_kwargs)
+
+            def _confirmed(result):
+                try:
+                    if isinstance(result, (tuple, list)) and result:
+                        if bool(result[0]):
+                            return True
+                        if before_count >= 4 and len(result) >= 2:
+                            remaining = result[1]
+                            if isinstance(remaining, (tuple, list)):
+                                return len(remaining) <= (before_count - 4)
+                        return False
+                    return bool(result)
+                except BaseException:
+                    return False
+
+            try:
+                current = float(old_threshold if old_threshold is not marker else 0.72)
+                setattr(bot, 'act_seeds_frame_threshold', min(current, 0.62))
+                try:
+                    _write(
+                        'v225 2x2 transaction: choose 2x2 empty group -> click '
+                        'act_seeds -> click confirm OK name=' + str(name)
+                    )
+                except BaseException:
+                    pass
+                result = _call_once(False)
+                if _confirmed(result):
+                    if (
+                        isinstance(result, (tuple, list))
+                        and result
+                        and not bool(result[0])
+                        and len(result) >= 2
+                    ):
+                        return True, result[1]
+                    return result
+                try:
+                    _write(
+                        'v225 2x2 transaction retry after transient confirm miss '
+                        'name=' + str(name)
+                    )
+                except BaseException:
+                    pass
+                try:
+                    sleep_fn = globals().get('_friend_guard_sleep')
+                    if callable(sleep_fn):
+                        sleep_fn(0.18)
+                    else:
+                        __import__('time').sleep(0.18)
+                except BaseException:
+                    pass
+                return _call_once(True)
+            finally:
+                try:
+                    if old_threshold is marker:
+                        delattr(bot, 'act_seeds_frame_threshold')
+                    else:
+                        setattr(bot, 'act_seeds_frame_threshold', old_threshold)
+                except BaseException:
+                    pass
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'quad_act_seed_transaction_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_quad_transaction_wrapped__ = True
+        _wrapped.__qqfarm_quad_transaction_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
 
 def _configured_player_level(default=120):
     try:
@@ -4723,6 +4838,7 @@ _VIP_BUSINESS_FUNC_NAMES = set([
     '_plant_seed_over_lands',
     '_run_auto_fertilize_after_planting',
     '_run_backpack_seed_priority_planting',
+    '_try_plant_quad_act_seeds',
     'get_current_player_level',
 ]).union(globals().get('_BACKPACK_PROFILE_FUNC_NAMES', set()))
 _FRIEND_HOME_FUNC_NAMES = set([
@@ -11033,12 +11149,36 @@ def _friend_guard_friend_ui_state(frame):
                 home_gray = float(home.get('gray', 0.0) or 0.0)
                 home_edge = float(home.get('edge', 0.0) or 0.0)
                 unmistakable_home = bool(home_gray >= 0.88 and home_edge >= 0.40)
-                if not isinstance(selected_bounds, dict) and not unmistakable_home:
+                visible_friend_action = False
+                if not isinstance(selected_bounds, dict):
+                    for matcher_name in (
+                        '_friend_guard_help_button_match',
+                        '_friend_guard_steal_button_match',
+                    ):
+                        matcher = globals().get(matcher_name)
+                        if not callable(matcher):
+                            continue
+                        try:
+                            action_match = matcher(frame)
+                        except BaseException:
+                            action_match = None
+                        if isinstance(action_match, dict) and bool(action_match.get('matched')):
+                            visible_friend_action = True
+                            break
+                if (
+                    not isinstance(selected_bounds, dict)
+                    and not unmistakable_home
+                    and not visible_friend_action
+                ):
                     home = dict(home)
                     home['matched'] = False
                     home['rejected_reason'] = 'missing-friend-carousel'
                     globals()['_FRIEND_HOME_LAST_MATCH'] = home
                 else:
+                    if visible_friend_action:
+                        home = dict(home)
+                        home['match_mode'] = 'home+visible-friend-action'
+                        globals()['_FRIEND_HOME_LAST_MATCH'] = home
                     return True
             else:
                 return True
@@ -12515,6 +12655,10 @@ def _patch_vip_business_loaded(tag=''):
                             )
                         elif n == '_match_template_center':
                             new, ok = _wrap_planting_template_center_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_try_plant_quad_act_seeds':
+                            new, ok = _wrap_quad_act_seed_transaction(
                                 old, prefix + '.' + n
                             )
                         elif n == '_is_backpack_seed_blacklisted_by_template':
