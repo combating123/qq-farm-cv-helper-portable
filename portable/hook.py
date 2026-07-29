@@ -108,7 +108,7 @@ def _throttled_write(key, msg, seconds=30.0):
         except BaseException:
             return False
 
-_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open+v147-first-friend-approval-barrier+v148-first-friend-no-skip+v149-first-friend-render-grace+v150-troublemaker-adjacent-retry+v151-troublemaker-frame-diagnostics+v152-troublemaker-frame-import+v153-troublemaker-callable-diagnostic+v154-troublemaker-helper-probes+v155-troublemaker-seed-land-compat+v156-troublemaker-geometry-preferred+v157-troublemaker-dynamic-lattice+v158-troublemaker-chain-finalize+v159-stale-friend-branch-cooldown+v160-native-home-visual-gate+v161-false-friend-log-relabel+v162-same-cycle-false-friend-clear+v163-active-cycle-false-friend-suppression+v164-skip-legacy-false-friend-processor+v165-force-self-pass-after-false-friend+v167-runtime-go-home-threshold-floor+v168-friend-entry-callable-inventory+v169-native-bottom-adjacent-fallback+v170-native-bottom-fresh-frame+v171-private-home-icon-gate+v172-force-self-after-private-home+v173-first-friend-post-steal-grace+v174-durable-action-counter-merge+v175-troublemaker-runtime-callable+v176-troublemaker-home-probe-authority+v177-single-harvest-immediate-planting+v178-run-cycle-durable-sync+v179-visual-only-friend-action-poll+v180-durable-counter-flow-mirror+v181-fast-planting-cooldown+v182-radish-counter-isolation-first-friend-grace+v183-watchdog-visual-only-probe+v184-visible-friend-preflight-owner+v185-guard-initial-next-card+v186-first-friend-render-floor+v187-troublemaker-full-miss-cooldown+v188-bounded-guard-pending-advance+v189-friend-list-entry-settle-barrier+v190-visible-first-action-early-release+v191-delayed-friend-action-grace+v192-planting-callable-inventory+v193-safe-planting-callable-inventory+v194-pending-entry-guard-approval+v195-fast-backpack-panel-settle+v196-backpack-helper-profile+v197-backpack-preverified-empty-land+v198-trouble-planted-evidence+v199-trouble-native-evidence-gate+v200-trouble-popup-action-fallback+v201-fast-no-seed-ocr+v202-restore-native-no-seed-ocr+v203-friend-list-progress-cursor+v204-backpack-panel-capture+v205-first-friend-native-miss-fallback+v206-friend-list-pending-row-retry+v207-confirmed-entry-cursor+v208-restore-normal-cycle-interval+v209-pending-row-reopen-recovery+v210-friend-help-daily-quota+v211-quota-chain-short-circuit+v212-native-help-proof-barrier+v213-about-expiry-card-cleanup+v214-about-expiry-text-fallback+v215-about-widget-diagnostic+v216-native-project-dialog+v217-friend-capture-card-restore+v218-fast-planting-inventory-chain+v219-quad-click-friend-first-blocked-row-outfit-guard+v220-empty-land-candidate-diagnostics+v221-empty-land-crop-cover-filter+v222-blocked-toast-home-terminal+v223-blocked-row-second-cap+v224-troublemaker-bounded-three+v226-quad-skip-normal-seeds-soft-friend-action+v227-exhaustive-local-quad-groups+v228-bounded-help-false-positive-gap-scan+v229-current-card-guard-proof-gap-budget+v230-daily-wrapper-idempotency')
+_write('hook.py entered no-thread v70-friend-help-click-verify+v71-share-target-friend-chain+v72-friend-continuation+v73-share-prompt-context+v74-friend-toggle-persist+v75-share-obfuscated-entry+v76-runtime-chain-share+v77-share-compiled-callables+v78-share-run-cycle-recovery+v79-share-preflight-friend-branch+v80-friend-branch-refresh+v81-friend-navigation-verify+v82-friend-false-positive-stop+v83-share-direct-selected-friend+v87-share-contact-layout-friend-action-proof+v88-share-focus-paste-candidate-chain+v89-share-readback-fast-friend-chain+v90-native-clipboard-unreadable-chain+v91-pointer-clipboard-config-chain+v92-visible-share-fixed-right-chain+v93-single-click-share-selector+v94-share-idempotency+v95-friend-surface-guard+v96-window-owned-click-guard+v97-friend-ordered-stop+v98-strict-single-contact-share+v99-guard-dog-filter-persistence+v100-daily-flow-durable-status+v101-native-crash-supervisor+v102-autostart-idempotency+v103-share-counter-preservation+v104-next-friend-before-home+v105-bottom-carousel-only+v106-pre-action-card-cache+v107-friend-surface-gate+v108-carousel-exhausted-home+v114-guard-dog-runtime-gate+v116-friend-surface-lock+v117-friend-list-entry-recovery+v118-friend-list-preflight+v119-home-transition-verified+v120-friend-navigation-barrier+home-branch-recovery+v121-log-tail-branch-inference+v122-metrics-dailyflow-guard-list+v123-home-direct-entry+v124-friend-order-action-barrier+v125-native-home-chain-gate+v126-native-action-adjacent-order+v127-first-row-no-skip+v128-deferred-troublemaker-callable+v129-first-actionable-row+v130-guard-dog-help-gate+v131-guard-dog-skip-continuation+v132-troublemaker-counter-verified-help-frame+v133-native-guard-list-flow+v134-empty-guard-list-fast-fallback+v135-dog-badge-batch-proof+v136-share-direct-circle-uia+v137-daily-red-dot-proof+v138-share-uia-bootstrap-backoff+v139-share-uia-win32-helpers+v140-direct-view-hidden-group-filter+v142-guard-list-prequalified-help+v143-task-threshold-guard-list-route+v144-live-friend-state-no-recursion-task-authority+v145-ordered-guard-carousel-fast-chain+v146-fast-friend-list-open+v147-first-friend-approval-barrier+v148-first-friend-no-skip+v149-first-friend-render-grace+v150-troublemaker-adjacent-retry+v151-troublemaker-frame-diagnostics+v152-troublemaker-frame-import+v153-troublemaker-callable-diagnostic+v154-troublemaker-helper-probes+v155-troublemaker-seed-land-compat+v156-troublemaker-geometry-preferred+v157-troublemaker-dynamic-lattice+v158-troublemaker-chain-finalize+v159-stale-friend-branch-cooldown+v160-native-home-visual-gate+v161-false-friend-log-relabel+v162-same-cycle-false-friend-clear+v163-active-cycle-false-friend-suppression+v164-skip-legacy-false-friend-processor+v165-force-self-pass-after-false-friend+v167-runtime-go-home-threshold-floor+v168-friend-entry-callable-inventory+v169-native-bottom-adjacent-fallback+v170-native-bottom-fresh-frame+v171-private-home-icon-gate+v172-force-self-after-private-home+v173-first-friend-post-steal-grace+v174-durable-action-counter-merge+v175-troublemaker-runtime-callable+v176-troublemaker-home-probe-authority+v177-single-harvest-immediate-planting+v178-run-cycle-durable-sync+v179-visual-only-friend-action-poll+v180-durable-counter-flow-mirror+v181-fast-planting-cooldown+v182-radish-counter-isolation-first-friend-grace+v183-watchdog-visual-only-probe+v184-visible-friend-preflight-owner+v185-guard-initial-next-card+v186-first-friend-render-floor+v187-troublemaker-full-miss-cooldown+v188-bounded-guard-pending-advance+v189-friend-list-entry-settle-barrier+v190-visible-first-action-early-release+v191-delayed-friend-action-grace+v192-planting-callable-inventory+v193-safe-planting-callable-inventory+v194-pending-entry-guard-approval+v195-fast-backpack-panel-settle+v196-backpack-helper-profile+v197-backpack-preverified-empty-land+v198-trouble-planted-evidence+v199-trouble-native-evidence-gate+v200-trouble-popup-action-fallback+v201-fast-no-seed-ocr+v202-restore-native-no-seed-ocr+v203-friend-list-progress-cursor+v204-backpack-panel-capture+v205-first-friend-native-miss-fallback+v206-friend-list-pending-row-retry+v207-confirmed-entry-cursor+v208-restore-normal-cycle-interval+v209-pending-row-reopen-recovery+v210-friend-help-daily-quota+v211-quota-chain-short-circuit+v212-native-help-proof-barrier+v213-about-expiry-card-cleanup+v214-about-expiry-text-fallback+v215-about-widget-diagnostic+v216-native-project-dialog+v217-friend-capture-card-restore+v218-fast-planting-inventory-chain+v219-quad-click-friend-first-blocked-row-outfit-guard+v220-empty-land-candidate-diagnostics+v221-empty-land-crop-cover-filter+v222-blocked-toast-home-terminal+v223-blocked-row-second-cap+v224-troublemaker-bounded-three+v226-quad-skip-normal-seeds-soft-friend-action+v227-exhaustive-local-quad-groups+v228-bounded-help-false-positive-gap-scan+v229-current-card-guard-proof-gap-budget+v230-daily-wrapper-idempotency+v231-home-empty-land-priority-radish-stock+v232-partial-stock-direct-plant-fast-count+v233-shovel-drag-fallback-fast-home-interval+v234-home-button-low-edge-recovery+v235-conservative-seed-stock-quad-cooldown-fast-recovery+v236-disable-rest-periodic-during-active-run+v237-pause-bypass-player-level-floor+v238-user-config-byte-preservation+v239-live-level-share-proof+v240-config-bom-share-runtime-proof+v241-level-last-digit-native-share-recovery+v242-share-proof-only-level-decade-floor+v243-share-native-frame-log-consistency+v244-single-harvest-unicode-proof')
 
 try:
     import sys, time, builtins, importlib, os
@@ -1052,7 +1052,7 @@ def _daily_flow_write_status(path, data):
 def _daily_flow_repair_unverified_status(
     paths=None, counter_paths=None, today=None
 ):
-    """Downgrade legacy seeded task/benefit flags until UI success is observed."""
+    """Downgrade unverified daily-flow flags until UI success is observed."""
     try:
         import json
         day = str(today or time.strftime('%Y-%m-%d'))
@@ -1067,7 +1067,7 @@ def _daily_flow_repair_unverified_status(
             if not isinstance(flows, dict):
                 continue
             file_changed = False
-            for flow in ('freebenefits', 'task', 'svip'):
+            for flow in ('freebenefits', 'task', 'svip', 'share'):
                 entry = flows.get(flow)
                 if not isinstance(entry, dict):
                     continue
@@ -1075,7 +1075,13 @@ def _daily_flow_repair_unverified_status(
                     continue
                 if str(entry.get('status', '') or '').strip().lower() != 'success':
                     continue
-                if str(entry.get('reason', '') or '').strip().lower() != 'seeded-from-daily-counters':
+                reason_value = str(
+                    entry.get('reason', '') or ''
+                ).strip().lower()
+                if flow == 'share':
+                    if reason_value == 'verified-direct-contact-send-v2':
+                        continue
+                elif reason_value != 'seeded-from-daily-counters':
                     continue
                 replacement = dict(entry)
                 replacement['status'] = 'pending'
@@ -1111,6 +1117,7 @@ def _daily_flow_repair_unverified_status(
             'freebenefits': 'freebenefits_last_date',
             'task': 'task_last_date',
             'svip': 'svip_last_date',
+            'share': 'share_last_date',
         }
         for raw_path in list(counter_paths or []):
             try:
@@ -1163,6 +1170,13 @@ def _daily_flow_mark_status(
         status_value = str(status or '').strip().lower()
         if not flow_key or status_value not in ('pending', 'success', 'failed'):
             return False
+        reason_value = str(reason or '').strip()
+        if (
+            flow_key == 'share' and status_value == 'success'
+            and reason_value != 'verified-direct-contact-send-v2'
+        ):
+            status_value = 'pending'
+            reason_value = 'share-success-requires-v2-proof'
         day = str(today or time.strftime('%Y-%m-%d'))
         stamp = str(verified_at or time.strftime('%Y-%m-%dT%H:%M:%S%z'))
         changed = False
@@ -1182,7 +1196,6 @@ def _daily_flow_mark_status(
             target_value = str(target or '').strip()
             if target_value:
                 entry['target'] = target_value
-            reason_value = str(reason or '').strip()
             if reason_value:
                 entry['reason'] = reason_value
             flows[flow_key] = entry
@@ -1214,10 +1227,10 @@ def _daily_flow_success_today(flow, target='', paths=None, today=None):
             if str(entry.get('status', '') or '').strip().lower() != 'success':
                 continue
             reason_value = str(entry.get('reason', '') or '').strip().lower()
-            if (
-                flow_key in ('freebenefits', 'task', 'svip')
-                and reason_value == 'seeded-from-daily-counters'
-            ):
+            if flow_key == 'share':
+                if reason_value != 'verified-direct-contact-send-v2':
+                    continue
+            elif reason_value == 'seeded-from-daily-counters':
                 continue
             if wanted_target and str(entry.get('target', '') or '').strip() != wanted_target:
                 continue
@@ -1417,140 +1430,12 @@ def _repair_daily_task_retry_state_file(reason='startup', path=None, max_retry=N
 
 
 def _force_autolaunch_config_file():
-    global _CONFIG_FILE_PATCH_TS
-    try:
-        now = time.time()
-        if now - _CONFIG_FILE_PATCH_TS < 2.0:
-            return False
-        _CONFIG_FILE_PATCH_TS = now
-        base = os.environ.get('LOCALAPPDATA', '')
-        if not base:
-            return False
-        cfg = os.path.join(base, 'qq-farm-bot-rev', 'config-multi.ini')
-        if not os.path.exists(cfg):
-            return False
-        try:
-            data = open(cfg, 'rb').read().decode('utf-8', 'replace')
-        except BaseException:
-            data = open(cfg, 'r').read()
-        old = data
-        weixin_mode = _active_is_weixin_mode()
-        active_proto = _active_launch_protocol()
-        try:
-            active_bot_secs = set([_norm_key(x) for x in _active_bot_sections()])
-        except BaseException:
-            active_bot_secs = set(['bot'])
-        try:
-            active_friend_secs = set([_norm_key(x) for x in _active_friend_sections()])
-        except BaseException:
-            active_friend_secs = set(['friend'])
-        try:
-            check_interval = _cfg_get(_active_bot_sections(), 'check_interval', '15')
-            friend_cooldown = _cfg_get(_active_bot_sections(), 'friend_colddown_time', '0')
-            effective_friend_cooldown = _effective_friend_cooldown(check_interval, friend_cooldown)
-        except BaseException:
-            check_interval = 15
-            friend_cooldown = 0
-            effective_friend_cooldown = 0
-        lines = []
-        cur_sec = ''
-        for line in data.splitlines():
-            low = line.strip().lower()
-            if low.startswith('[') and ']' in low:
-                cur_sec = low[1:low.find(']')].strip()
-                lines.append(line)
-                continue
-            key = low.split('=', 1)[0].strip().replace('-', '_') if '=' in low else ''
-            if cur_sec in active_bot_secs and key in _REQUIRED_FRIEND_BOT_BOOL_TRUE:
-                line = key + ' = True'
-            elif cur_sec in active_friend_secs and key in _REQUIRED_FRIEND_SECTION_BOOL_TRUE:
-                line = key + ' = True'
-            elif key in _VIP_CONFIG_FORCED_BOOL_TRUE and key != 'enable_wechat_focus_guard':
-                line = key + ' = True'
-            elif cur_sec in active_bot_secs and key == 'friend_colddown_time':
-                line = 'friend_colddown_time = ' + str(effective_friend_cooldown)
-            elif cur_sec in active_bot_secs and key == 'window_title':
-                line = 'window_title = QQ\u7ecf\u5178\u519c\u573a'
-            elif key == 'window_title_match_mode':
-                line = 'window_title_match_mode = exact'
-            elif False and key == 'action_mode':
-                line = 'action_mode = drag'
-            elif False and key == 'auto_sell_fruit_interval_hours':
-                line = 'auto_sell_fruit_interval_hours = 0.10'
-            elif False and key == 'bottom_friend_list_help_all_limit':
-                line = 'bottom_friend_list_help_all_limit = 12'
-            elif weixin_mode and cur_sec in active_bot_secs and key == 'launch_protocol' and active_proto:
-                line = 'launch_protocol = ' + active_proto
-            elif weixin_mode and cur_sec in active_bot_secs and key == 'bound_process_name':
-                line = 'bound_process_name = wechatappex.exe'
-            lines.append(line)
-        data = '\n'.join(lines) + ('\n' if old.endswith('\n') else '')
-        if data != old:
-            open(cfg, 'wb').write(data.encode('utf-8'))
-            _write('config autolaunch/focus synced' + (' weixin' if weixin_mode else ''))
-            return True
-    except BaseException as e:
-        try: _write('config autolaunch force error ' + repr(e))
-        except BaseException: pass
+    """Compatibility no-op: user configuration is immutable to the hook."""
     return False
 
 
 def _config_override_value(section, option, kind):
-    try:
-        s = _norm_key(section)
-        o = _norm_key(option)
-        if _friend_pause_active():
-            if o in _FRIEND_PAUSE_FORCE_FALSE:
-                return False if kind == 'bool' else 'False'
-            if ('friend' in s) and o.startswith('enable_') and (('help' in o) or ('steal' in o) or ('troublemaker' in o)):
-                return False if kind == 'bool' else 'False'
-        try:
-            active_bot_secs = set([_norm_key(x) for x in _active_bot_sections()])
-        except BaseException:
-            active_bot_secs = set(['bot'])
-        try:
-            active_friend_secs = set([_norm_key(x) for x in _active_friend_sections()])
-        except BaseException:
-            active_friend_secs = set(['friend'])
-        if s in active_bot_secs and o in _REQUIRED_FRIEND_BOT_BOOL_TRUE:
-            return True if kind == 'bool' else 'True'
-        if s in active_friend_secs and o in _REQUIRED_FRIEND_SECTION_BOOL_TRUE:
-            return True if kind == 'bool' else 'True'
-        if o == 'friend_colddown_time' and s in active_bot_secs:
-            check_interval = _cfg_get(_active_bot_sections(), 'check_interval', '15')
-            friend_cooldown = _cfg_get(_active_bot_sections(), 'friend_colddown_time', '0')
-            value = _effective_friend_cooldown(check_interval, friend_cooldown)
-            return value if kind == 'int' else str(value)
-        if o == 'enable_wechat_focus_guard':
-            # Preserve the user's saved switch in every client mode. Runtime
-            # activation is still gated by _active_is_weixin_mode().
-            return None
-        if o == 'window_title':
-            return 'QQ\u7ecf\u5178\u519c\u573a'
-        if o in _VIP_CONFIG_FORCED_BOOL_TRUE:
-            return True if kind == 'bool' else 'True'
-        if o == 'window_title_match_mode':
-            return 'exact'
-        if False and o == 'action_mode':
-            return 'drag'
-        if False and o == 'auto_sell_fruit_interval_hours':
-            return '0.10'
-        if False and o == 'bottom_friend_list_help_all_limit':
-            return '12'
-        if _active_is_weixin_mode():
-            if o == 'enable_wechat_focus_guard':
-                return True if kind == 'bool' else 'True'
-            if o == 'launch_protocol':
-                p = _active_launch_protocol()
-                if p:
-                    return p
-            if o == 'bound_process_name':
-                return 'wechatappex.exe'
-            if o == 'window_title':
-                # Target the actual mini-game window, not the Weixin shell.
-                return 'QQ\u7ecf\u5178\u519c\u573a'
-    except BaseException:
-        pass
+    """Never replace a value loaded from the user's configuration file."""
     return None
 
 
@@ -1854,11 +1739,10 @@ def _fast_seed_badge_candidates_from_frame(frame, capacity_hint=None):
     """Detect positive seed slots from their fixed cream quantity badges."""
     candidates = []
     try:
-        try:
-            candidate_capacity = int(capacity_hint or 1)
-        except BaseException:
-            candidate_capacity = 1
-        candidate_capacity = max(1, min(999, candidate_capacity))
+        # Visual-only slot detection proves that a seed is present, not how many
+        # copies exist.  Keep a one-seed lower bound so the native backpack loop
+        # never invents stock from the number of empty lands.
+        candidate_capacity = 1
         if not _seed_panel_strip_visible(frame):
             return candidates
         cv_module = globals().get('cv2') or __import__('cv2')
@@ -2002,6 +1886,180 @@ def _empty_land_candidate_has_crop_cover(frame, center, threshold=0.12):
         return False
 
 
+
+def _qqfarm_cap_runtime_recovery_waits(context):
+    """Observe recovery settings without changing the user's configured values."""
+    return 0
+
+
+def _qqfarm_home_priority_active(context):
+    """Return whether unfinished home planting must outrank all friend routes."""
+    try:
+        return bool(
+            context is not None
+            and getattr(context, '_qqfarm_home_empty_land_pending', False)
+        )
+    except BaseException:
+        return False
+
+
+def _qqfarm_update_home_priority(context, remaining, now_ts=None, reason=''):
+    """Latch home priority until two independent zero-empty observations agree."""
+    if context is None:
+        return False
+    try:
+        count = max(0, int(remaining or 0))
+    except BaseException:
+        count = 0
+    try:
+        now_value = float(
+            now_ts if now_ts is not None else __import__('time').time()
+        )
+    except BaseException:
+        now_value = 0.0
+    was_active = _qqfarm_home_priority_active(context)
+    try:
+        if count > 0:
+            setattr(context, '_qqfarm_home_empty_land_pending', True)
+            setattr(context, '_qqfarm_home_empty_land_remaining', count)
+            setattr(context, '_qqfarm_home_empty_zero_confirmations', 0)
+            setattr(context, '_qqfarm_home_empty_land_last_seen_ts', now_value)
+            setattr(context, '_qqfarm_force_self_cycle_next', True)
+            setattr(context, '_qqfarm_cycle_branch_hint', 'self')
+            setattr(context, '_qqfarm_friend_cycle_seen', False)
+            if not was_active or int(getattr(
+                    context, '_qqfarm_home_empty_land_last_logged_count', -1
+            ) or -1) != count:
+                setattr(context, '_qqfarm_home_empty_land_last_logged_count', count)
+                try:
+                    _write(
+                        'v231 home empty-land priority armed remaining=' +
+                        str(count) + ' reason=' + str(reason)
+                    )
+                except BaseException:
+                    pass
+            return True
+
+        if not was_active:
+            return False
+        confirmations = int(getattr(
+            context, '_qqfarm_home_empty_zero_confirmations', 0
+        ) or 0) + 1
+        setattr(context, '_qqfarm_home_empty_zero_confirmations', confirmations)
+        setattr(context, '_qqfarm_home_empty_land_last_seen_ts', now_value)
+        if confirmations < 2:
+            setattr(context, '_qqfarm_force_self_cycle_next', True)
+            setattr(context, '_qqfarm_cycle_branch_hint', 'self')
+            try:
+                _write(
+                    'v231 home empty-land clear confirmation 1/2 reason=' +
+                    str(reason)
+                )
+            except BaseException:
+                pass
+            return True
+
+        setattr(context, '_qqfarm_home_empty_land_pending', False)
+        setattr(context, '_qqfarm_home_empty_land_remaining', 0)
+        setattr(context, '_qqfarm_home_empty_zero_confirmations', confirmations)
+        setattr(context, '_qqfarm_force_self_cycle_next', False)
+        setattr(context, '_qqfarm_home_empty_land_last_logged_count', 0)
+        try:
+            _write(
+                'v231 home empty-land priority released after stable zero '
+                'confirmations reason=' + str(reason)
+            )
+        except BaseException:
+            pass
+        return False
+    except BaseException:
+        return was_active
+
+
+def _run_home_priority_self_pass(context):
+    """Run one self-farm pass while the home empty-land latch is active."""
+    if not _qqfarm_home_priority_active(context):
+        return False, None
+    try:
+        setattr(context, '_qqfarm_force_self_cycle_next', True)
+        setattr(context, '_qqfarm_cycle_branch_hint', 'self')
+        setattr(context, '_qqfarm_friend_cycle_seen', False)
+    except BaseException:
+        pass
+    try:
+        fast_fn = globals().get('_set_friend_chain_fast_interval')
+        if callable(fast_fn):
+            fast_fn(context, True)
+    except BaseException:
+        pass
+    try:
+        capture_fn = globals().get('_get_frame_from_bot')
+        frame = capture_fn(context) if callable(capture_fn) else None
+    except BaseException:
+        frame = None
+    try:
+        state_fn = globals().get('_friend_guard_friend_ui_state')
+        visual_state = (
+            state_fn(frame)
+            if callable(state_fn) and frame is not None
+            else None
+        )
+    except BaseException:
+        visual_state = None
+
+    action = None
+    label = ''
+    if visual_state is True:
+        for method_name in ('go_home', 'return_home', '_return_home'):
+            candidate = getattr(context, method_name, None)
+            if callable(candidate):
+                action = candidate
+                label = method_name
+                break
+        if action is None:
+            return True, False
+    elif visual_state is False:
+        action = getattr(context, 'process_self_farm', None)
+        label = 'process_self_farm'
+        if not callable(action):
+            return True, False
+    else:
+        # Let the native unknown-scene recovery close transient overlays.  The
+        # process_friend_farm gate still prevents a friend detour.
+        return False, None
+
+    try:
+        invoke_fn = globals().get('_invoke_friend_guard_action')
+        if callable(invoke_fn):
+            result = invoke_fn(action, None, (context, frame), {})
+        else:
+            result = action(frame)
+    except TypeError:
+        result = action()
+    except BaseException as error:
+        try:
+            _write(
+                'v231 home-priority self pass error label=' + label +
+                ' error=' + repr(error)[:220]
+            )
+        except BaseException:
+            pass
+        return True, False
+    finally:
+        if _qqfarm_home_priority_active(context):
+            try:
+                setattr(context, '_qqfarm_force_self_cycle_next', True)
+            except BaseException:
+                pass
+    try:
+        _write(
+            'v231 home-priority self pass label=' + label +
+            ' result=' + repr(result)[:160]
+        )
+    except BaseException:
+        pass
+    return True, result
+
 def _wrap_detect_empty_lands_state(fn, name=''):
     """Remember fresh multi-land detections for the following label check."""
     try:
@@ -2053,8 +2111,16 @@ def _wrap_detect_empty_lands_state(fn, name=''):
                         ))
                 setattr(bot, '_qqfarm_recent_empty_land_count', int(count))
                 setattr(bot, '_qqfarm_recent_empty_land_centers', centers)
+                setattr(bot, '_qqfarm_recent_empty_lands', list(result or []))
                 setattr(bot, '_qqfarm_recent_empty_land_rejected_centers', rejected_centers)
-                setattr(bot, '_qqfarm_recent_empty_land_ts', __import__('time').time())
+                now_value = __import__('time').time()
+                setattr(bot, '_qqfarm_recent_empty_land_ts', now_value)
+                priority_fn = globals().get('_qqfarm_update_home_priority')
+                if callable(priority_fn):
+                    priority_fn(
+                        bot, int(count), now_ts=now_value,
+                        reason='detect-empty-lands:' + str(name),
+                    )
                 if count > 0:
                     _write(
                         'v220 empty land candidates count=' + str(int(count)) +
@@ -2077,7 +2143,7 @@ def _wrap_detect_empty_lands_state(fn, name=''):
 
 
 def _wrap_buy_seed_for_crop_backpack_guard(fn, name=''):
-    """Defer shop purchases while recently observed backpack inventory remains."""
+    """Plant fresh local inventory first, then allow a bounded shop fallback."""
     try:
         if not callable(fn):
             return fn, False
@@ -2086,27 +2152,237 @@ def _wrap_buy_seed_for_crop_backpack_guard(fn, name=''):
 
         def _wrapped(*args, **kwargs):
             bot = args[0] if args else kwargs.get('bot')
+            crop_name = ''
             try:
-                seen_ts = float(getattr(bot, '_qqfarm_backpack_candidates_seen_ts', 0.0) or 0.0)
-                age = max(0.0, __import__('time').time() - seen_ts) if seen_ts > 0 else 999999.0
+                for key in ('crop_name', 'crop', 'seed_name', 'target_crop'):
+                    value = kwargs.get(key)
+                    if isinstance(value, str) and value.strip():
+                        crop_name = value.strip()
+                        break
+                if not crop_name:
+                    for value in list(args[1:]):
+                        if isinstance(value, str) and value.strip():
+                            crop_name = value.strip()
+                            if crop_name == '\u767d\u841d\u535c':
+                                break
+            except BaseException:
+                crop_name = ''
+            try:
+                now_value = __import__('time').time()
+            except BaseException:
+                now_value = 0.0
+
+            if bot is not None and crop_name == '\u767d\u841d\u535c':
+                try:
+                    radish_qty = max(0, int(getattr(
+                        bot, '_qqfarm_radish_inventory_qty', 0
+                    ) or 0))
+                    radish_seen_ts = float(getattr(
+                        bot, '_qqfarm_radish_inventory_seen_ts', 0.0
+                    ) or 0.0)
+                    radish_age = (
+                        max(0.0, now_value - radish_seen_ts)
+                        if radish_seen_ts > 0.0 else 999999.0
+                    )
+                    recent_lands = list(getattr(
+                        bot, '_qqfarm_recent_empty_lands', []
+                    ) or [])
+                    recent_ts = float(getattr(
+                        bot, '_qqfarm_recent_empty_land_ts', now_value
+                    ) or now_value)
+                    recent_age = max(0.0, now_value - recent_ts)
+                except BaseException:
+                    radish_qty = 0
+                    radish_age = 999999.0
+                    recent_lands = []
+                    recent_age = 999999.0
+
+                if (
+                    radish_qty > 0 and radish_age <= 600.0
+                    and recent_lands and recent_age <= 180.0
+                ):
+                    valid_lands = [
+                        item for item in recent_lands
+                        if isinstance(item, dict) and item.get('center') is not None
+                    ]
+                    partial_lands = valid_lands[:min(radish_qty, len(valid_lands))]
+                    helper = getattr(bot, '_try_planting_with_direct_lands', None)
+                    if not callable(helper):
+                        try:
+                            helper = getattr(
+                                __import__('sys').modules.get(
+                                    str(getattr(fn, '__module__', '') or '')
+                                ),
+                                '_try_planting_with_direct_lands', None,
+                            )
+                        except BaseException:
+                            helper = None
+                    if not callable(helper):
+                        try:
+                            helper = (getattr(fn, '__globals__', {}) or {}).get(
+                                '_try_planting_with_direct_lands'
+                            )
+                        except BaseException:
+                            helper = None
+                    if partial_lands and callable(helper):
+                        try:
+                            priority_fn = globals().get('_qqfarm_update_home_priority')
+                            if callable(priority_fn):
+                                priority_fn(
+                                    bot, len(valid_lands), now_ts=now_value,
+                                    reason='partial-radish-inventory-before-shop',
+                                )
+                            result = helper(bot, crop_name, partial_lands)
+                            if isinstance(result, (tuple, list)):
+                                success = bool(result[0]) if result else False
+                                land_not_empty = bool(result[1]) if len(result) > 1 else False
+                            else:
+                                success = bool(result)
+                                land_not_empty = False
+                            if success:
+                                setattr(bot, '_qqfarm_radish_inventory_retry_count', 0)
+                                setattr(bot, '_qqfarm_backpack_inventory_retry_count', 0)
+                                _write(
+                                    'v232 partial radish inventory planted before shop '
+                                    'stock=' + str(radish_qty) + ' lands=' +
+                                    str(len(partial_lands)) + ' name=' + str(name)
+                                )
+                                return False
+                            if not land_not_empty:
+                                execute_helper = getattr(
+                                    bot, '_execute_planting_by_mode', None
+                                )
+                                if not callable(execute_helper):
+                                    try:
+                                        execute_helper = getattr(
+                                            __import__('sys').modules.get(
+                                                str(getattr(fn, '__module__', '') or '')
+                                            ),
+                                            '_execute_planting_by_mode', None,
+                                        )
+                                    except BaseException:
+                                        execute_helper = None
+                                if not callable(execute_helper):
+                                    try:
+                                        execute_helper = (
+                                            getattr(fn, '__globals__', {}) or {}
+                                        ).get('_execute_planting_by_mode')
+                                    except BaseException:
+                                        execute_helper = None
+                                if callable(execute_helper):
+                                    fallback_result = execute_helper(
+                                        bot, None, partial_lands, crop_name, True
+                                    )
+                                    if bool(fallback_result):
+                                        setattr(
+                                            bot,
+                                            '_qqfarm_radish_inventory_retry_count', 0,
+                                        )
+                                        setattr(
+                                            bot,
+                                            '_qqfarm_backpack_inventory_retry_count', 0,
+                                        )
+                                        _write(
+                                            'v233 radish shovel-drag fallback planted '
+                                            'before shop stock=' + str(radish_qty) +
+                                            ' lands=' + str(len(partial_lands)) +
+                                            ' name=' + str(name)
+                                        )
+                                        return False
+                            setattr(
+                                bot, '_qqfarm_backpack_inventory_retry_count', 1
+                            )
+                            _write(
+                                'v233 partial radish inventory paths missed; '
+                                'falling through to shop stock=' + str(radish_qty) +
+                                ' lands=' + str(len(partial_lands)) +
+                                ' land_not_empty=' + str(land_not_empty) +
+                                ' name=' + str(name)
+                            )
+                        except BaseException as error:
+                            try:
+                                _write(
+                                    'v232 partial radish inventory direct planting error=' +
+                                    repr(error)[:220] + ' name=' + str(name)
+                                )
+                            except BaseException:
+                                pass
+
+            try:
+                seen_ts = float(getattr(
+                    bot, '_qqfarm_backpack_candidates_seen_ts', 0.0
+                ) or 0.0)
+                age = (
+                    max(0.0, now_value - seen_ts)
+                    if seen_ts > 0 else 999999.0
+                )
+                inventory_retry_count = max(0, int(getattr(
+                    bot, '_qqfarm_backpack_inventory_retry_count', 0
+                ) or 0))
             except BaseException:
                 seen_ts = 0.0
                 age = 999999.0
-            if seen_ts > 0 and age <= 300.0:
+                inventory_retry_count = 0
+            if seen_ts > 0 and age <= 300.0 and inventory_retry_count < 1:
                 try:
+                    setattr(bot, '_qqfarm_backpack_inventory_retry_count', 1)
                     setattr(
                         bot,
                         'planting_buy_retry_no_buy_quota',
-                        max(1, int(getattr(bot, 'planting_buy_retry_no_buy_quota', 0) or 0)),
+                        max(1, int(getattr(
+                            bot, 'planting_buy_retry_no_buy_quota', 0
+                        ) or 0)),
                     )
+                    priority_fn = globals().get('_qqfarm_update_home_priority')
+                    if callable(priority_fn):
+                        priority_fn(
+                            bot,
+                            max(1, int(getattr(
+                                bot, '_qqfarm_recent_empty_land_count', 1
+                            ) or 1)),
+                            now_ts=now_value,
+                            reason='backpack-inventory-before-shop',
+                        )
                     _write(
-                        'v218 deferred seed shop because backpack inventory was seen age=' +
-                        ('%.1f' % age) + ' name=' + str(name)
+                        'v232 deferred seed shop for bounded backpack retry age=' +
+                        ('%.1f' % age) + ' retry=1/1 name=' + str(name)
                     )
                 except BaseException:
                     pass
                 return False
-            return fn(*args, **kwargs)
+
+            result = fn(*args, **kwargs)
+            if result and bot is not None:
+                try:
+                    setattr(bot, '_qqfarm_radish_inventory_retry_count', 0)
+                    setattr(bot, '_qqfarm_backpack_inventory_retry_count', 0)
+                    if crop_name == '\u767d\u841d\u535c':
+                        conservative_qty = max(1, int(getattr(
+                            bot, '_qqfarm_recent_empty_land_count', 1
+                        ) or 1))
+                        setattr(
+                            bot, '_qqfarm_radish_inventory_qty', conservative_qty
+                        )
+                        setattr(
+                            bot, '_qqfarm_radish_inventory_seen_ts', now_value
+                        )
+                        _write(
+                            'v232 cached conservative purchased radish stock=' +
+                            str(conservative_qty) + ' name=' + str(name)
+                        )
+                    priority_fn = globals().get('_qqfarm_update_home_priority')
+                    if callable(priority_fn):
+                        priority_fn(
+                            bot,
+                            max(1, int(getattr(
+                                bot, '_qqfarm_recent_empty_land_count', 1
+                            ) or 1)),
+                            now_ts=now_value,
+                            reason='buy-seed-complete:' + crop_name,
+                        )
+                except BaseException:
+                    pass
+            return result
 
         _wrapped.__name__ = getattr(fn, '__name__', 'backpack_buy_guard_wrapper')
         _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
@@ -2461,6 +2737,14 @@ def _wrap_quad_act_seed_transaction(fn, name=''):
                             retry_args[2] = 0.35
                 return fn(*tuple(retry_args), **retry_kwargs)
 
+            def _clear_failure_cooldown():
+                if bot is None:
+                    return
+                try:
+                    setattr(bot, '_qqfarm_quad_failure_cooldown_until', 0.0)
+                except BaseException:
+                    pass
+
             def _confirmed(result):
                 try:
                     if isinstance(result, (tuple, list)) and result:
@@ -2487,6 +2771,7 @@ def _wrap_quad_act_seed_transaction(fn, name=''):
                     pass
                 result = _call_once(False)
                 if _confirmed(result):
+                    _clear_failure_cooldown()
                     if (
                         isinstance(result, (tuple, list))
                         and result
@@ -2512,6 +2797,7 @@ def _wrap_quad_act_seed_transaction(fn, name=''):
                     pass
                 retry_result = _call_once(True)
                 if _confirmed(retry_result):
+                    _clear_failure_cooldown()
                     if (
                         isinstance(retry_result, (tuple, list))
                         and retry_result
@@ -2523,9 +2809,14 @@ def _wrap_quad_act_seed_transaction(fn, name=''):
                 if bot is not None:
                     try:
                         setattr(bot, '_qqfarm_quad_skip_and_continue', True)
+                        time_module = globals().get('time') or __import__('time')
+                        setattr(
+                            bot, '_qqfarm_quad_failure_cooldown_until',
+                            float(time_module.time()) + 180.0,
+                        )
                         _write(
-                            'v226 2x2 transaction failed twice; mark special seed to skip '
-                            'and continue normal backpack seeds name=' + str(name)
+                            'v235 2x2 transaction failed twice; cooldown 180s, skip '
+                            'special seed and continue normal backpack seeds name=' + str(name)
                         )
                     except BaseException:
                         pass
@@ -2560,51 +2851,98 @@ def _configured_player_level(default=120):
     return int(default)
 
 
+def _qqfarm_configured_player_level_floor(default=120):
+    """Return the active configured player level without cross-profile override."""
+    return int(_configured_player_level(default))
+
+
 def _wrap_player_level_fast(fn, name=''):
-    """Use the configured/cached level and probe OCR only on a long interval."""
+    """Probe live OCR first, cache briefly, and synchronize planting strategy level."""
     try:
         if not callable(fn):
             return fn, False
         if bool(getattr(fn, '__qqfarm_player_level_fast_wrapped__', False)):
             return fn, False
 
+        def _apply_level(bot, value, source):
+            if bot is None:
+                return int(value)
+            for attr_name in (
+                '_qqfarm_player_level_cache_value',
+                '_last_player_level_detected',
+                'planting_player_level',
+                'player_level',
+            ):
+                try:
+                    setattr(bot, attr_name, int(value))
+                except BaseException:
+                    pass
+            try:
+                setattr(bot, '_last_player_level_detect_source', str(source))
+            except BaseException:
+                pass
+            return int(value)
+
         def _wrapped(*args, **kwargs):
             bot = args[0] if args else kwargs.get('self')
             now = __import__('time').time()
-            has_schedule = False
             try:
-                has_schedule = hasattr(bot, '_qqfarm_player_level_next_probe_ts')
-                next_probe = float(getattr(bot, '_qqfarm_player_level_next_probe_ts', 0.0) or 0.0)
-                cached = int(getattr(bot, '_qqfarm_player_level_cache_value', 0) or 0)
+                next_probe = float(getattr(
+                    bot, '_qqfarm_player_level_next_probe_ts', 0.0
+                ) or 0.0)
+                cached = int(getattr(
+                    bot, '_qqfarm_player_level_cache_value', 0
+                ) or 0)
             except BaseException:
                 next_probe = 0.0
                 cached = 0
-            if has_schedule and 1 <= cached <= 999 and now < next_probe:
-                return cached
-            if not has_schedule:
-                try:
-                    existing = int(getattr(bot, '_last_player_level_detected', 0) or 0)
-                except BaseException:
-                    existing = 0
-                value = existing if 1 <= existing <= 999 else _configured_player_level(120)
-                try:
-                    setattr(bot, '_qqfarm_player_level_cache_value', int(value))
-                    setattr(bot, '_qqfarm_player_level_next_probe_ts', now + 3600.0)
-                    setattr(bot, '_last_player_level_detect_source', 'hook-config-cache')
-                    _write('v218 player level fast cache=' + str(value) + ' name=' + str(name))
-                except BaseException:
-                    pass
-                return int(value)
+            if 1 <= cached <= 999 and now < next_probe:
+                return _apply_level(bot, cached, 'hook-live-cache')
+
             result = fn(*args, **kwargs)
             try:
                 value = int(result or 0)
             except BaseException:
                 value = 0
+            source = 'live-ocr'
+            if 1 <= value <= 999:
+                try:
+                    configured_value = int(_configured_player_level(value))
+                except BaseException:
+                    configured_value = value
+                # Levels only increase. Accept a small active-config lead to
+                # correct a one-digit OCR miss, but never let a stale value such
+                # as 40 or an unrelated profile dominate live OCR.
+                lead = configured_value - value
+                same_decade_digit_confusion = bool(
+                    0 < lead <= 9
+                    and value // 10 == configured_value // 10
+                )
+                if (0 < lead <= 3) or same_decade_digit_confusion:
+                    value = configured_value
+                    source = 'live-ocr+active-config-floor'
             if not 1 <= value <= 999:
-                value = _configured_player_level(120)
+                try:
+                    existing = int(getattr(
+                        bot, '_last_player_level_detected', 0
+                    ) or 0)
+                except BaseException:
+                    existing = 0
+                value = (
+                    existing if 1 <= existing <= 999
+                    else int(_configured_player_level(120))
+                )
+                source = 'configured-fallback'
             try:
-                setattr(bot, '_qqfarm_player_level_cache_value', int(value))
-                setattr(bot, '_qqfarm_player_level_next_probe_ts', now + 3600.0)
+                setattr(bot, '_qqfarm_player_level_next_probe_ts', now + 120.0)
+            except BaseException:
+                pass
+            _apply_level(bot, value, source)
+            try:
+                _write(
+                    'v239 live player level=' + str(value) +
+                    ' source=' + source + ' name=' + str(name)
+                )
             except BaseException:
                 pass
             return int(value)
@@ -2829,6 +3167,309 @@ def _wrap_backpack_empty_land_label_fast(fn, name=''):
         return fn, False
 
 
+
+def _qqfarm_load_recent_radish_inventory_snapshot(
+    path=None, now_ts=None, max_age_seconds=900.0
+):
+    """Recover the newest explicit or conservatively purchased radish stock."""
+    try:
+        os_module = __import__('os')
+        glob_module = __import__('glob')
+        regex = __import__('re')
+        now_value = float(
+            __import__('time').time() if now_ts is None else now_ts
+        )
+        target = str(path or '').strip()
+        if not target:
+            local_appdata = str(os_module.environ.get('LOCALAPPDATA', '') or '')
+            log_dir = os_module.path.join(
+                local_appdata, 'qq-farm-bot-rev', 'logs'
+            )
+            candidates = glob_module.glob(os_module.path.join(log_dir, '*.log'))
+            if not candidates:
+                return 0, 0.0
+            target = max(candidates, key=lambda item: os_module.path.getmtime(item))
+        modified = float(os_module.path.getmtime(target))
+        if max(0.0, now_value - modified) > max(1.0, float(max_age_seconds)):
+            return 0, 0.0
+        with open(target, 'rb') as stream:
+            try:
+                stream.seek(-524288, 2)
+            except BaseException:
+                stream.seek(0)
+            payload = stream.read().decode('utf-8', errors='ignore')
+        event_pattern = regex.compile(
+            r'(?:\u64ad\u79cd\u9762\u677f\u79cd\u5b50\u6570\u91cfOCR'
+            r'[\uff1a:]\s*\u767d\u841d\u535c\s*=\s*(\d+))|'
+            r'(?:\u5df2\u5b8c\u6210\u64ad\u79cd[\uff1a:]\s*'
+            r'\u767d\u841d\u535c\s*x\s*(\d+))|'
+            r'(?:\u5df2\u8bb0\u5f55\u4e70\u79cd\u8fd4\u56de'
+            r'\u7a7a\u5730\u5217\u8868[\uff1a:]\s*count\s*=\s*(\d+))|'
+            r'(?:(?:\u5df2\u8d2d\u4e70\u79cd\u5b50|'
+            r'\u5df2\u5b8c\u6210\u4e70\u79cd)[\uff1a:]\s*'
+            r'\u767d\u841d\u535c)'
+        )
+        quantity = None
+        required_count = 0
+        for match in event_pattern.finditer(payload):
+            if match.group(1) is not None:
+                quantity = max(0, int(match.group(1)))
+            elif match.group(2) is not None and quantity is not None:
+                quantity = max(0, quantity - max(0, int(match.group(2))))
+            elif match.group(3) is not None:
+                required_count = max(0, int(match.group(3)))
+            else:
+                quantity = required_count if required_count > 0 else None
+        if quantity is None or quantity <= 0:
+            return 0, 0.0
+        return int(quantity), now_value
+    except BaseException:
+        return 0, 0.0
+
+
+def _wrap_planting_flow_fast(fn, name=''):
+    """Bound waits and plant a known partial radish stock before opening the shop."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_planting_flow_fast_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = args[0] if args else kwargs.get('bot')
+            call_args = list(args or ())
+            call_kwargs = dict(kwargs or {})
+            crop_name = ''
+            try:
+                crop_name = str(
+                    call_args[2] if len(call_args) >= 3
+                    else call_kwargs.get('crop_name', '')
+                ).strip()
+            except BaseException:
+                crop_name = ''
+            is_radish = crop_name == '白萝卜'
+            if bot is not None and is_radish:
+                try:
+                    now_value = __import__('time').time()
+                    cached_qty = max(0, int(getattr(
+                        bot, '_qqfarm_radish_inventory_qty', 0
+                    ) or 0))
+                    cached_ts = float(getattr(
+                        bot, '_qqfarm_radish_inventory_seen_ts', 0.0
+                    ) or 0.0)
+                    cache_fresh = (
+                        cached_qty > 0 and cached_ts > 0.0
+                        and now_value - cached_ts <= 600.0
+                    )
+                    if not cache_fresh:
+                        loader = globals().get(
+                            '_qqfarm_load_recent_radish_inventory_snapshot'
+                        )
+                        if callable(loader):
+                            loaded_qty, loaded_ts = loader(now_ts=now_value)
+                            if int(loaded_qty or 0) > 0:
+                                setattr(
+                                    bot, '_qqfarm_radish_inventory_qty',
+                                    int(loaded_qty),
+                                )
+                                setattr(
+                                    bot, '_qqfarm_radish_inventory_seen_ts',
+                                    float(loaded_ts or now_value),
+                                )
+                                setattr(
+                                    bot, '_qqfarm_radish_inventory_retry_count', 0
+                                )
+                                _write(
+                                    'v232 restored recent radish inventory=' +
+                                    str(int(loaded_qty)) + ' name=' + str(name)
+                                )
+                except BaseException:
+                    pass
+            marker = object()
+            saved = {}
+            limits = [
+                ('planting_panel_settle_seconds', 0.65, False),
+                ('planting_shovel_anchor_settle_seconds', 0.40, False),
+            ]
+            if is_radish:
+                limits.extend([
+                    ('seed_popup_verify_max_per_page', 0, True),
+                    ('seed_page_max_turns', 1, True),
+                ])
+            if bot is not None:
+                for attr, cap, integer_value in limits:
+                    try:
+                        old_value = getattr(bot, attr)
+                    except BaseException:
+                        old_value = marker
+                    saved[attr] = old_value
+                    try:
+                        if old_value is marker:
+                            effective = cap
+                        elif integer_value:
+                            effective = min(max(0, int(old_value)), int(cap))
+                        else:
+                            effective = min(max(0.0, float(old_value)), float(cap))
+                        setattr(bot, attr, effective)
+                    except BaseException:
+                        pass
+
+            old_fast_context = marker
+            if bot is not None and is_radish:
+                try:
+                    old_fast_context = getattr(
+                        bot, '_qqfarm_fast_radish_inventory_context'
+                    )
+                except BaseException:
+                    old_fast_context = marker
+                try:
+                    setattr(bot, '_qqfarm_fast_radish_inventory_context', True)
+                except BaseException:
+                    pass
+                try:
+                    now_value = __import__('time').time()
+                    qty = max(0, int(getattr(
+                        bot, '_qqfarm_radish_inventory_qty', 0
+                    ) or 0))
+                    qty_ts = float(getattr(
+                        bot, '_qqfarm_radish_inventory_seen_ts', 0.0
+                    ) or 0.0)
+                    lands = list(getattr(
+                        bot, '_qqfarm_recent_empty_lands', []
+                    ) or [])
+                    lands_ts = float(getattr(
+                        bot, '_qqfarm_recent_empty_land_ts', 0.0
+                    ) or 0.0)
+                    fresh_qty = qty > 0 and qty_ts > 0.0 and now_value - qty_ts <= 600.0
+                    fresh_lands = lands and lands_ts > 0.0 and now_value - lands_ts <= 180.0
+                    existing_lands = (
+                        call_args[5] if len(call_args) >= 6
+                        else call_kwargs.get('direct_lands')
+                    )
+                    if fresh_qty and fresh_lands and not existing_lands:
+                        valid_lands = [
+                            item for item in lands
+                            if isinstance(item, dict) and item.get('center') is not None
+                        ]
+                        partial_lands = valid_lands[:min(qty, len(valid_lands))]
+                        if partial_lands:
+                            if len(call_args) >= 4:
+                                call_args[3] = False
+                            else:
+                                call_kwargs['allow_buy'] = False
+                            if len(call_args) >= 6:
+                                call_args[5] = partial_lands
+                            else:
+                                call_kwargs['direct_lands'] = partial_lands
+                            if len(call_args) >= 7:
+                                call_args[6] = True
+                            else:
+                                call_kwargs['queue_retry_when_not_empty'] = True
+                            _write(
+                                'v232 limited radish flow to fresh inventory stock=' +
+                                str(qty) + ' lands=' + str(len(partial_lands)) +
+                                ' name=' + str(name)
+                            )
+                except BaseException as error:
+                    try:
+                        _write(
+                            'v232 radish partial-flow preparation error=' +
+                            repr(error)[:220] + ' name=' + str(name)
+                        )
+                    except BaseException:
+                        pass
+            started = __import__('time').perf_counter()
+            try:
+                return fn(*tuple(call_args), **call_kwargs)
+            finally:
+                elapsed = max(
+                    0.0, __import__('time').perf_counter() - started
+                )
+                if bot is not None:
+                    for attr, old_value in saved.items():
+                        try:
+                            if old_value is marker:
+                                delattr(bot, attr)
+                            else:
+                                setattr(bot, attr, old_value)
+                        except BaseException:
+                            pass
+                    if is_radish:
+                        try:
+                            if old_fast_context is marker:
+                                delattr(bot, '_qqfarm_fast_radish_inventory_context')
+                            else:
+                                setattr(
+                                    bot, '_qqfarm_fast_radish_inventory_context',
+                                    old_fast_context,
+                                )
+                        except BaseException:
+                            pass
+                try:
+                    _write(
+                        'v232 bounded planting flow elapsed=' +
+                        ('%.3f' % elapsed) + ' crop=' + crop_name +
+                        ' name=' + str(name)
+                    )
+                except BaseException:
+                    pass
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'planting_flow_fast_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_planting_flow_fast_wrapped__ = True
+        _wrapped.__qqfarm_planting_flow_fast_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
+def _wrap_radish_seed_count_fast(fn, name=''):
+    """Reuse a fresh radish quantity during the same home planting transaction."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_radish_seed_count_fast_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = args[0] if args else kwargs.get('bot')
+            try:
+                enabled = bool(getattr(
+                    bot, '_qqfarm_fast_radish_inventory_context', False
+                ))
+                qty = max(0, int(getattr(
+                    bot, '_qqfarm_radish_inventory_qty', 0
+                ) or 0))
+                seen_ts = float(getattr(
+                    bot, '_qqfarm_radish_inventory_seen_ts', 0.0
+                ) or 0.0)
+                age = max(0.0, __import__('time').time() - seen_ts)
+            except BaseException:
+                enabled = False
+                qty = 0
+                age = 999999.0
+            if enabled and qty > 0 and age <= 600.0:
+                try:
+                    _write(
+                        'v232 reused fresh radish seed count=' + str(qty) +
+                        ' age=' + ('%.1f' % age) + ' name=' + str(name)
+                    )
+                except BaseException:
+                    pass
+                return int(qty), 1.0
+            return fn(*args, **kwargs)
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'radish_seed_count_fast_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        _wrapped.__qqfarm_radish_seed_count_fast_wrapped__ = True
+        _wrapped.__qqfarm_radish_seed_count_fast_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
 def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
     """Cap repeated waits and report safe per-helper timings for the native branch."""
     try:
@@ -2863,6 +3504,34 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
             old_active = marker
             old_profile = marker
             quad_skip_flag = '_qqfarm_quad_skip_and_continue'
+            cooldown_quad_switches = {}
+            quad_cooldown_active = False
+            if bot is not None:
+                try:
+                    time_module = globals().get('time') or __import__('time')
+                    cooldown_until = float(getattr(
+                        bot, '_qqfarm_quad_failure_cooldown_until', 0.0
+                    ) or 0.0)
+                    quad_cooldown_active = cooldown_until > float(time_module.time())
+                except BaseException:
+                    quad_cooldown_active = False
+                if quad_cooldown_active:
+                    for switch_name in ('enable_quad_act_seeds', 'quad_act_seeds'):
+                        try:
+                            cooldown_quad_switches[switch_name] = getattr(bot, switch_name)
+                        except BaseException:
+                            cooldown_quad_switches[switch_name] = marker
+                        try:
+                            setattr(bot, switch_name, False)
+                        except BaseException:
+                            pass
+                    try:
+                        _write(
+                            'v235 2x2 cooldown active; skip repeated special seed '
+                            'attempt and continue ordinary backpack seeds name=' + str(name)
+                        )
+                    except BaseException:
+                        pass
             if bot is not None:
                 try:
                     delattr(bot, quad_skip_flag)
@@ -2933,6 +3602,14 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
             finally:
                 elapsed = max(0.0, __import__('time').perf_counter() - start)
                 if bot is not None:
+                    for switch_name, old_value in cooldown_quad_switches.items():
+                        try:
+                            if old_value is marker:
+                                delattr(bot, switch_name)
+                            else:
+                                setattr(bot, switch_name, old_value)
+                        except BaseException:
+                            pass
                     try:
                         current_profile = getattr(bot, '_qqfarm_backpack_profile', {})
                         if isinstance(current_profile, dict):
@@ -5135,6 +5812,7 @@ _VIP_WAREHOUSE_LAST_SEQUENCE_CLASS = ''
 _VIP_WAREHOUSE_LAST_SEQUENCE_TS = 0.0
 _BACKPACK_PROFILE_FUNC_NAMES = set([
     '_detect_seed_quantity_badges_by_ocr',
+    '_detect_seed_count_ocr',
     '_detect_empty_lands',
     '_check_empty_land_label_with_retry',
     '_infer_land_center_from_shovel',
@@ -5161,6 +5839,7 @@ _VIP_BUSINESS_FUNC_NAMES = set([
     '_plant_seed_over_lands',
     '_run_auto_fertilize_after_planting',
     '_run_backpack_seed_priority_planting',
+    '_run_planting_flow',
     '_find_quad_empty_land_groups',
     '_try_plant_quad_act_seeds',
     'get_current_player_level',
@@ -5927,26 +6606,108 @@ _LAST_SUCCESSFUL_FULL_PLANTING_TS = 0.0
 
 
 def _note_runtime_planting_outcome(message):
-    """Remember a verified full-land drag so false empty-land matches cool down."""
+    """Track home empty-land verification and reusable white-radish inventory."""
     global _LAST_SUCCESSFUL_FULL_PLANTING_TS
     try:
-        if '拖拽播种已覆盖全地块' not in str(message or ''):
-            return float(_LAST_SUCCESSFUL_FULL_PLANTING_TS or 0.0)
-        _LAST_SUCCESSFUL_FULL_PLANTING_TS = float(time.time())
-        context = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
-        if context is not None:
+        text = str(message or '')
+    except BaseException:
+        text = ''
+    context = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
+    try:
+        now_value = float(time.time())
+    except BaseException:
+        now_value = 0.0
+    try:
+        regex = __import__('re')
+        stock_match = regex.search(
+            r'\u64ad\u79cd\u9762\u677f\u79cd\u5b50\u6570\u91cfOCR[\uff1a:]\s*\u767d\u841d\u535c\s*=\s*(\d+)', text
+        )
+        if stock_match is not None and context is not None:
+            setattr(context, '_qqfarm_radish_inventory_qty', int(stock_match.group(1)))
+            setattr(context, '_qqfarm_radish_inventory_seen_ts', now_value)
+            setattr(context, '_qqfarm_radish_inventory_retry_count', 0)
+        planted_match = regex.search(
+            r'\u5df2\u5b8c\u6210\u64ad\u79cd[\uff1a:]\s*\u767d\u841d\u535c\s*x\s*(\d+)', text
+        )
+        if planted_match is not None and context is not None:
+            planted_count = max(0, int(planted_match.group(1)))
+            previous_qty = max(0, int(getattr(
+                context, '_qqfarm_radish_inventory_qty', 0
+            ) or 0))
+            setattr(
+                context, '_qqfarm_radish_inventory_qty',
+                max(0, previous_qty - planted_count),
+            )
+            setattr(context, '_qqfarm_radish_inventory_seen_ts', now_value)
+            setattr(context, '_qqfarm_radish_inventory_retry_count', 0)
+            remaining = max(0, int(getattr(
+                context, '_qqfarm_home_empty_land_remaining', planted_count
+            ) or 0) - planted_count)
+            setattr(context, '_qqfarm_home_empty_land_pending', True)
+            setattr(context, '_qqfarm_home_empty_land_remaining', remaining)
+            setattr(context, '_qqfarm_home_empty_zero_confirmations', 0)
+            setattr(context, '_qqfarm_force_self_cycle_next', True)
+            setattr(context, '_qqfarm_cycle_branch_hint', 'self')
+            setattr(context, '_qqfarm_friend_cycle_seen', False)
             try:
-                setattr(context, '_qqfarm_single_harvest_planting_pending', False)
+                _write(
+                    'v231 planted radish; retained home verification latch '
+                    'remaining=' + str(remaining) + ' inventory=' +
+                    str(max(0, previous_qty - planted_count))
+                )
             except BaseException:
                 pass
-        _write(
-            'v181 full-land planting cooldown armed ts=' +
-            ('%.3f' % _LAST_SUCCESSFUL_FULL_PLANTING_TS)
-        )
+
+        empty_match = regex.search(r'\u68c0\u6d4b\u5230\u3010\u7a7a\u5730\u3011\u5171\s*(\d+)\s*\u5757', text)
+        if empty_match is not None and context is not None:
+            priority_fn = globals().get('_qqfarm_update_home_priority')
+            if callable(priority_fn):
+                priority_fn(
+                    context, int(empty_match.group(1)), now_ts=now_value,
+                    reason='runtime-empty-log',
+                )
+
+        if context is not None and (
+            '\u5df2\u5b8c\u6210\u4e70\u79cd' in text or '\u5df2\u8d2d\u4e70\u79cd\u5b50' in text
+        ):
+            priority_fn = globals().get('_qqfarm_update_home_priority')
+            if callable(priority_fn):
+                priority_fn(
+                    context,
+                    max(1, int(getattr(
+                        context, '_qqfarm_recent_empty_land_count', 1
+                    ) or 1)),
+                    now_ts=now_value,
+                    reason='runtime-buy-seed-complete',
+                )
+
+        if context is not None and '\u5bb6\u91cc\u5df2\u65e0\u53ef\u6267\u884c\u7684\u4efb\u52a1' in text:
+            priority_fn = globals().get('_qqfarm_update_home_priority')
+            if callable(priority_fn):
+                priority_fn(
+                    context, 0, now_ts=now_value,
+                    reason='runtime-home-no-work',
+                )
+    except BaseException:
+        pass
+
+    try:
+        if '\u62d6\u62fd\u64ad\u79cd\u5df2\u8986\u76d6\u5168\u5730\u5757' in text:
+            _LAST_SUCCESSFUL_FULL_PLANTING_TS = now_value
+            if context is not None:
+                try:
+                    setattr(context, '_qqfarm_single_harvest_planting_pending', False)
+                    if _qqfarm_home_priority_active(context):
+                        setattr(context, '_qqfarm_force_self_cycle_next', True)
+                except BaseException:
+                    pass
+            _write(
+                'v181 full-land planting cooldown armed ts=' +
+                ('%.3f' % _LAST_SUCCESSFUL_FULL_PLANTING_TS)
+            )
     except BaseException:
         pass
     return float(_LAST_SUCCESSFUL_FULL_PLANTING_TS or 0.0)
-
 
 def _wrap_home_planting_cooldown(fn, name=''):
     """Skip immediate repeat planting scans after a verified full-land drag."""
@@ -5971,6 +6732,21 @@ def _wrap_home_planting_cooldown(fn, name=''):
                 ))
             except BaseException:
                 pending_single = False
+            try:
+                priority_fn = globals().get('_qqfarm_home_priority_active')
+                home_priority = bool(
+                    callable(priority_fn) and priority_fn(context)
+                )
+            except BaseException:
+                home_priority = False
+            if home_priority:
+                try:
+                    _write(
+                        'v231 bypassed planting cooldown to verify remaining home empty lands'
+                    )
+                except BaseException:
+                    pass
+                return fn(*args, **kwargs)
             try:
                 cooldown_seconds = float(getattr(
                     context, 'planting_post_success_cooldown_seconds', 180.0
@@ -6014,7 +6790,7 @@ def _note_runtime_single_harvest_outcome(message):
     """Record the native single-harvest branch so planting can run immediately."""
     global _SINGLE_HARVEST_EVENT_TOKEN
     try:
-        if '?????????' not in str(message or ''):
+        if '\u5355\u4e2a\u6536\u83b7\u8fde\u7eed\u70b9\u51fb\u5b8c\u6210' not in str(message or ''):
             return int(_SINGLE_HARVEST_EVENT_TOKEN or 0)
         _SINGLE_HARVEST_EVENT_TOKEN = int(
             _SINGLE_HARVEST_EVENT_TOKEN or 0
@@ -6974,7 +7750,7 @@ def _friend_guard_help_button_match(frame):
                 and float(match.get('gray', 0.0) or 0.0) >= 0.36
                 and float(match.get('edge', 0.0) or 0.0) >= 0.18
                 and float(home.get('gray', 0.0) or 0.0) >= 0.72
-                and float(home.get('edge', 0.0) or 0.0) >= 0.18
+                and float(home.get('edge', 0.0) or 0.0) >= 0.16
             )
             if soft_help:
                 match = dict(match)
@@ -11612,7 +12388,7 @@ def _friend_guard_friend_ui_state(frame):
         )
         home_is_strong_soft_edge = bool(
             float(home.get('gray', 0.0) or 0.0) >= 0.74
-            and float(home.get('edge', 0.0) or 0.0) >= 0.18
+            and float(home.get('edge', 0.0) or 0.0) >= 0.16
         )
         if home_is_strong_soft_edge and not bool(home.get('matched')):
             home = dict(home)
@@ -12777,6 +13553,30 @@ def _wrap_vip_business_func(fn, name=''):
                 )
             except BaseException:
                 dispatch_context = None
+            if 'process_friend_farm' in lname:
+                try:
+                    priority_fn = globals().get('_qqfarm_home_priority_active')
+                    if callable(priority_fn) and priority_fn(dispatch_context):
+                        finalize_fn = globals().get(
+                            '_finalize_friend_chain_after_troublemaker'
+                        )
+                        if callable(finalize_fn):
+                            finalize_fn(dispatch_context)
+                        setattr(dispatch_context, '_qqfarm_force_self_cycle_next', True)
+                        setattr(dispatch_context, '_qqfarm_cycle_branch_hint', 'self')
+                        setattr(dispatch_context, '_qqfarm_friend_cycle_seen', False)
+                        _write(
+                            'v231 blocked friend route while home empty-land priority is active'
+                        )
+                        return False
+                except BaseException as error:
+                    try:
+                        _write(
+                            'v231 home-priority friend gate error=' +
+                            repr(error)[:220]
+                        )
+                    except BaseException:
+                        pass
             if 'daily_troublemaker' in lname:
                 block_fn = globals().get('_friend_chain_should_block_troublemaker')
                 if callable(block_fn) and block_fn(dispatch_context):
@@ -13105,7 +13905,13 @@ def _patch_vip_business_loaded(tag=''):
                             new, ok = _wrap_home_planting_cooldown(
                                 old, prefix + '.' + n
                             )
+                        elif n == '_run_planting_flow':
+                            new, ok = _wrap_planting_flow_fast(
+                                old, prefix + '.' + n
+                            )
                         elif n == '_plant_seed_over_lands':
+                            new, ok = _wrap_planting_crop_context_func(old, m, prefix + '.' + n)
+                        elif n == '_execute_planting_by_mode':
                             new, ok = _wrap_planting_crop_context_func(old, m, prefix + '.' + n)
                         elif n == '_run_auto_fertilize_after_planting':
                             new, ok = _wrap_radish_fertilizer_func(old, m, prefix + '.' + n)
@@ -13123,6 +13929,10 @@ def _patch_vip_business_loaded(tag=''):
                             )
                         elif n == '_detect_seed_quantity_badges_by_ocr':
                             new, ok = _wrap_seed_quantity_badges_fast(
+                                old, prefix + '.' + n
+                            )
+                        elif n == '_detect_seed_count_ocr':
+                            new, ok = _wrap_radish_seed_count_fast(
                                 old, prefix + '.' + n
                             )
                         elif n == '_detect_empty_lands':
@@ -13568,7 +14378,7 @@ def _daily_flow_invalidate_success(context, flow, reason='entry-red-dot-present'
                 if callable(mark_fn):
                     mark_fn(
                         flow_key, 'success', target=target,
-                        reason='verified-direct-contact-send'
+                        reason='verified-direct-contact-send-v2'
                     )
                 apply_fn = globals().get('_daily_flow_apply_success_context')
                 if callable(apply_fn):
@@ -13617,19 +14427,7 @@ def _daily_flow_context_success_today(context, flow, today=None):
         if context is not None and field:
             recorded = str(getattr(context, field, '') or '').strip()
             if recorded == day:
-                if flow_key == 'share':
-                    # Re-sending to a contact is externally visible. Preserve a
-                    # same-day share marker when migrating older counter files,
-                    # then make it durable for subsequent restarts.
-                    mark_fn = globals().get('_daily_flow_mark_status')
-                    if callable(mark_fn):
-                        mark_fn(
-                            flow_key, 'success', target=target,
-                            reason='preserved-from-share-date'
-                        )
-                    _daily_flow_apply_success_context(context, flow_key, day)
-                    return True
-                # Other engine date fields are only caches. UI-confirmed durable
+                # Engine date fields are only caches. UI-confirmed durable
                 # status is the sole success proof, so clear stale seeded dates
                 # and allow the original should/run path to try again.
                 try:
@@ -13772,7 +14570,10 @@ def _patch_daily_flow_status_for_module(module, tag=''):
                                 ' recursion guard: ' + repr(error),
                             )
                         raise
-                    if __kind == 'should' and result and red_state is False:
+                    if (
+                        __kind == 'should' and result and red_state is False
+                        and __flow != 'share'
+                    ):
                         target = _daily_flow_target(__flow)
                         mark_fn = globals().get('_daily_flow_mark_status')
                         if callable(mark_fn):
@@ -14157,6 +14958,20 @@ def _wrap_runtime_diag_method(fn, label):
         return fn, False
     def _wrapped(*a, **k):
         self_obj = a[0] if a else None
+        try:
+            cap_fn = globals().get('_qqfarm_cap_runtime_recovery_waits')
+            recovery_changes = int(
+                cap_fn(self_obj) if callable(cap_fn) else 0
+            )
+            if recovery_changes:
+                _throttled_write(
+                    'v235-fast-runtime-recovery-' + str(type(self_obj).__name__),
+                    'v235 capped runtime recovery waits changed=' +
+                    str(recovery_changes) + ' restart=8s reconnect=12s',
+                    30.0,
+                )
+        except BaseException:
+            pass
         is_run_cycle = 'run_cycle' in str(label).lower()
         if is_run_cycle:
             try:
@@ -14176,6 +14991,24 @@ def _wrap_runtime_diag_method(fn, label):
                     )
             except BaseException:
                 pass
+        if is_run_cycle:
+            try:
+                priority_fn = globals().get('_qqfarm_home_priority_active')
+                if callable(priority_fn) and priority_fn(self_obj):
+                    run_fn = globals().get('_run_home_priority_self_pass')
+                    handled, result = (
+                        run_fn(self_obj) if callable(run_fn) else (False, None)
+                    )
+                    if handled:
+                        return result
+            except BaseException as error:
+                try:
+                    _write(
+                        'v231 home-priority run-cycle gate error=' +
+                        repr(error)[:220]
+                    )
+                except BaseException:
+                    pass
         if is_run_cycle and bool(getattr(
                 self_obj, '_qqfarm_force_self_cycle_next', False)):
             try:
@@ -14914,21 +15747,35 @@ def _share_recovery_due(context):
     try:
         if context is None:
             return False
+        log_fn = globals().get('_throttled_write')
+        if callable(log_fn):
+            log_fn('v240-share-due-enter', 'v240 share recovery due check entered', 30.0)
         backoff_fn = globals().get('_share_retry_backoff_active')
         if callable(backoff_fn) and backoff_fn(context):
+            if callable(log_fn):
+                log_fn('v240-share-due-backoff', 'v240 share recovery deferred: runtime backoff active', 30.0)
             return False
         if not _truthy(_cfg_get(_active_bot_sections(), 'enable_daily_share', 'False'), False):
+            if callable(log_fn):
+                log_fn('v240-share-due-disabled', 'v240 share recovery deferred: enable_daily_share=False', 30.0)
             return False
         cfg = _share_target_guard_config()
         if not cfg.get('enabled', False):
+            if callable(log_fn):
+                log_fn('v240-share-due-target', 'v240 share recovery deferred: exact target guard incomplete ' + repr(cfg)[:300], 30.0)
             return False
         success_fn = globals().get('_share_direct_success_recent')
         if callable(success_fn) and success_fn(cfg.get('target_name', '')):
+            if callable(log_fn):
+                log_fn('v240-share-due-success', 'v240 share recovery skipped: verified v2 success already exists', 30.0)
             return False
         today = time.strftime('%Y-%m-%d')
+        # A legacy date flag is not send evidence. The verified-success check
+        # above is the only same-day blocker; clear stale runtime state so the
+        # recovery path can perform one exact-target send and collect v2 proof.
         try:
             if str(getattr(context, 'share_last_date', '') or '') == today:
-                return False
+                setattr(context, 'share_last_date', '')
         except BaseException:
             pass
         try:
@@ -14938,6 +15785,8 @@ def _share_recovery_due(context):
             local = time.localtime()
             now_minute = int(local.tm_hour) * 60 + int(local.tm_min)
             if now_minute < due_minute:
+                if callable(log_fn):
+                    log_fn('v240-share-due-schedule', 'v240 share recovery deferred: schedule not due', 30.0)
                 return False
         except BaseException:
             pass
@@ -14946,12 +15795,22 @@ def _share_recovery_due(context):
         if last > 0.0 and (now_mono - last) < 2.5:
             return False
         setattr(context, '_qqfarm_share_visual_recovery_last_ts', now_mono)
+        if callable(log_fn):
+            log_fn('v240-share-due-ready', 'v240 share recovery is due for exact target=' + str(cfg.get('target_name', '')), 10.0)
         return True
     except BaseException:
         return False
 
 
-def _share_mark_runtime_success(context):
+def _share_mark_runtime_success(context, evidence=None):
+    proof = evidence if isinstance(evidence, dict) else {}
+    if not bool(
+        proof.get('target_match', False)
+        and int(proof.get('selected_count', 0) or 0) == 1
+        and proof.get('confirm_clicked', False)
+        and proof.get('dialog_closed', False)
+    ):
+        return False
     today = time.strftime('%Y-%m-%d')
     changed = False
     try:
@@ -15056,7 +15915,7 @@ def _share_mark_runtime_success(context):
         if callable(mark_fn):
             changed = bool(mark_fn(
                 'share', 'success', target=str(target or '').strip(),
-                reason='verified-direct-contact-send'
+                reason='verified-direct-contact-send-v2'
             )) or changed
     except BaseException:
         pass
@@ -15089,6 +15948,57 @@ def _run_share_prompt_recovery(context):
         module_fn = globals().get('_share_target_module')
         mod = module_fn() if callable(module_fn) else None
         dialog = _share_find_dialog_hwnd(mod)
+        if not dialog:
+            native_run = getattr(mod, 'run_daily_share', None) if mod is not None else None
+            native_running = bool(getattr(
+                context, '_qqfarm_share_native_recovery_running', False
+            ))
+            if callable(native_run) and not native_running:
+                try:
+                    setattr(context, '_qqfarm_share_native_recovery_running', True)
+                    frame_fn = globals().get('_get_frame_from_bot')
+                    game_frame = frame_fn(context) if callable(frame_fn) else None
+                    call_with_frame = False
+                    try:
+                        signature = __import__('inspect').signature(native_run)
+                        positional = [
+                            parameter for parameter in signature.parameters.values()
+                            if parameter.kind in (
+                                parameter.POSITIONAL_ONLY,
+                                parameter.POSITIONAL_OR_KEYWORD,
+                            )
+                        ]
+                        call_with_frame = (
+                            len(positional) >= 2
+                            or any(
+                                parameter.kind == parameter.VAR_POSITIONAL
+                                for parameter in signature.parameters.values()
+                            )
+                        )
+                    except BaseException:
+                        call_with_frame = game_frame is not None
+                    if call_with_frame:
+                        native_run(context, game_frame)
+                    else:
+                        native_run(context)
+                except BaseException as native_error:
+                    _throttled_write(
+                        'v243-share-native-error',
+                        'v243 native daily share recovery error ' + repr(native_error)[:240],
+                        10.0,
+                    )
+                finally:
+                    try:
+                        setattr(context, '_qqfarm_share_native_recovery_running', False)
+                    except BaseException:
+                        pass
+                success_fn = globals().get('_share_direct_success_recent')
+                try:
+                    if callable(success_fn) and success_fn(cfg.get('target_name', '')):
+                        return True
+                except BaseException:
+                    pass
+                dialog = _share_wait_dialog_hwnd(mod, timeout_ms=2500)
         if not dialog:
             try:
                 center = _share_find_prompt_button_center((context,), {})
@@ -16509,12 +17419,20 @@ def _share_search_and_maybe_confirm(mod, cfg):
         )
         _share_close_dialog(mod, hwnd)
         return False
+    evidence = {
+        'target_match': True,
+        'selected_count': int(proof.get('selected_count', 0) or 0),
+        'confirm_clicked': True,
+        'dialog_closed': True,
+    }
     record_fn = globals().get('_share_record_direct_success')
-    if callable(record_fn):
-        try:
-            record_fn(target)
-        except BaseException:
-            pass
+    if not callable(record_fn) or not bool(record_fn(target, evidence=evidence)):
+        _share_log_runtime(
+            'success-proof-persist-fail',
+            'daily share blocked: verified send proof could not be persisted target=' + target,
+            True,
+        )
+        return False
     _share_log_runtime(
         'sent-verified',
         'daily share sent once to exact target=' + target +
@@ -16531,28 +17449,69 @@ except BaseException:
     _SHARE_DIRECT_SUCCESS_STATE = {}
 
 
-def _share_record_direct_success(target):
-    recorded = False
-    try:
-        state = {
-            'target': str(target or '').strip(),
-            'ts': float(time.monotonic()),
-            'date': time.strftime('%Y-%m-%d'),
-        }
-        globals()['_SHARE_DIRECT_SUCCESS_STATE'] = state
-        recorded = True
-    except BaseException:
-        recorded = False
+def _share_record_direct_success(target, evidence=None):
+    """Persist share success only after exact target, click, and close are proven."""
+    proof = evidence if isinstance(evidence, dict) else {}
+    valid = bool(
+        proof.get('target_match', False)
+        and int(proof.get('selected_count', 0) or 0) == 1
+        and proof.get('confirm_clicked', False)
+        and proof.get('dialog_closed', False)
+    )
+    if not valid:
+        try:
+            log_fn = globals().get('_share_log_runtime')
+            if callable(log_fn):
+                log_fn(
+                    'success-proof-missing',
+                    'daily share success ignored: direct-send proof incomplete',
+                    True,
+                )
+        except BaseException:
+            pass
+        return False
+    target_value = str(target or '').strip()
+    state = {
+        'target': target_value,
+        'ts': float(time.monotonic()),
+        'date': time.strftime('%Y-%m-%d'),
+        'evidence': dict(proof),
+    }
+    globals()['_SHARE_DIRECT_SUCCESS_STATE'] = state
+    recorded = True
     persist_fn = globals().get('_daily_flow_mark_status')
     try:
         if callable(persist_fn):
             recorded = bool(persist_fn(
-                'share', 'success', target=str(target or '').strip()
+                'share', 'success', target=target_value,
+                reason='verified-direct-contact-send-v2',
             )) or recorded
     except BaseException:
         pass
+    try:
+        log_fn = globals().get('_share_log_runtime')
+        if callable(log_fn):
+            log_fn(
+                'sent-v239-proof',
+                'daily share completed: exact target selected, direct confirm clicked, '
+                'and dialog closed; target=' + target_value,
+                False,
+            )
+    except BaseException:
+        pass
+    try:
+        visible_fn = globals().get('_runtime_info_once')
+        if callable(visible_fn):
+            visible_fn(
+                'v239-share-complete-' + target_value,
+                '\u6bcf\u65e5\u5206\u4eab\u5df2\u6210\u529f\uff1a'
+                '\u5df2\u6821\u9a8c\u6307\u5b9a\u8054\u7cfb\u4eba\u3001'
+                '\u53d1\u9001\u786e\u8ba4\u548c\u5bf9\u8bdd\u6846\u5173\u95ed\uff0c\u8d26\u53f7=' +
+                target_value,
+            )
+    except BaseException:
+        pass
     return recorded
-
 
 
 def _share_direct_success_recent(target='', max_age=15.0):
@@ -17008,14 +17967,13 @@ def _wrap_share_entry_settle_func(fn):
                         return False
                     if _share_search_and_maybe_confirm(mod, cfg):
                         target = str(cfg.get('target_name', '') or '').strip()
-                        record_fn = globals().get('_share_record_direct_success')
-                        if callable(record_fn):
-                            record_fn(target)
                         context_fn = globals().get('_share_context_from_call')
                         context = context_fn(a, k) if callable(context_fn) else (a[0] if a else None)
                         mark_fn = globals().get('_share_mark_runtime_success')
+                        state = globals().get('_SHARE_DIRECT_SUCCESS_STATE', {})
+                        evidence = state.get('evidence') if isinstance(state, dict) else None
                         if context is not None and callable(mark_fn):
-                            mark_fn(context)
+                            mark_fn(context, evidence=evidence)
                         _share_log_runtime(
                             'sent-v83-direct',
                             'daily share completed immediately after share button target=' + target,
@@ -18103,6 +19061,70 @@ def _rewrite_entitlement_log_message(msg):
     return msg, False
 
 
+def _rewrite_fertilizer_execution_log_message(message):
+    """Relabel the native drag helper's planting words while it is applying fertilizer."""
+    try:
+        text = str(message or '')
+        context = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
+        crop_name = str(getattr(
+            context, '_qqfarm_planting_crop_context', ''
+        ) or '').strip()
+        if crop_name not in ('\u666e\u901a\u5316\u80a5', '\u6709\u673a\u5316\u80a5'):
+            return message, False
+        updated = text
+        updated = updated.replace(
+            '\u64ad\u79cd\u6267\u884c\u6a21\u5f0f',
+            '\u65bd\u80a5\u6267\u884c\u6a21\u5f0f',
+        )
+        updated = updated.replace(
+            '\u68c0\u6d4b\u5230\u3010\u79cd\u5b50-' + crop_name + '\u3011\uff0c'
+            '\u51c6\u5907\u62d6\u62fd\u64ad\u79cd(\u515c\u5e95)',
+            '\u68c0\u6d4b\u5230\u3010' + crop_name + '\u3011\uff0c'
+            '\u51c6\u5907\u62d6\u62fd\u65bd\u80a5',
+        )
+        updated = updated.replace(
+            '\u5df2\u5b8c\u6210\u64ad\u79cd\uff1a' + crop_name,
+            '\u5df2\u5b8c\u6210\u65bd\u80a5\uff1a' + crop_name,
+        )
+        updated = updated.replace(
+            '\u62d6\u62fd\u64ad\u79cd\u5df2\u8986\u76d6\u5168\u5730\u5757',
+            '\u62d6\u62fd\u65bd\u80a5\u5df2\u8986\u76d6\u76ee\u6807\u5730\u5757',
+        )
+        return updated, updated != text
+    except BaseException:
+        return message, False
+
+
+def _rewrite_verified_share_failure_log_message(message):
+    """Replace stale native failure text after an exact-target v2 send succeeded."""
+    try:
+        text = str(message or '')
+        if not any(fragment in text for fragment in (
+            '本次每日分享未执行',
+            '每日分享本轮未执行成功',
+        )):
+            return message, False
+        cfg_fn = globals().get('_share_target_guard_config')
+        cfg = cfg_fn() if callable(cfg_fn) else {}
+        target = str(cfg.get('target_name', '') or '').strip() if isinstance(cfg, dict) else ''
+        success_fn = globals().get('_share_direct_success_recent')
+        verified = False
+        if callable(success_fn):
+            try:
+                verified = bool(success_fn(target, max_age=86400.0))
+            except TypeError:
+                verified = bool(success_fn(target))
+        if not verified:
+            return message, False
+        return (
+            '每日分享已成功：指定联系人、'
+            '直接发送与对话框关闭已完整校验，账号=' + target,
+            True,
+        )
+    except BaseException:
+        return message, False
+
+
 def _install_runtime_log_patch():
     global _RUNTIME_LOG_PATCHED
     if _RUNTIME_LOG_PATCHED:
@@ -18133,10 +19155,12 @@ def _install_runtime_log_patch():
                 _note_runtime_planting_outcome(msg)
             except BaseException:
                 pass
-            new_msg, hit = _rewrite_entitlement_log_message(msg)
-            if hit:
+            share_msg, share_hit = _rewrite_verified_share_failure_log_message(msg)
+            display_msg, _fertilizer_hit = _rewrite_fertilizer_execution_log_message(share_msg)
+            new_msg, hit = _rewrite_entitlement_log_message(display_msg)
+            if share_hit or hit:
                 return orig_info(self, new_msg, **kwargs)
-            return orig_warning(self, msg, *args, **kwargs)
+            return orig_warning(self, display_msg, *args, **kwargs)
         def _patched_info(self, msg, *args, **kwargs):
             try:
                 _note_runtime_cycle_branch(msg)
@@ -18154,10 +19178,12 @@ def _install_runtime_log_patch():
                 _note_runtime_planting_outcome(msg)
             except BaseException:
                 pass
-            new_msg, hit = _rewrite_entitlement_log_message(msg)
+            share_msg, _share_hit = _rewrite_verified_share_failure_log_message(msg)
+            display_msg, _fertilizer_hit = _rewrite_fertilizer_execution_log_message(share_msg)
+            new_msg, hit = _rewrite_entitlement_log_message(display_msg)
             if hit:
                 return orig_info(self, new_msg, **kwargs)
-            return orig_info(self, msg, *args, **kwargs)
+            return orig_info(self, display_msg, *args, **kwargs)
         Logger.warning = _patched_warning
         Logger.warn = _patched_warning
         Logger.info = _patched_info

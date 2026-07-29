@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import types
 import unittest
 from pathlib import Path
@@ -4915,7 +4915,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
 
         def native_harvest(owner, game_frame):
             namespace["_note_runtime_single_harvest_outcome"](
-                "??????????????????????????"
+                "✔ 单个收获连续点击完成：count=1"
             )
             return False
 
@@ -6933,7 +6933,10 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             [102, 204, 306, 409, 511],
             [item["center"][0] for item in candidates],
         )
-        self.assertTrue(all(item["count"] == 3 for item in candidates))
+        self.assertTrue(
+            all(item["count"] == 1 for item in candidates),
+            "Visual-only badge detection must stay conservative instead of inventing stock.",
+        )
 
     def test_fast_seed_badge_wrapper_skips_native_ocr_for_visible_panel(self):
         namespace = load_functions(
@@ -7069,7 +7072,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         import time
         bot = types.SimpleNamespace(_qqfarm_backpack_candidates_seen_ts=time.time())
 
-        result = wrapped(bot, "???", 15)
+        result = wrapped(bot, "TARGET_CROP", 15)
 
         self.assertTrue(changed)
         self.assertFalse(result)
@@ -7096,7 +7099,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertAlmostEqual(0.62, calls[0][1], places=6)
         self.assertAlmostEqual(0.78, calls[1][1], places=6)
 
-    def test_player_level_uses_config_cache_before_slow_ocr(self):
+    def test_player_level_probes_live_ocr_then_uses_short_cache(self):
         namespace = load_functions("_configured_player_level", "_wrap_player_level_fast")
         namespace["_active_planting_sections"] = lambda: ["instance.1.planting", "planting"]
         namespace["_cfg_get"] = lambda sections, key, default: "120"
@@ -7113,13 +7116,13 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         bot = types.SimpleNamespace()
 
         self.assertTrue(changed)
-        self.assertEqual(120, wrapped(bot, object(), True))
-        self.assertEqual(120, wrapped(bot, object(), True))
-        self.assertEqual([], calls)
+        self.assertEqual(121, wrapped(bot, object(), True))
+        self.assertEqual(121, wrapped(bot, object(), True))
+        self.assertEqual(1, len(calls))
 
         bot._qqfarm_player_level_next_probe_ts = 0.0
         self.assertEqual(121, wrapped(bot, object(), True))
-        self.assertEqual(1, len(calls))
+        self.assertEqual(2, len(calls))
 
     def test_fertilizer_template_wrapper_uses_lower_contextual_threshold(self):
         namespace = load_functions("_wrap_fertilizer_template_fast")
@@ -7185,15 +7188,15 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         inactive = types.SimpleNamespace(_qqfarm_backpack_profile_active=False)
         frame = object()
 
-        result = wrapped(active, frame, (123, 456), context="? 1 ????")
+        result = wrapped(active, frame, (123, 456), context="land-1-preverified")
 
         self.assertTrue(changed)
         self.assertEqual((True, "hook-backpack-preverified-empty-land", 1.0, 123), result)
         self.assertEqual([], calls)
         self.assertTrue(any("v197 backpack preverified empty land" in message for message in logs))
 
-        self.assertIs(fallback, wrapped(inactive, frame, (123, 456), context="????"))
-        self.assertIs(fallback, wrapped(active, frame, None, context="????"))
+        self.assertIs(fallback, wrapped(inactive, frame, (123, 456), context="fallback"))
+        self.assertIs(fallback, wrapped(active, frame, None, context="fallback"))
         self.assertEqual(2, len(calls))
 
     def test_backpack_no_seed_hint_wrapper_saves_active_seed_panel_frame(self):
@@ -7223,7 +7226,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
 
         calls = []
         logs = []
-        native_result = (True, "??????", 0.99)
+        native_result = (True, "native-no-seed", 0.99)
 
         def original(bot, frame, seed_roi=None):
             calls.append((bot, frame, seed_roi))
@@ -7276,7 +7279,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual([], calls)
         self.assertTrue(any("visible seed inventory" in line for line in logs))
 
-    def test_fast_seed_badges_use_land_capacity_instead_of_magic_999(self):
+    def test_fast_seed_badges_never_invent_land_capacity_as_seed_stock(self):
         namespace = load_functions(
             "_seed_panel_strip_visible",
             "_fast_seed_badge_candidates_from_frame",
@@ -7294,8 +7297,8 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         result = wrapped(bot, self._synthetic_seed_panel_frame(), None)
 
         self.assertTrue(changed)
-        self.assertEqual([16] * 5, [item["count"] for item in result])
-        self.assertTrue(all(item["count"] != 999 for item in result))
+        self.assertEqual([1] * 5, [item["count"] for item in result])
+        self.assertTrue(all(item["count"] not in (16, 999) for item in result))
 
     def test_quad_seed_blacklist_uses_contextual_lower_threshold(self):
         namespace = load_functions("_wrap_backpack_seed_blacklist_fast")
@@ -9237,6 +9240,35 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertTrue(
             any("skip failed 2x2 seed and continue normal seeds" in line for line in logs)
         )
+
+    def test_quad_failure_cooldown_skips_repeated_special_seed_attempts(self):
+        namespace = load_functions("_wrap_backpack_seed_priority_planting_fast")
+        logs = []
+        namespace["_write"] = lambda message: logs.append(message)
+        namespace["time"] = types.SimpleNamespace(time=lambda: 120.0)
+        calls = []
+
+        def backpack_native(bot, lands, panel_settle):
+            calls.append((bot.enable_quad_act_seeds, bot.quad_act_seeds))
+            return True, [], False, None, True
+
+        wrapped, changed = namespace["_wrap_backpack_seed_priority_planting_fast"](
+            backpack_native, "synthetic._run_backpack_seed_priority_planting"
+        )
+        bot = types.SimpleNamespace(
+            enable_quad_act_seeds=True,
+            quad_act_seeds=True,
+            _qqfarm_quad_failure_cooldown_until=180.0,
+        )
+
+        result = wrapped(bot, [{"center": (1, 1)} for _ in range(8)], 1.5)
+
+        self.assertTrue(changed)
+        self.assertEqual((True, [], False, None, True), result)
+        self.assertEqual([(False, False)], calls)
+        self.assertTrue(bot.enable_quad_act_seeds)
+        self.assertTrue(bot.quad_act_seeds)
+        self.assertTrue(any("2x2 cooldown" in line for line in logs))
 
     def test_quad_group_finder_scans_every_local_2x2_in_24_land_grid(self):
         namespace = load_functions(

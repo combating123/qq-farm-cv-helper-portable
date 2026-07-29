@@ -144,7 +144,7 @@ def configure_strict_share_namespace(
 
     namespace.update({
         "_share_direct_success_recent": lambda *args, **kwargs: False,
-        "_share_record_direct_success": lambda target: state["recorded"].append(target) or True,
+        "_share_record_direct_success": lambda target, evidence=None: state["recorded"].append((target, evidence)) or True,
         "_share_wait_dialog_hwnd": lambda mod=None, timeout_ms=None: 77,
         "_share_find_dialog_hwnd": lambda mod=None: 77,
         "_share_activate_dialog": lambda mod, hwnd: True,
@@ -455,6 +455,68 @@ class ShareTargetPatchTests(unittest.TestCase):
             ns["_daily_entry_call_kind"]((), {"template_key": "share_btn_click"}),
         )
 
+    def test_share_recovery_ignores_same_day_runtime_date_without_v2_proof(self):
+        ns = load_named_hook_functions("_share_recovery_due")
+        context = types.SimpleNamespace(
+            share_last_date=time.strftime("%Y-%m-%d"),
+            _qqfarm_share_visual_recovery_last_ts=0.0,
+        )
+        fake_local = types.SimpleNamespace(tm_hour=5, tm_min=0)
+        ns.update({
+            "_share_retry_backoff_active": lambda value: False,
+            "_active_bot_sections": lambda: ["instance.1.bot", "bot"],
+            "_cfg_get": lambda sections, key, default=None: {
+                "enable_daily_share": "True",
+                "daily_share_time": "00:31",
+            }.get(key, default),
+            "_truthy": lambda value, default=False: str(value).lower() in ("1", "true", "yes", "on"),
+            "_share_target_guard_config": lambda: {"enabled": True, "target_name": "1000000001"},
+            "_share_direct_success_recent": lambda target="": False,
+            "time": types.SimpleNamespace(
+                strftime=lambda fmt: context.share_last_date,
+                localtime=lambda: fake_local,
+                monotonic=lambda: 100.0,
+            ),
+        })
+
+        self.assertTrue(ns["_share_recovery_due"](context))
+
+    def test_run_share_prompt_recovery_prefers_native_daily_flow_before_visual_click(self):
+        ns = load_named_hook_functions("_run_share_prompt_recovery")
+        events = []
+        context = types.SimpleNamespace()
+        state = {"dialog": 0}
+        module = types.SimpleNamespace(__name__="bot.synthetic.freebenefits_flow")
+
+        def run_daily_share(bot):
+            events.append(("native", bot))
+            state["dialog"] = 77
+            return False
+
+        module.run_daily_share = run_daily_share
+        ns.update({
+            "_share_target_guard_config": lambda: {
+                "enabled": True,
+                "target_name": "1000000001",
+                "dry_run": False,
+                "allow_group": False,
+            },
+            "_share_recovery_due": lambda value: True,
+            "_share_target_module": lambda: module,
+            "_share_find_dialog_hwnd": lambda mod=None: state["dialog"],
+            "_share_wait_dialog_hwnd": lambda mod=None, timeout_ms=None: state["dialog"],
+            "_share_find_prompt_button_center": lambda *args, **kwargs: events.append(("visual-probe",)) or (500, 600),
+            "_share_click_prompt_button": lambda *args, **kwargs: events.append(("visual-click",)) or True,
+            "_share_search_and_maybe_confirm": lambda mod, cfg: events.append(("send", cfg["target_name"])) or True,
+            "_share_mark_runtime_success": lambda value: True,
+            "_share_direct_success_recent": lambda target="": False,
+            "_share_log_runtime": lambda *args, **kwargs: None,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        self.assertTrue(ns["_run_share_prompt_recovery"](context))
+        self.assertEqual([("native", context), ("send", "1000000001")], events)
+
     def test_run_share_prompt_recovery_clicks_prompt_sends_target_and_marks_success(self):
         ns = load_named_hook_functions("_run_share_prompt_recovery")
         self.assertTrue(callable(ns.get("_run_share_prompt_recovery")))
@@ -516,8 +578,6 @@ class ShareTargetPatchTests(unittest.TestCase):
             [
                 ("dialog", module),
                 ("send", "1000000001"),
-                ("record", "1000000001"),
-                ("mark", context),
             ],
             events,
         )
@@ -999,7 +1059,12 @@ class ShareTargetPatchTests(unittest.TestCase):
         cfg = {"target_name": "1000000001", "allow_group": False, "dry_run": False}
 
         self.assertTrue(ns["_share_search_and_maybe_confirm"](None, cfg))
-        self.assertEqual(["1000000001"], state["recorded"])
+        self.assertEqual("1000000001", state["recorded"][0][0])
+        evidence = state["recorded"][0][1]
+        self.assertTrue(evidence["target_match"])
+        self.assertEqual(1, evidence["selected_count"])
+        self.assertTrue(evidence["confirm_clicked"])
+        self.assertTrue(evidence["dialog_closed"])
         self.assertEqual(
             [("uia", "target"), ("uia", "confirm")],
             [event for event in state["events"] if event[0] == "uia"],
@@ -1129,12 +1194,53 @@ class ShareTargetPatchTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {"LOCALAPPDATA": temp_dir}, clear=False):
                 first = load_named_hook_functions(*names)
                 first.update({"os": os, "time": time, "__file__": fake_hook})
-                self.assertTrue(first["_share_record_direct_success"]("1000000001"))
+                self.assertTrue(first["_share_record_direct_success"]("1000000001", evidence={'target_match': True, 'selected_count': 1, 'confirm_clicked': True, 'dialog_closed': True}))
 
                 second = load_named_hook_functions(*names)
                 second.update({"os": os, "time": time, "__file__": fake_hook})
                 self.assertTrue(second["_share_direct_success_recent"]("1000000001"))
 
+
+    def test_runtime_share_success_requires_direct_send_evidence(self):
+        ns = load_named_hook_functions('_share_record_direct_success')
+        calls = []
+        ns.update({
+            'time': time,
+            '_daily_flow_mark_status': (
+                lambda *args, **kwargs: calls.append((args, kwargs)) or True
+            ),
+            '_runtime_info_once': lambda *args, **kwargs: None,
+        })
+
+        self.assertFalse(ns['_share_record_direct_success']('1000000001'))
+        self.assertEqual([], calls)
+
+    def test_runtime_share_success_accepts_complete_direct_send_evidence(self):
+        ns = load_named_hook_functions('_share_record_direct_success')
+        calls = []
+        ns.update({
+            'time': time,
+            '_daily_flow_mark_status': (
+                lambda flow, status, target='', reason='':
+                calls.append((flow, status, target, reason)) or True
+            ),
+            '_runtime_info_once': lambda *args, **kwargs: None,
+        })
+        evidence = {
+            'target_match': True,
+            'selected_count': 1,
+            'confirm_clicked': True,
+            'dialog_closed': True,
+        }
+
+        self.assertTrue(ns['_share_record_direct_success'](
+            '1000000001', evidence=evidence
+        ))
+        self.assertIn(
+            ('share', 'success', '1000000001',
+             'verified-direct-contact-send-v2'),
+            calls,
+        )
 
     def test_runtime_share_success_also_persists_durable_flow_status(self):
         ns = load_named_hook_functions('_share_mark_runtime_success')
@@ -1157,9 +1263,9 @@ class ShareTargetPatchTests(unittest.TestCase):
             '_throttled_write': lambda *args, **kwargs: None,
         })
 
-        self.assertTrue(ns['_share_mark_runtime_success'](context))
+        self.assertTrue(ns['_share_mark_runtime_success'](context, evidence={'target_match': True, 'selected_count': 1, 'confirm_clicked': True, 'dialog_closed': True}))
         self.assertIn(
-            ('share', 'success', '1000000001', 'verified-direct-contact-send'),
+            ('share', 'success', '1000000001', 'verified-direct-contact-send-v2'),
             calls,
         )
 
@@ -1215,7 +1321,7 @@ class ShareTargetPatchTests(unittest.TestCase):
                 save_daily_counters=saver,
             )
 
-            self.assertTrue(ns['_share_mark_runtime_success'](context))
+            self.assertTrue(ns['_share_mark_runtime_success'](context, evidence={'target_match': True, 'selected_count': 1, 'confirm_clicked': True, 'dialog_closed': True}))
             os_proxy.replace.assert_not_called()
             saver.assert_not_called()
             self.assertEqual(today, context.share_last_date)

@@ -48,6 +48,7 @@ function Test-ExcludedRelativePath([string]$RelativePath) {
         if ($ExcludedDirs -contains $part.ToLowerInvariant()) { return $true }
     }
     $name = [IO.Path]::GetFileName($RelativePath)
+    if ($name -ieq 'config-multi.ini') { return $true }
     if ($name -like '*.log' -or $name -like '*.tmp' -or $name -like '*.bak*' -or $name -like '*.bad-*') { return $true }
     return $false
 }
@@ -72,35 +73,37 @@ function Sync-NewerFiles([string]$Source, [string]$Destination) {
     }
 }
 
-function Disable-CloseReopenPeriodicRestart([string]$ConfigPath) {
-    if (!(Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { return }
-    $text = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8
-    $updated = [regex]::Replace(
-        $text,
-        '(?m)^enable_periodic_restart\s*=\s*.*$',
-        'enable_periodic_restart = False'
-    )
-    if ($updated -ne $text) {
-        [IO.File]::WriteAllText($ConfigPath, $updated, (New-Object Text.UTF8Encoding($false)))
+function Sync-LegacyUserConfig([string]$ProfileConfig, [string]$PortableConfig) {
+    # config-multi.ini is never parsed or rewritten by the launcher. The active
+    # profile is authoritative while it exists; Copy-Item preserves the exact
+    # bytes/BOM and therefore cannot corrupt Chinese setting values.
+    if (Test-Path -LiteralPath $ProfileConfig -PathType Leaf) {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $PortableConfig) | Out-Null
+        Copy-Item -LiteralPath $ProfileConfig -Destination $PortableConfig -Force
+        return
+    }
+    if (Test-Path -LiteralPath $PortableConfig -PathType Leaf) {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ProfileConfig) | Out-Null
+        Copy-Item -LiteralPath $PortableConfig -Destination $ProfileConfig -Force
     }
 }
 
-function Disable-PeriodicRestartJson([string]$ConfigPath) {
-    if (!(Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { return }
-    try {
-        $data = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($null -eq $data.tasks -or $null -eq $data.tasks.restart) { return }
-        $data.tasks.restart.enabled = $false
-        $updated = $data | ConvertTo-Json -Depth 100
-        [IO.File]::WriteAllText(
-            $ConfigPath,
-            $updated + [Environment]::NewLine,
-            (New-Object Text.UTF8Encoding($false))
-        )
-    } catch {
-        Write-WatchdogLog ('periodic-restart-json-disable-error path=' + $ConfigPath + ' error=' + $_.Exception.Message)
-    }
+
+function Remove-Utf8BomFromConfig([string]$Path) {
+    # The packaged application reads config-multi.ini as plain UTF-8. A BOM is
+    # interpreted as text before the first section header and makes the entire
+    # file look malformed. Remove only those three marker bytes; every setting
+    # byte after them stays unchanged.
+    if (!(Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    if ($bytes.Length -lt 3) { return $false }
+    if ($bytes[0] -ne 0xEF -or $bytes[1] -ne 0xBB -or $bytes[2] -ne 0xBF) { return $false }
+    $clean = New-Object byte[] ($bytes.Length - 3)
+    [Array]::Copy($bytes, 3, $clean, 0, $clean.Length)
+    [IO.File]::WriteAllBytes($Path, $clean)
+    return $true
 }
+
 
 function Stop-ExistingAssistantInstances {
     $existing = @(Get-Process -Name 'QQFarmCVHelper' -ErrorAction SilentlyContinue)
@@ -146,7 +149,6 @@ function Stop-ExistingAssistantInstances {
     }
     return $true
 }
-
 
 function Set-AssistantProcessLimits([System.Diagnostics.Process]$Process) {
     $resourceLog = Join-Path $LogDir 'resource_control.log'
@@ -202,18 +204,21 @@ function Write-WatchdogLog([string]$Message) {
 }
 
 New-Item -ItemType Directory -Force -Path $LogDir,$HookLogDir,$LegacyPortable,$CurrentPortable | Out-Null
-# Merge any newer profile-side changes into the portable snapshot, then seed both profiles.
+$LegacyProfileConfig = Join-Path $LegacyProfile 'config-multi.ini'
+$LegacyPortableConfig = Join-Path $LegacyPortable 'config-multi.ini'
+# Preserve all setting bytes while removing the UTF-8 BOM that the packaged
+# application's plain UTF-8 parser treats as a malformed first section.
+[void](Remove-Utf8BomFromConfig -Path $LegacyProfileConfig)
+[void](Remove-Utf8BomFromConfig -Path $LegacyPortableConfig)
+# Generic profile sync explicitly excludes config-multi.ini so timestamp
+# ordering can never replace the active settings.
+Sync-LegacyUserConfig `
+    $LegacyProfileConfig `
+    $LegacyPortableConfig
 Sync-NewerFiles $LegacyProfile $LegacyPortable
 Sync-NewerFiles $CurrentProfile $CurrentPortable
 Sync-NewerFiles $LegacyPortable $LegacyProfile
 Sync-NewerFiles $CurrentPortable $CurrentProfile
-
-# A close/reopen periodic restart can leave the assistant offline if relaunch fails.
-# Keep scheduled quiet hours, but disable self-closing in every active copy.
-Disable-CloseReopenPeriodicRestart (Join-Path $LegacyProfile 'config-multi.ini')
-Disable-CloseReopenPeriodicRestart (Join-Path $LegacyPortable 'config-multi.ini')
-Disable-PeriodicRestartJson (Join-Path $CurrentProfile 'instances\default\configs\config.json')
-Disable-PeriodicRestartJson (Join-Path $CurrentPortable 'instances\default\configs\config.json')
 
 $env:QQFARM_HOOK_LOG_PATH = Join-Path $HookLogDir 'hook_runtime_log.txt'
 $env:QQFARM_PROXY_LOG_PATH = Join-Path $LogDir 'proxy_dll_load.log'
@@ -252,7 +257,10 @@ while ($true) {
     $lastExitCode = [int]$assistantProcess.ExitCode
     $runtimeSeconds = [int]((Get-Date) - $startedAt).TotalSeconds
 
-    # Save settings and counters after every run before deciding whether to recover.
+    # Save the active settings as an exact byte copy; never parse or normalize it.
+    Sync-LegacyUserConfig `
+        (Join-Path $LegacyProfile 'config-multi.ini') `
+        (Join-Path $LegacyPortable 'config-multi.ini')
     Sync-NewerFiles $LegacyProfile $LegacyPortable
     Sync-NewerFiles $CurrentProfile $CurrentPortable
 

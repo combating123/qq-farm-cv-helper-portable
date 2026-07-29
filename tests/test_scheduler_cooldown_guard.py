@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import unittest
 from pathlib import Path
 
@@ -54,73 +54,41 @@ class SchedulerCooldownGuardTests(unittest.TestCase):
         self.assertIsNotNone(effective)
         self.assertEqual(1, effective(3, 30))
 
-    def test_config_file_sync_repairs_active_friend_cooldown(self):
+    def test_friend_cooldown_helper_is_pure_and_does_not_rewrite_config(self):
         source = HOOK.read_text(encoding="utf-8-sig")
-        self.assertIn("friend_colddown_time", source)
-        self.assertIn("_effective_friend_cooldown(check_interval, friend_cooldown)", source)
+        self.assertIn("def _effective_friend_cooldown", source)
+        start = source.index("def _force_autolaunch_config_file")
+        end = source.index("def _config_override_value", start)
+        self.assertNotIn("friend_colddown_time", source[start:end])
 
-    def test_runtime_config_keeps_required_friend_workflow_enabled(self):
+    def test_runtime_config_does_not_override_user_business_switches(self):
         namespace = load_functions("_norm_key", "_config_override_value")
         namespace.update({
-            "_friend_pause_active": lambda: False,
-            "_active_bot_sections": lambda: ["instance.1.bot", "bot"],
-            "_active_friend_sections": lambda: ["instance.1.friend", "friend"],
-            "_cfg_get": lambda sections, option, default=None: default,
-            "_effective_friend_cooldown": lambda interval, cooldown: 10,
             "_active_is_weixin_mode": lambda: False,
-            "_FRIEND_PAUSE_FORCE_FALSE": set(),
             "_VIP_CONFIG_FORCED_BOOL_TRUE": set(),
-            "_REQUIRED_FRIEND_BOT_BOOL_TRUE": {
-                "enable_process_friend", "enable_process_friend_help_entry"
-            },
-            "_REQUIRED_FRIEND_SECTION_BOOL_TRUE": {
-                "enable_steal", "enable_help", "enable_friend_steal_one",
-                "enable_friend_steal_one_fallback",
-                "enable_bottom_friend_list_help_all",
-                "enable_bottom_friend_list_steal",
-            },
         })
         override = namespace["_config_override_value"]
-        for option in namespace["_REQUIRED_FRIEND_BOT_BOOL_TRUE"]:
-            self.assertIs(True, override("instance.1.bot", option, "bool"), option)
-        for option in namespace["_REQUIRED_FRIEND_SECTION_BOOL_TRUE"]:
-            self.assertIs(True, override("instance.1.friend", option, "bool"), option)
+        for section, option in (
+            ("instance.1.bot", "enable_process_friend"),
+            ("instance.1.bot", "enable_rest_window"),
+            ("instance.1.bot", "enable_periodic_restart"),
+            ("instance.1.friend", "enable_steal"),
+            ("instance.1.friend", "enable_bottom_friend_list_steal"),
+            ("instance.1.self", "auto_fertilize_one"),
+            ("instance.1.planting", "player_level"),
+            ("instance.1.bot", "friend_colddown_time"),
+        ):
+            self.assertIsNone(override(section, option, "bool"), option)
+            self.assertIsNone(override(section, option, "str"), option)
 
-    def test_runtime_config_keeps_bottom_steal_navigation_enabled(self):
-        namespace = load_functions("_norm_key", "_config_override_value")
-        namespace.update({
-            "_friend_pause_active": lambda: False,
-            "_active_bot_sections": lambda: ["instance.1.bot", "bot"],
-            "_active_friend_sections": lambda: ["instance.1.friend", "friend"],
-            "_cfg_get": lambda sections, option, default=None: default,
-            "_effective_friend_cooldown": lambda interval, cooldown: 10,
-            "_active_is_weixin_mode": lambda: False,
-            "_FRIEND_PAUSE_FORCE_FALSE": set(),
-            "_VIP_CONFIG_FORCED_BOOL_TRUE": set(),
-            "_REQUIRED_FRIEND_BOT_BOOL_TRUE": set(),
-            "_REQUIRED_FRIEND_SECTION_BOOL_TRUE": {
-                "enable_bottom_friend_list_steal"
-            },
-        })
-        override = namespace["_config_override_value"]
-        self.assertIs(True, override(
-            "instance.1.friend", "enable_bottom_friend_list_steal", "bool"
-        ))
-        self.assertEqual("True", override(
-            "friend", "enable_bottom_friend_list_steal", "str"
-        ))
-
-    def test_config_file_sync_keeps_bottom_steal_navigation_enabled(self):
+    def test_config_file_patch_is_read_only_for_user_settings(self):
         source = HOOK.read_text(encoding="utf-8-sig")
-        self.assertIn("active_friend_secs", source)
-        self.assertIn("enable_bottom_friend_list_steal", source)
-        self.assertIn("cur_sec in active_friend_secs", source)
-
-    def test_runtime_config_override_uses_repaired_friend_cooldown(self):
-        source = HOOK.read_text(encoding="utf-8-sig")
-        self.assertIn("if o == 'friend_colddown_time'", source)
-        self.assertIn("kind == 'int'", source)
-
+        start = source.index("def _force_autolaunch_config_file")
+        end = source.index("def _config_override_value", start)
+        body = source[start:end]
+        self.assertNotIn("open(cfg, 'wb')", body)
+        self.assertNotIn("line = key + ' = True'", body)
+        self.assertNotIn("friend_colddown_time = ", body)
 
     def test_runtime_object_restores_all_required_friend_workflow_switches(self):
         namespace = load_functions("_restore_runtime_business_switches")
