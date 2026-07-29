@@ -55,6 +55,28 @@ Copy-Item -LiteralPath $changelogSource -Destination (Join-Path $stageFull $rele
     $Version + [Environment]::NewLine,
     [Text.UTF8Encoding]::new($false)
 )
+$projectInfoName = (
+    [char]0x9879 + [char]0x76EE + [char]0x8BF4 + [char]0x660E + '.txt'
+)
+$projectInfo = @(
+    'CV 农场助手 v' + $Version,
+    '项目仓库：https://github.com/combating123/qq-farm-cv-helper-portable',
+    '发布页：https://github.com/combating123/qq-farm-cv-helper-portable/releases',
+    '',
+    '更新说明：',
+    '1. 启动、更新和监督重启均保留用户原设置；',
+    '2. 自家收获、种满、施肥和空地复核优先于好友巡检；',
+    '3. 2x2 特殊种子仅使用真实相邻田字型，失败后继续普通种子；',
+    '4. 好友链保留首位、护主、偷取后务农、封禁返回和装扮门禁；',
+    '5. 每日分享只在精确目标、单联系人、直接发送和对话框关闭全部校验后记录成功。',
+    '',
+    '完整迭代内容请查看 README.md 和 版本与更新日志.md。'
+) -join [Environment]::NewLine
+[IO.File]::WriteAllText(
+    (Join-Path $stageFull $projectInfoName),
+    $projectInfo + [Environment]::NewLine,
+    [Text.UTF8Encoding]::new($false)
+)
 
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 Compress-Archive -Path (Join-Path $stageFull '*') -DestinationPath $zip -CompressionLevel Optimal
