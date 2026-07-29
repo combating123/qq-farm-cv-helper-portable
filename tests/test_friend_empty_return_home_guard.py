@@ -2112,7 +2112,8 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         namespace["_FRIEND_STEAL_ALL_TEMPLATE_PATH"] = str(
             ROOT / "portable" / "friend_steal_all_button.png"
         )
-        help_frame = cv2.imread(str(ROOT.parents[1] / "verification-evidence" / "v67-stuck-friend-client.png"))
+        evidence_frame = ROOT.parents[1] / "verification-evidence" / "v67-stuck-friend-client.png"
+        help_frame = cv2.imread(str(evidence_frame)) if evidence_frame.is_file() else None
         if help_frame is None:
             help_frame = cv2.imread(str(FIXTURES / "friend_home_low_edge_live.png"))
         steal_frame = cv2.imread(str(FIXTURES / "friend_steal_all_live.png"))
