@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = ROOT / "portable" / "launcher.ps1"
 START_CMD = next((ROOT / "portable").glob("*.cmd"))
+START_VBS = ROOT / "portable" / "StartFarmAssistant.vbs"
 
 
 def extract_powershell_function(text, name):
@@ -63,25 +64,141 @@ class LauncherStabilityTests(unittest.TestCase):
         )
         self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
 
-    def test_launcher_does_not_rewrite_user_settings(self):
+    def test_launcher_keeps_user_settings_out_of_its_source_edits(self):
         text = LAUNCHER.read_text(encoding="utf-8-sig")
         self.assertNotIn("Disable-CloseReopenPeriodicRestart", text)
         self.assertNotIn("Disable-PeriodicRestartJson", text)
         self.assertNotIn("enable_periodic_restart = False", text)
-        self.assertIn("Sync-LegacyUserConfig", text)
+        self.assertIn("Initialize-PortableProfile", text)
+        self.assertNotIn("Sync-LegacyUserConfig", text)
+        self.assertNotIn("Sync-NewerFiles", text)
 
-    def test_generic_profile_sync_excludes_legacy_user_config(self):
-        self.assertEqual(
-            "True",
-            call_powershell_function("Test-ExcludedRelativePath", "config-multi.ini"),
+    def test_launcher_redirects_child_appdata_to_portable_windows_profile_without_reverse_sync(self):
+        text = LAUNCHER.read_text(encoding="utf-8-sig")
+        self.assertIn("$HostLocalAppData = $env:LOCALAPPDATA", text)
+        self.assertIn("$HostAppData = $env:APPDATA", text)
+        self.assertIn("$PortableProfileRoot = Join-Path $PortableRoot 'WindowsProfile'", text)
+        self.assertIn("$PortableLocalAppData = Join-Path $PortableProfileRoot 'LocalAppData'", text)
+        self.assertIn("$PortableAppData = Join-Path $PortableProfileRoot 'RoamingAppData'", text)
+        self.assertIn("$env:LOCALAPPDATA = $PortableLocalAppData", text)
+        self.assertIn("$env:APPDATA = $PortableAppData", text)
+        self.assertIn("$MigrationMarker = Join-Path $PortableProfileRoot 'migration-v1.complete'", text)
+        self.assertNotIn("Sync-NewerFiles $LegacyProfile $HostLegacyProfile", text)
+        self.assertNotIn("Sync-NewerFiles $CurrentProfile $HostCurrentProfile", text)
+        self.assertNotIn("Copy-Item -LiteralPath $LegacyProfileConfig -Destination $HostLegacyConfig", text)
+        self.assertNotIn("Remove-Utf8BomFromConfig -Path $HostLegacyConfig", text)
+
+    def test_portable_initial_migration_keeps_host_config_byte_exact_and_never_reimports_after_marker(self):
+        text = LAUNCHER.read_text(encoding="utf-8-sig")
+        required_functions = (
+            "Test-ExcludedRelativePath",
+            "Import-MissingProfileFiles",
+            "Remove-Utf8BomFromConfig",
+            "Import-MostRecentFile",
+            "Initialize-PortableConfiguration",
+            "Initialize-PortableProfile",
         )
+        function_text = "\n\n".join(
+            extract_powershell_function(text, name) for name in required_functions
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            host_legacy = root / "host-local" / "qq-farm-bot-rev"
+            host_current = root / "host-roaming" / "QQFarmCopilot"
+            previous_legacy = root / "previous-portable" / "legacy-qq-farm-bot-rev"
+            previous_current = root / "previous-portable" / "QQFarmCopilot"
+            portable_legacy = root / "portable-profile" / "LocalAppData" / "qq-farm-bot-rev"
+            portable_current = root / "portable-profile" / "RoamingAppData" / "QQFarmCopilot"
+            marker = root / "portable-profile" / "migration-v1.complete"
+            host_legacy.mkdir(parents=True)
+            host_current.mkdir(parents=True)
+            previous_legacy.mkdir(parents=True)
+            previous_current.mkdir(parents=True)
+            portable_legacy.mkdir(parents=True)
+            portable_current.mkdir(parents=True)
+
+            host_config_bytes = (
+                b"\xef\xbb\xbf[instance.1.bot]\r\n"
+                b"enable_rest_window = False\r\n"
+                b"[instance.1.planting]\r\nplayer_level = 121\r\n"
+            )
+            host_config = host_legacy / "config-multi.ini"
+            host_config.write_bytes(host_config_bytes)
+            (previous_legacy / "config-multi.ini").write_text(
+                "[instance.1.bot]\nenable_rest_window = True\n",
+                encoding="utf-8",
+            )
+            (portable_legacy / "config-multi.ini").write_text(
+                "[instance.1.bot]\nenable_rest_window = True\n",
+                encoding="utf-8",
+            )
+            (host_legacy / "daily_flow_status.json").write_text('{"source":"host"}', encoding="utf-8")
+            newest_daily = previous_current / "daily_flow_status.json"
+            newest_daily.write_text('{"source":"previous-portable"}', encoding="utf-8")
+            newest_time = newest_daily.stat().st_mtime + 60
+            import os
+            os.utime(newest_daily, (newest_time, newest_time))
+
+            def escape(value):
+                return str(value).replace("'", "''")
+
+            command = (
+                function_text
+                + "\n$first = Initialize-PortableProfile"
+                + " -HostLegacyProfile '" + escape(host_legacy) + "'"
+                + " -HostCurrentProfile '" + escape(host_current) + "'"
+                + " -PreviousLegacyProfile '" + escape(previous_legacy) + "'"
+                + " -PreviousCurrentProfile '" + escape(previous_current) + "'"
+                + " -LegacyProfile '" + escape(portable_legacy) + "'"
+                + " -CurrentProfile '" + escape(portable_current) + "'"
+                + " -MigrationMarker '" + escape(marker) + "'"
+                + "; Write-Output ('first=' + $first)"
+            )
+            completed = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-Command", command],
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
+            self.assertIn("first=True", completed.stdout)
+            self.assertEqual(host_config_bytes, host_config.read_bytes())
+            self.assertEqual(host_config_bytes[3:], (portable_legacy / "config-multi.ini").read_bytes())
+            self.assertEqual('{"source":"previous-portable"}', (portable_current / "daily_flow_status.json").read_text(encoding="utf-8"))
+            self.assertTrue(marker.is_file())
+
+            host_config.write_bytes(b"[instance.1.bot]\r\nenable_rest_window = True\r\n")
+            second_command = (
+                function_text
+                + "\n$second = Initialize-PortableProfile"
+                + " -HostLegacyProfile '" + escape(host_legacy) + "'"
+                + " -HostCurrentProfile '" + escape(host_current) + "'"
+                + " -PreviousLegacyProfile '" + escape(previous_legacy) + "'"
+                + " -PreviousCurrentProfile '" + escape(previous_current) + "'"
+                + " -LegacyProfile '" + escape(portable_legacy) + "'"
+                + " -CurrentProfile '" + escape(portable_current) + "'"
+                + " -MigrationMarker '" + escape(marker) + "'"
+                + "; Write-Output ('second=' + $second)"
+            )
+            completed = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-Command", second_command],
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
+            self.assertIn("second=False", completed.stdout)
+            self.assertEqual(host_config_bytes[3:], (portable_legacy / "config-multi.ini").read_bytes())
 
     def test_config_encoding_normalizer_removes_only_utf8_bom(self):
         text = LAUNCHER.read_text(encoding="utf-8-sig")
         function_text = extract_powershell_function(text, "Remove-Utf8BomFromConfig")
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "config-multi.ini"
-            content = "[planting]\r\npreferred_crop = 金花茶\r\nplayer_level = 121\r\n".encode("utf-8")
+            content = "[planting]\r\npreferred_crop = ???\r\nplayer_level = 121\r\n".encode("utf-8")
             config_path.write_bytes(b"\xef\xbb\xbf" + content)
             escaped = str(config_path).replace("'", "''")
             command = function_text + "\nRemove-Utf8BomFromConfig -Path '" + escaped + "'"
@@ -94,81 +211,6 @@ class LauncherStabilityTests(unittest.TestCase):
             )
             self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
             self.assertEqual(content, config_path.read_bytes())
-
-    def test_launcher_normalizes_config_encoding_before_profile_sync(self):
-        text = LAUNCHER.read_text(encoding="utf-8-sig")
-        runtime = text[text.index("New-Item -ItemType Directory -Force -Path $LogDir,$HookLogDir"):]
-        normalize_index = runtime.index("Remove-Utf8BomFromConfig -Path $LegacyProfileConfig")
-        sync_index = runtime.index("Sync-LegacyUserConfig `")
-        self.assertLess(normalize_index, sync_index)
-
-    def test_legacy_user_config_sync_keeps_active_profile_authoritative_and_byte_exact(self):
-        text = LAUNCHER.read_text(encoding="utf-8-sig")
-        function_text = extract_powershell_function(text, "Sync-LegacyUserConfig")
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            active = root / "active.ini"
-            portable = root / "portable.ini"
-            active_bytes = (
-                "[instance.1.bot]\r\nenable_rest_window = False\r\n"
-                "[instance.1.planting]\r\npreferred_crop = 金花茶\r\n"
-            ).encode("utf-8-sig")
-            active.write_bytes(active_bytes)
-            portable.write_text(
-                "[instance.1.bot]\nenable_rest_window = True\n",
-                encoding="utf-8",
-            )
-            active_escaped = str(active).replace("'", "''")
-            portable_escaped = str(portable).replace("'", "''")
-            command = (
-                function_text
-                + "\nSync-LegacyUserConfig -ProfileConfig '"
-                + active_escaped
-                + "' -PortableConfig '"
-                + portable_escaped
-                + "'"
-            )
-            completed = subprocess.run(
-                ["powershell.exe", "-NoProfile", "-Command", command],
-                check=False,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
-            self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
-            self.assertEqual(active_bytes, active.read_bytes())
-            self.assertEqual(active_bytes, portable.read_bytes())
-
-    def test_legacy_user_config_sync_restores_only_when_active_profile_is_missing(self):
-        text = LAUNCHER.read_text(encoding="utf-8-sig")
-        function_text = extract_powershell_function(text, "Sync-LegacyUserConfig")
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = Path(temp_dir)
-            active = root / "missing" / "active.ini"
-            portable = root / "portable.ini"
-            portable_bytes = (
-                "[instance.1.bot]\r\nenable_rest_window = False\r\n"
-            ).encode("utf-8-sig")
-            portable.write_bytes(portable_bytes)
-            active_escaped = str(active).replace("'", "''")
-            portable_escaped = str(portable).replace("'", "''")
-            command = (
-                function_text
-                + "\nSync-LegacyUserConfig -ProfileConfig '"
-                + active_escaped
-                + "' -PortableConfig '"
-                + portable_escaped
-                + "'"
-            )
-            completed = subprocess.run(
-                ["powershell.exe", "-NoProfile", "-Command", command],
-                check=False,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-            )
-            self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
-            self.assertEqual(portable_bytes, active.read_bytes())
 
     def test_known_native_faults_are_restartable(self):
         self.assertEqual("restart", call_powershell_function("Get-AssistantExitDisposition", -1073741819))
@@ -205,17 +247,77 @@ class LauncherStabilityTests(unittest.TestCase):
         self.assertIn("-WindowStyle Hidden", elevated)
         self.assertNotIn("-Wait", elevated)
 
+    def test_vbs_one_click_entry_exists_and_explains_a_missing_launcher(self):
+        self.assertTrue(START_VBS.is_file(), "missing one-click VBS entry")
+        text = START_VBS.read_text(encoding="utf-8-sig")
+        self.assertIn("--check", text)
+        self.assertIn("launcher.ps1", text)
+        self.assertIn("Launcher not found", text)
+        self.assertIn("shell.Run commandLine, 0, False", text)
+
+    def test_vbs_check_mode_executes_without_a_script_parse_error(self):
+        completed = subprocess.run(
+            ["cscript.exe", "//nologo", str(START_VBS), "--check"],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
+        self.assertIn("one-click launcher parsed", completed.stdout)
+
+    def test_vbs_builds_a_single_quoted_launcher_path(self):
+        text = START_VBS.read_text(encoding="utf-8-sig")
+        instrumented = text.replace(
+            "shell.Run commandLine, 0, False",
+            "WScript.Echo commandLine\nWScript.Quit 0",
+            1,
+        )
+        self.assertNotEqual(text, instrumented)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            script_path = temp_root / "StartFarmAssistant.vbs"
+            launcher_path = temp_root / "launcher.ps1"
+            script_path.write_text(instrumented, encoding="utf-8")
+            launcher_path.write_text("# launcher fixture\n", encoding="utf-8")
+            completed = subprocess.run(
+                ["cscript.exe", "//nologo", str(script_path)],
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+
+        self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
+        expected = (
+            "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass "
+            f'-File "{launcher_path}"'
+        )
+        self.assertEqual(expected, completed.stdout.strip())
+
     def test_cmd_starts_powershell_hidden(self):
         text = START_CMD.read_text(encoding="utf-8-sig")
         self.assertIn("-WindowStyle Hidden", text)
         self.assertIn("launcher.ps1", text)
 
-    def test_hook_log_uses_ascii_localappdata_path_instead_of_chinese_install_path(self):
+    def test_runtime_logs_and_daily_state_stay_under_the_portable_app_directory(self):
         text = LAUNCHER.read_text(encoding="utf-8-sig")
-        self.assertIn(r"$HookLogDir = Join-Path $env:LOCALAPPDATA 'qq-farm-bot-rev\logs'", text)
-        self.assertIn("New-Item -ItemType Directory -Force -Path $LogDir,$HookLogDir", text)
+        self.assertIn("$HookLogDir = Join-Path $AppDir 'logs'", text)
+        self.assertIn("$LogDir, $HookLogDir, $PortableProfileRoot", text)
         self.assertIn("$env:QQFARM_HOOK_LOG_PATH = Join-Path $HookLogDir 'hook_runtime_log.txt'", text)
-        self.assertNotIn("$env:QQFARM_HOOK_LOG_PATH = Join-Path $LogDir 'hook_runtime_log.txt'", text)
+        self.assertIn(
+            "$env:QQFARM_DAILY_FLOW_STATUS_PATH = Join-Path $CurrentProfile 'daily_flow_status.json'",
+            text,
+        )
+        self.assertIn(
+            "$env:QQFARM_DAILY_COUNTERS_PATH = Join-Path $CurrentProfile 'daily_counters.json'",
+            text,
+        )
+        self.assertNotIn("$HookLogDir = Join-Path $env:LOCALAPPDATA", text)
+        self.assertNotIn("$CurrentPortable", text)
 
 
 if __name__ == "__main__":

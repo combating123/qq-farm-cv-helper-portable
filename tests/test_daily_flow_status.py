@@ -96,6 +96,33 @@ class DailyFlowStatusTests(unittest.TestCase):
         module.run_daily_share = lambda bot: events.append(("run-share",)) or True
         return module
 
+    def test_env_daily_counter_path_overrides_localappdata(self):
+        namespace = load_functions("_daily_counters_default_path")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            portable_path = os.path.join(temp_dir, "portable", "daily_counters.json")
+            namespace["os"] = types.SimpleNamespace(
+                environ={
+                    "LOCALAPPDATA": os.path.join(temp_dir, "local"),
+                    "QQFARM_DAILY_COUNTERS_PATH": portable_path,
+                },
+                path=os.path,
+            )
+            self.assertEqual(
+                os.path.abspath(portable_path),
+                namespace["_daily_counters_default_path"](),
+            )
+
+    def test_env_daily_status_path_is_the_only_runtime_write_target(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            namespace = self.build_namespace(temp_dir)
+            portable_path = os.path.join(temp_dir, "portable", "daily_flow_status.json")
+            namespace["os"].environ["QQFARM_DAILY_FLOW_STATUS_PATH"] = portable_path
+
+            self.assertEqual(
+                [os.path.abspath(portable_path)],
+                namespace["_daily_flow_status_paths"](),
+            )
+
     def test_patch_function_exists_for_all_daily_flows(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             namespace = self.build_namespace(temp_dir)

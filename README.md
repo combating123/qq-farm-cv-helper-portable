@@ -1,11 +1,11 @@
-<div align="center">
+﻿<div align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="CV 农场助手：面向 QQ 与微信经典农场的 Windows 视觉自动化助手">
 
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.8-32C98A?style=flat-square)](#版本与更新)
-  [![Tests](https://img.shields.io/badge/回归测试-481%20passed-17345F?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.11-32C98A?style=flat-square)](#版本与更新)
+  [![Tests](https://img.shields.io/badge/回归测试-521%20passed-17345F?style=flat-square)](#版本与更新)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
   [![Portable](https://img.shields.io/badge/交付方式-单目录便携-F2A93B?style=flat-square)](#便携目录与数据保留)
@@ -151,6 +151,8 @@
 ```text
 CV农场助手/
 ├─ QQFarmCVHelper.exe
+├─ QQFarmCVHelper（双击启动）.lnk
+├─ StartFarmAssistant.vbs
 ├─ 启动_QQ经典农场助手.cmd
 ├─ launcher.ps1
 ├─ hook.py
@@ -160,13 +162,13 @@ CV农场助手/
 └─ 项目说明.txt
 ```
 
-更新时优先保留 `UserData`。日志目录和临时缓存不需要长期保留，也不进入发布压缩包。
+更新时优先保留 `UserData`。首次启动会将既有 Windows 配置和当天任务状态只读迁移到 `UserData\WindowsProfile`；迁移完成后，运行状态、日志、计数和用户配置都留在当前便携目录，启动器不再回写 C 盘原配置。日志目录和临时缓存不需要长期保留，也不进入发布压缩包。
 
 ## 快速开始
 
 1. 从 [Releases](https://github.com/combating123/qq-farm-cv-helper-portable/releases) 下载便携包。
 2. 解压到可读写的普通目录，避免直接在压缩包内运行。
-3. 双击 `启动_QQ经典农场助手.cmd`。
+3. 双击 `QQFarmCVHelper（双击启动）.lnk`；如果目录中没有该快捷方式，双击 `StartFarmAssistant.vbs`。两者都会隐藏 PowerShell 启动窗口。
 4. 在应用中选择 QQ 或微信以及单开 / 多开模式。
 5. 保持经典农场小程序窗口可见，先使用少量功能验证识别效果。
 6. 根据日志与当前截图调整识别阈值、等待时间和自动化开关。
@@ -201,7 +203,7 @@ CV农场助手/
 <summary><strong>双击启动后没有界面</strong></summary>
 
 - 确认已经完整解压；
-- 使用 `启动_QQ经典农场助手.cmd` 启动；
+- 优先双击 `QQFarmCVHelper（双击启动）.lnk`，没有快捷方式时双击 `StartFarmAssistant.vbs`；
 - 检查主程序和运行库是否被安全软件隔离；
 - 查看 `logs` 中最近的启动与注入日志；
 - 路径过深或含特殊权限限制时，可移动到较短的普通目录重试。
@@ -228,15 +230,17 @@ CV农场助手/
 <details>
 <summary><strong>更新后如何保留原有设置</strong></summary>
 
-保留旧目录中的 `UserData`，再更新其余程序文件。便携启动器会继续使用目录内的数据，不需要重新配置每一项功能。
+保留旧目录中的 `UserData`，再更新其余程序文件。首次迁移完成后，运行配置与每日状态位于 `UserData\WindowsProfile`，更新时不需要重新配置休息时段、好友巡视、施肥、播种或每日任务开关。
 </details>
 
 ## 版本与更新
 
-当前稳定版本为 **v1.4.8**。项目采用独立 Git 标签和 Release 记录每轮公开修改，不再只保留一个无法区分迭代历史的安装包。
+当前本地部署版本为 **v1.4.11**。项目采用独立 Git 标签和 Release 记录每轮公开修改，不再只保留一个无法区分迭代历史的安装包。
 
 | 版本 | 重点变化 | 验证 |
 | --- | --- | --- |
+| v1.4.11（本地部署） | OCR 暂时失败时继续消费背包种子但禁止按旧等级买种；每日任务状态、配置和运行数据迁移至 `E:` 便携档案；双击快捷方式/VBS 隐藏启动 | 521 项测试 |
+| v1.4.10 | 自家空地未清零时持续执行自家维护；稳定空地快照防止单帧误判；好友入口点击后等待真实好友界面确认 | 490 项测试 |
 | [v1.4.8](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.8) | 用户设置字节级保留、自家空地优先种满并施肥、等级末位纠错、分享四项证据闭环与好友链收敛 | 481 项测试 |
 | [v1.4.7](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.7) | 商城每日福利包装幂等、递归异常退避；保留全土地局部 2×2 田字型枚举 | 445 项测试 |
 | [v1.4.6](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.6) | 24 块土地全候选局部田字型枚举、普通种子降级、当前护主卡复核与中间无动作好友继续扫描 | 440 项测试 |

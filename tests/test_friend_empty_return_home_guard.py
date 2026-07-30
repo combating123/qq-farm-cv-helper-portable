@@ -1713,7 +1713,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual("friend", scheduler._qqfarm_cycle_branch_hint)
         self.assertIsNone(namespace.get("_ACTIVE_RUN_CYCLE_CONTEXT"))
 
-    def test_visual_watchdog_retries_friend_entry_when_friend_branch_stays_on_home(self):
+    def test_visual_watchdog_opens_friend_entry_on_first_verified_home_noop(self):
         namespace = load_functions("_apply_visual_friend_route_watchdog")
         frame = object()
         recoveries = []
@@ -1722,7 +1722,10 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             "_get_frame_from_bot": lambda context: frame,
             "_friend_guard_friend_ui_state": lambda candidate: False,
             "_invoke_friend_branch_from_home": (
-                lambda context, candidate: recoveries.append(candidate) or True
+                lambda context, candidate: recoveries.append((
+                    candidate,
+                    bool(getattr(context, "_qqfarm_friend_entry_prefer_icon", False)),
+                )) or True
             ),
             "_set_friend_chain_fast_interval": lambda context, active: True,
             "_FRIEND_HOME_LAST_MATCH": {},
@@ -1739,11 +1742,7 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertFalse(namespace["_apply_visual_friend_route_watchdog"](
             lambda *args, **kwargs: None, scheduler, "FarmBotCV.run_cycle"
         ))
-        self.assertEqual([], recoveries)
-        self.assertFalse(namespace["_apply_visual_friend_route_watchdog"](
-            lambda *args, **kwargs: None, scheduler, "FarmBotCV.run_cycle"
-        ))
-        self.assertEqual([frame], recoveries)
+        self.assertEqual([(frame, True)], recoveries)
 
     def test_friend_branch_home_recovery_never_reenters_friend_dispatcher(self):
         recover = load_function("_invoke_friend_branch_from_home")
@@ -6264,6 +6263,66 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertTrue(recover(scheduler, frame))
         self.assertEqual([("help-entry", frame)], calls)
 
+    def test_friend_home_recovery_prioritizes_friend_icon_for_patrol_request(self):
+        recover = load_function("_invoke_friend_branch_from_home")
+        self.assertTrue(callable(recover))
+        frame = object()
+        calls = []
+        scheduler = types.SimpleNamespace(
+            _qqfarm_friend_entry_prefer_icon=True,
+            check_friend_help_request_entry=(
+                lambda game_frame: calls.append(("help-entry", game_frame)) or True
+            ),
+            check_friend_icon=(
+                lambda game_frame: calls.append(("friend-icon", game_frame)) or True
+            ),
+        )
+        recover.__globals__.update({
+            "_invoke_friend_guard_action": (
+                lambda action, target, args, kwargs: action(args[-1])
+            ),
+            "_friend_watchdog_now": lambda: 123.5,
+            "_write": lambda message: None,
+        })
+
+        self.assertTrue(recover(scheduler, frame))
+
+        self.assertEqual([("friend-icon", frame)], calls)
+
+    def test_friend_home_recovery_marks_pending_after_friend_icon_click(self):
+        recover = load_function("_invoke_friend_branch_from_home")
+        self.assertTrue(callable(recover))
+        frame = object()
+        calls = []
+        scheduler = types.SimpleNamespace(
+            check_friend_help_request_entry=(
+                lambda game_frame: calls.append(("help-entry", game_frame)) or False
+            ),
+            check_friend_icon=(
+                lambda game_frame: calls.append(("friend-icon", game_frame)) or True
+            ),
+        )
+        recover.__globals__.update({
+            "_invoke_friend_guard_action": (
+                lambda action, target, args, kwargs: action(args[-1])
+            ),
+            "_friend_watchdog_now": lambda: 123.5,
+            "_write": lambda message: None,
+        })
+
+        self.assertTrue(recover(scheduler, frame))
+
+        self.assertEqual(
+            [("help-entry", frame), ("friend-icon", frame)],
+            calls,
+        )
+        self.assertTrue(getattr(scheduler, "_qqfarm_friend_entry_pending", False))
+        self.assertEqual(
+            123.5,
+            getattr(scheduler, "_qqfarm_friend_entry_clicked_ts", None),
+        )
+        self.assertTrue(getattr(scheduler, "_qqfarm_friend_chain_pending", False))
+
     def test_guard_list_home_recovery_skips_direct_help_entry(self):
         recover = load_function("_invoke_friend_branch_from_home")
         self.assertTrue(callable(recover))
@@ -6979,9 +7038,10 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertFalse(helper(purple, (36, 36)))
         self.assertFalse(helper(yellow, (36, 36)))
 
-    def test_empty_land_state_filters_crop_covered_candidates_before_backpack(self):
+    def test_empty_land_state_keeps_peripheral_crop_cover_before_backpack(self):
         namespace = load_functions(
             "_empty_land_candidate_has_crop_cover",
+            "_empty_land_candidate_crop_cover_evidence",
             "_wrap_detect_empty_lands_state",
         )
         import cv2
@@ -7007,9 +7067,9 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         result = wrapped(bot, frame)
 
         self.assertTrue(changed)
-        self.assertEqual([(108, 36), (180, 36)], [item["center"] for item in result])
-        self.assertEqual(2, bot._qqfarm_recent_empty_land_count)
-        self.assertTrue(any("crop-covered false positives=1" in line for line in logs))
+        self.assertEqual([(36, 36), (108, 36), (180, 36)], [item["center"] for item in result])
+        self.assertEqual(3, bot._qqfarm_recent_empty_land_count)
+        self.assertTrue(any("crop-cover weak suspects retained" in line for line in logs))
 
     def test_empty_land_state_records_candidate_centers_for_live_diagnostics(self):
         namespace = load_functions("_wrap_detect_empty_lands_state")
@@ -7071,7 +7131,10 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
             original, "synthetic.buy_seed"
         )
         import time
-        bot = types.SimpleNamespace(_qqfarm_backpack_candidates_seen_ts=time.time())
+        bot = types.SimpleNamespace(
+            _qqfarm_backpack_candidates_seen_ts=time.time(),
+            _qqfarm_backpack_candidate_centers=[(68, 512)],
+        )
 
         result = wrapped(bot, "TARGET_CROP", 15)
 
@@ -7243,11 +7306,12 @@ class FriendEmptyReturnHomeGuardTests(unittest.TestCase):
         self.assertEqual(1, len(calls))
         self.assertTrue(any("v202 restored native no-seed OCR" in line for line in logs))
 
-    def test_fast_planting_switch_disables_expensive_enhanced_land_ocr(self):
+    def test_planting_accuracy_preserves_enabled_enhanced_land_detection(self):
         switch_value = load_function("_fast_planting_switch_value")
         self.assertIsNotNone(switch_value)
 
-        self.assertFalse(switch_value("enhance_empty_land_detection", True))
+        self.assertTrue(switch_value("enhance_empty_land_detection", True))
+        self.assertFalse(switch_value("enhance_empty_land_detection", False))
         self.assertTrue(switch_value("enable_daily_radish_exp", True))
 
     def test_visible_seed_inventory_skips_slow_no_seed_ocr(self):

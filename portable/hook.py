@@ -583,6 +583,11 @@ def _friend_pause_active():
 
 def _daily_counters_default_path():
     try:
+        portable_path = str(
+            os.environ.get('QQFARM_DAILY_COUNTERS_PATH', '') or ''
+        ).strip()
+        if portable_path:
+            return os.path.abspath(portable_path)
         base = os.environ.get('LOCALAPPDATA', '')
         if not base:
             return ''
@@ -994,6 +999,14 @@ def _daily_flow_status_paths(paths=None):
     except BaseException:
         pass
     result = []
+    try:
+        portable_path = str(
+            os.environ.get('QQFARM_DAILY_FLOW_STATUS_PATH', '') or ''
+        ).strip()
+        if portable_path:
+            return [os.path.abspath(portable_path)]
+    except BaseException:
+        pass
     try:
         local = os.environ.get('LOCALAPPDATA', '')
         if local:
@@ -1820,12 +1833,66 @@ def _wrap_seed_quantity_badges_fast(fn, name=''):
                 if fast:
                     try:
                         now = __import__('time').time()
-                        setattr(bot, '_qqfarm_backpack_candidates_seen_ts', now)
-                        setattr(bot, '_qqfarm_backpack_candidate_centers', [x.get('center') for x in fast])
-                        _write(
-                            'v218 fast seed badges count=' + str(len(fast)) +
-                            ' name=' + str(name)
+                    except BaseException:
+                        now = 0.0
+                    active_skip = {}
+                    try:
+                        raw_skip = getattr(
+                            bot, '_qqfarm_backpack_skip_candidate_until', {}
                         )
+                        if isinstance(raw_skip, dict):
+                            for raw_center, until in raw_skip.items():
+                                if not isinstance(raw_center, (tuple, list)) or len(raw_center) < 2:
+                                    continue
+                                if float(until or 0.0) > now:
+                                    active_skip[(
+                                        int(round(float(raw_center[0]))),
+                                        int(round(float(raw_center[1]))),
+                                    )] = float(until)
+                            setattr(bot, '_qqfarm_backpack_skip_candidate_until', active_skip)
+                    except BaseException:
+                        active_skip = {}
+                    if active_skip:
+                        filtered_fast = []
+                        for item in fast:
+                            try:
+                                center = item.get('center') if isinstance(item, dict) else None
+                                key = (
+                                    int(round(float(center[0]))),
+                                    int(round(float(center[1]))),
+                                ) if isinstance(center, (tuple, list)) and len(center) >= 2 else None
+                            except BaseException:
+                                key = None
+                            if key is not None and key in active_skip:
+                                continue
+                            filtered_fast.append(item)
+                        if len(filtered_fast) != len(fast):
+                            try:
+                                _write(
+                                    'v236 skipped failed 2x2 seed candidate(s)=' +
+                                    str(len(fast) - len(filtered_fast)) +
+                                    ' name=' + str(name)
+                                )
+                            except BaseException:
+                                pass
+                        fast = filtered_fast
+                    try:
+                        if fast:
+                            setattr(bot, '_qqfarm_backpack_candidates_seen_ts', now)
+                            setattr(bot, '_qqfarm_backpack_candidate_centers', [
+                                x.get('center') for x in fast if isinstance(x, dict)
+                            ])
+                            # This is a new visual inventory scan.  It supersedes a
+                            # prior click/drag failure snapshot immediately.
+                            setattr(bot, '_qqfarm_backpack_candidates_exhausted_seen_ts', 0.0)
+                            setattr(bot, '_qqfarm_backpack_candidates_exhausted_ts', 0.0)
+                            _write(
+                                'v218 fast seed badges count=' + str(len(fast)) +
+                                ' name=' + str(name)
+                            )
+                        else:
+                            setattr(bot, '_qqfarm_backpack_candidates_seen_ts', 0.0)
+                            setattr(bot, '_qqfarm_backpack_candidate_centers', [])
                     except BaseException:
                         pass
                     return fast
@@ -1885,6 +1952,76 @@ def _empty_land_candidate_has_crop_cover(frame, center, threshold=0.12):
     except BaseException:
         return False
 
+
+def _empty_land_candidate_crop_cover_evidence(frame, center):
+    """Classify foliage that occupies an empty-land hit's central planting point.
+
+    An empty purple/yellow tile is frequently bordered by mature crops.  The
+    matcher can legitimately land near those borders, so foliage in a wide ROI
+    is only a weak suspicion.  It must not erase the tile or declare the farm
+    full unless the candidate's own compact centre is covered by a dense,
+    connected crop canopy.
+    """
+    try:
+        if frame is None or getattr(frame, 'shape', None) is None:
+            return 'none'
+        if not isinstance(center, (tuple, list)) or len(center) < 2:
+            return 'none'
+        cv_module = globals().get('cv2') or __import__('cv2')
+        np_module = globals().get('np') or __import__('numpy')
+        height, width = frame.shape[:2]
+        x = int(round(float(center[0])))
+        y = int(round(float(center[1])))
+        # Keep this ROI inside the diamond's central plant position.  The old
+        # 22-pixel radius reached neighboring plots and turned true purple
+        # empty tiles into "strong" crop cover.
+        core_radius = 10
+        x1 = max(0, x - core_radius)
+        x2 = min(int(width), x + core_radius + 1)
+        y1 = max(0, y - core_radius)
+        y2 = min(int(height), y + core_radius + 1)
+        roi = frame[y1:y2, x1:x2, :3]
+        if getattr(roi, 'size', 0) <= 0:
+            return 'none'
+        hsv = cv_module.cvtColor(roi, cv_module.COLOR_BGR2HSV)
+        green = (
+            (hsv[:, :, 0] >= 30)
+            & (hsv[:, :, 0] <= 95)
+            & (hsv[:, :, 1] >= 50)
+            & (hsv[:, :, 2] >= 35)
+        )
+        foliage = (
+            (hsv[:, :, 0] >= 30)
+            & (hsv[:, :, 0] <= 95)
+            & (hsv[:, :, 1] >= 60)
+            & (hsv[:, :, 2] >= 25)
+            & (hsv[:, :, 2] <= 225)
+        )
+        green_ratio = float(np_module.mean(green))
+        foliage_ratio = float(np_module.mean(foliage))
+        component_count, _labels, stats, _centroids = (
+            cv_module.connectedComponentsWithStats(green.astype(np_module.uint8), 8)
+        )
+        largest_component = 0
+        if int(component_count) > 1:
+            try:
+                largest_component = int(max(stats[1:, cv_module.CC_STAT_AREA]))
+            except BaseException:
+                largest_component = 0
+        # Strong means the candidate's actual centre, rather than its neighbors,
+        # is covered by dense crop foliage.  Anything weaker stays available to
+        # the existing land-panel verifier so real empty plots are never dropped.
+        if (
+            green_ratio >= 0.13
+            and foliage_ratio >= 0.08
+            and largest_component >= 18
+        ):
+            return 'strong'
+        if green_ratio >= 0.035 and largest_component >= 5:
+            return 'weak'
+        return 'none'
+    except BaseException:
+        return 'none'
 
 
 def _qqfarm_cap_runtime_recovery_waits(context):
@@ -1976,6 +2113,212 @@ def _qqfarm_update_home_priority(context, remaining, now_ts=None, reason=''):
         return was_active
 
 
+
+def _run_initial_home_probe(context):
+    """Perform one self-farm inspection before a fresh run can patrol friends."""
+    if context is None:
+        return False, None
+    try:
+        if bool(getattr(context, '_qqfarm_initial_home_probe_complete', False)):
+            return False, None
+    except BaseException:
+        return False, None
+    try:
+        enabled = getattr(context, 'pre_self_maintenance', True)
+        if isinstance(enabled, str):
+            enabled = enabled.strip().lower() not in ('0', 'false', 'no', 'off')
+        if not bool(enabled):
+            setattr(context, '_qqfarm_initial_home_probe_complete', True)
+            return False, None
+    except BaseException:
+        pass
+    try:
+        now_value = float(__import__('time').time())
+    except BaseException:
+        now_value = 0.0
+    try:
+        capture_fn = globals().get('_get_frame_from_bot')
+        frame = capture_fn(context) if callable(capture_fn) else None
+    except BaseException:
+        frame = None
+    try:
+        state_fn = globals().get('_friend_guard_friend_ui_state')
+        visual_state = (
+            state_fn(frame)
+            if callable(state_fn) and frame is not None
+            else None
+        )
+    except BaseException:
+        visual_state = None
+    if visual_state is None:
+        return False, None
+    if visual_state is True:
+        try:
+            last_attempt = float(getattr(
+                context, '_qqfarm_initial_home_probe_last_attempt_ts', 0.0
+            ) or 0.0)
+            attempts = max(0, int(getattr(
+                context, '_qqfarm_initial_home_probe_attempts', 0
+            ) or 0))
+        except BaseException:
+            last_attempt = 0.0
+            attempts = 0
+        if last_attempt > 0.0 and (now_value - last_attempt) < 1.5:
+            return True, False
+        coordinate_only_retry = False
+        if attempts >= 3:
+            # Do not let a verified friend page fall through into another friend
+            # patrol merely because the native home icon missed several times.
+            # Restart the bounded native-attempt counter and use the guarded
+            # coordinate click on this pass instead.
+            coordinate_only_retry = True
+            attempts = 0
+            try:
+                _write(
+                    'v246 initial home probe keeping friend route blocked after 3 '
+                    'native return misses; retrying guarded coordinate fallback'
+                )
+            except BaseException:
+                pass
+        action = None
+        label = ''
+        if not coordinate_only_retry:
+            for method_name in (
+                'go_home', 'return_home', '_return_home', 'check_go_home_icon',
+            ):
+                candidate = getattr(context, method_name, None)
+                if callable(candidate):
+                    action = candidate
+                    label = method_name
+                    break
+        try:
+            setattr(context, '_qqfarm_initial_home_probe_pending', True)
+            setattr(context, '_qqfarm_initial_home_probe_last_attempt_ts', now_value)
+            setattr(context, '_qqfarm_initial_home_probe_attempts', attempts + 1)
+            setattr(context, '_qqfarm_force_self_cycle_next', True)
+            setattr(context, '_qqfarm_cycle_branch_hint', 'self')
+            setattr(context, '_qqfarm_friend_cycle_seen', False)
+        except BaseException:
+            pass
+        result = False
+        if callable(action):
+            try:
+                invoke_fn = globals().get('_invoke_friend_guard_action')
+                if callable(invoke_fn):
+                    result = invoke_fn(action, None, (context, frame), {})
+                else:
+                    try:
+                        result = action(frame)
+                    except TypeError:
+                        result = action()
+            except BaseException as error:
+                try:
+                    _write(
+                        'v246 initial home probe return error label=' + label +
+                        ' error=' + repr(error)[:220]
+                    )
+                except BaseException:
+                    pass
+                result = False
+            try:
+                _write(
+                    'v246 initial home probe return label=' + label +
+                    ' result=' + repr(result)[:160]
+                )
+            except BaseException:
+                pass
+            # Preserve the native handler's non-false return contract.  A literal
+            # False is the one reliable signal observed on a missed home action.
+            if result is not False:
+                return True, result
+        else:
+            try:
+                _write('v246 initial home probe native home action unavailable')
+            except BaseException:
+                pass
+
+        # The native go-home template can miss while the friend footer is still
+        # visually verified.  Send the guarded coordinate click, then accept it
+        # only if a fresh frame proves that the page changed back to self farm.
+        coordinate_result = False
+        coordinate_fn = globals().get('_invoke_friend_guard_home_coordinate_click')
+        if callable(coordinate_fn):
+            try:
+                coordinate_result = bool(coordinate_fn(context, frame))
+            except BaseException as error:
+                try:
+                    _write(
+                        'v246 initial home probe coordinate fallback error=' +
+                        repr(error)[:220]
+                    )
+                except BaseException:
+                    pass
+        if coordinate_result:
+            try:
+                fresh_frame = capture_fn(context) if callable(capture_fn) else None
+            except BaseException:
+                fresh_frame = None
+            try:
+                post_state = (
+                    state_fn(fresh_frame)
+                    if callable(state_fn) and fresh_frame is not None
+                    else None
+                )
+            except BaseException:
+                post_state = None
+            if post_state is False:
+                try:
+                    _write('v246 initial home probe coordinate fallback confirmed self farm')
+                except BaseException:
+                    pass
+                return True, True
+            try:
+                _write(
+                    'v246 initial home probe coordinate fallback sent but friend state remains=' +
+                    repr(post_state)
+                )
+            except BaseException:
+                pass
+        else:
+            try:
+                _write('v246 initial home probe coordinate fallback was not delivered')
+            except BaseException:
+                pass
+        return True, False
+    action = getattr(context, 'process_self_farm', None)
+    if not callable(action):
+        return False, None
+    try:
+        invoke_fn = globals().get('_invoke_friend_guard_action')
+        if callable(invoke_fn):
+            result = invoke_fn(action, None, (context, frame), {})
+        else:
+            try:
+                result = action(frame)
+            except TypeError:
+                result = action()
+    except BaseException as error:
+        try:
+            _write('v246 initial home probe self-check error=' + repr(error)[:220])
+        except BaseException:
+            pass
+        return True, False
+    try:
+        setattr(context, '_qqfarm_initial_home_probe_complete', True)
+        setattr(context, '_qqfarm_initial_home_probe_pending', False)
+        setattr(context, '_qqfarm_initial_home_probe_attempts', 0)
+        priority_fn = globals().get('_qqfarm_home_priority_active')
+        priority_active = bool(
+            priority_fn(context) if callable(priority_fn) else False
+        )
+        if not priority_active:
+            setattr(context, '_qqfarm_force_self_cycle_next', False)
+        _write('v246 initial home probe self-check result=' + repr(result)[:160])
+    except BaseException:
+        pass
+    return True, result
+
+
 def _run_home_priority_self_pass(context):
     """Run one self-farm pass while the home empty-land latch is active."""
     if not _qqfarm_home_priority_active(context):
@@ -2061,7 +2404,7 @@ def _run_home_priority_self_pass(context):
     return True, result
 
 def _wrap_detect_empty_lands_state(fn, name=''):
-    """Remember fresh multi-land detections for the following label check."""
+    """Remember a stable empty-land snapshot and ignore one-frame undercounts."""
     try:
         if not callable(fn):
             return fn, False
@@ -2073,64 +2416,265 @@ def _wrap_detect_empty_lands_state(fn, name=''):
             bot = args[0] if args else kwargs.get('bot')
             frame = args[1] if len(args) > 1 else kwargs.get('frame')
             rejected_centers = []
+            strong_crop_centers = []
+            full_crop_covered_scene = False
             try:
                 filter_fn = globals().get('_empty_land_candidate_has_crop_cover')
+                evidence_fn = globals().get('_empty_land_candidate_crop_cover_evidence')
                 if isinstance(result, list) and callable(filter_fn):
+                    native_lands = list(result)
                     filtered = []
-                    for item in result:
+                    weak_suspect_lands = []
+                    for item in native_lands:
                         center = item.get('center') if isinstance(item, dict) else None
-                        if (
-                            isinstance(center, (tuple, list))
-                            and len(center) >= 2
-                            and filter_fn(frame, center)
-                        ):
-                            rejected_centers.append((
-                                int(round(float(center[0]))),
-                                int(round(float(center[1]))),
-                            ))
+                        if not isinstance(center, (tuple, list)) or len(center) < 2:
+                            filtered.append(item)
+                            continue
+                        center_pair = (
+                            int(round(float(center[0]))),
+                            int(round(float(center[1]))),
+                        )
+                        crop_covered = bool(filter_fn(frame, center))
+                        evidence = 'none'
+                        if callable(evidence_fn):
+                            try:
+                                evidence = str(evidence_fn(frame, center) or 'none').lower()
+                            except BaseException:
+                                evidence = 'none'
+                        if evidence not in ('strong', 'weak', 'none'):
+                            evidence = 'none'
+                        if evidence == 'strong':
+                            rejected_centers.append(center_pair)
+                            strong_crop_centers.append(center_pair)
+                            continue
+                        if crop_covered:
+                            # A wide green halo often belongs to an adjacent
+                            # diamond tile.  Preserve this candidate for the
+                            # land-panel verifier unless its own core was
+                            # already classified as strong crop cover.
+                            rejected_centers.append(center_pair)
+                            weak_suspect_lands.append(item)
+                            filtered.append(item)
                             continue
                         filtered.append(item)
-                    result = filtered
-                    if rejected_centers:
+
+                    if (
+                        native_lands
+                        and len(rejected_centers) == len(native_lands)
+                        and len(strong_crop_centers) >= max(
+                            2, (len(native_lands) + 1) // 2
+                        )
+                    ):
+                        result = []
+                        full_crop_covered_scene = True
                         _write(
-                            'v221 empty land crop-covered false positives=' +
+                            'v250 strong crop-covered candidates cleared count=' +
+                            str(len(strong_crop_centers)) + ' total=' +
+                            str(len(native_lands)) + ' centers=' +
+                            repr(rejected_centers)[:360] + ' name=' + str(name)
+                        )
+                    elif strong_crop_centers:
+                        # Strong crop evidence is never a planting target.  Keep
+                        # only weak, unconfirmed hits for the existing verifier.
+                        result = filtered or weak_suspect_lands
+                        _write(
+                            'v250 empty land strong crop-covered false positives=' +
+                            str(len(strong_crop_centers)) + ' remaining=' +
+                            str(len(result)) + ' centers=' +
+                            repr(rejected_centers)[:360] + ' name=' + str(name)
+                        )
+                    elif filtered or not rejected_centers:
+                        result = filtered
+                        if rejected_centers:
+                            _write(
+                                'v250 crop-cover weak suspects retained native-empty=' +
+                                str(len(native_lands)) + ' suspects=' +
+                                str(len(rejected_centers)) + ' centers=' +
+                                repr(rejected_centers)[:360] + ' name=' + str(name)
+                            )
+                    else:
+                        result = native_lands
+                        _write(
+                            'v249 crop-cover weak suspects retained native-empty=' +
+                            str(len(native_lands)) + ' suspects=' +
                             str(len(rejected_centers)) + ' centers=' +
                             repr(rejected_centers)[:360] + ' name=' + str(name)
                         )
             except BaseException:
                 rejected_centers = []
+                strong_crop_centers = []
+                full_crop_covered_scene = False
+            if bot is None:
+                return result
             try:
-                count = len(result) if result is not None else 0
-                centers = []
-                for item in list(result or []):
+                raw_lands = result if isinstance(result, list) else list(result or [])
+            except BaseException:
+                raw_lands = []
+            raw_count = len(raw_lands)
+            raw_centers = []
+            for item in raw_lands:
+                try:
                     center = item.get('center') if isinstance(item, dict) else None
                     if isinstance(center, (tuple, list)) and len(center) >= 2:
-                        centers.append((
+                        raw_centers.append((
                             int(round(float(center[0]))),
                             int(round(float(center[1]))),
                         ))
-                setattr(bot, '_qqfarm_recent_empty_land_count', int(count))
-                setattr(bot, '_qqfarm_recent_empty_land_centers', centers)
-                setattr(bot, '_qqfarm_recent_empty_lands', list(result or []))
-                setattr(bot, '_qqfarm_recent_empty_land_rejected_centers', rejected_centers)
+                except BaseException:
+                    pass
+            try:
                 now_value = __import__('time').time()
+            except BaseException:
+                now_value = 0.0
+            effective_lands = raw_lands
+            effective_count = raw_count
+            held_unstable_read = False
+            if full_crop_covered_scene:
+                try:
+                    setattr(bot, '_qqfarm_stable_empty_lands', [])
+                    setattr(bot, '_qqfarm_stable_empty_land_count', 0)
+                    setattr(bot, '_qqfarm_stable_empty_land_ts', now_value)
+                    setattr(bot, '_qqfarm_tiny_empty_land_candidate_count', -1)
+                    setattr(bot, '_qqfarm_tiny_empty_land_candidate_centers', [])
+                    setattr(bot, '_qqfarm_tiny_empty_land_candidate_hits', 0)
+                    setattr(bot, '_qqfarm_empty_land_scene_confirmed_full', True)
+                    setattr(bot, '_qqfarm_empty_land_scene_confirmed_full_ts', now_value)
+                    setattr(bot, '_qqfarm_home_empty_land_pending', False)
+                    setattr(bot, '_qqfarm_home_empty_land_remaining', 0)
+                    setattr(bot, '_qqfarm_home_empty_zero_confirmations', 2)
+                    setattr(bot, '_qqfarm_force_self_cycle_next', False)
+                    setattr(bot, '_qqfarm_cycle_branch_hint', '')
+                except BaseException:
+                    pass
+            try:
+                stable_lands = list(getattr(
+                    bot, '_qqfarm_stable_empty_lands', []
+                ) or [])
+                stable_count = max(0, int(getattr(
+                    bot, '_qqfarm_stable_empty_land_count', len(stable_lands)
+                ) or 0))
+                if stable_count != len(stable_lands):
+                    stable_count = len(stable_lands)
+                stable_ts = float(getattr(
+                    bot, '_qqfarm_stable_empty_land_ts', 0.0
+                ) or 0.0)
+                stable_age = max(0.0, now_value - stable_ts) if stable_ts > 0.0 else 999999.0
+                # A single lower count is frequently caused by a partial frame
+                # (the observed 19 -> 14 -> 20 sequence).  Do not let one such
+                # read shrink the planting plan: accept a decrease only after the
+                # same candidate is seen twice while the prior snapshot is fresh.
+                undercount_read = bool(
+                    stable_count >= 2 and raw_count < stable_count
+                )
+                if undercount_read and stable_age <= 30.0:
+                    candidate_centers = sorted(raw_centers)
+                    prior_count = int(getattr(
+                        bot, '_qqfarm_tiny_empty_land_candidate_count', -1
+                    ) or -1)
+                    prior_centers = list(getattr(
+                        bot, '_qqfarm_tiny_empty_land_candidate_centers', []
+                    ) or [])
+                    prior_hits = max(0, int(getattr(
+                        bot, '_qqfarm_tiny_empty_land_candidate_hits', 0
+                    ) or 0))
+                    def _same_land_centers_with_jitter(left, right, tolerance=12.0):
+                        if len(left) != len(right):
+                            return False
+                        unmatched = list(right)
+                        limit = float(tolerance) * float(tolerance)
+                        for left_center in left:
+                            best_index = -1
+                            best_distance = None
+                            try:
+                                left_x = float(left_center[0])
+                                left_y = float(left_center[1])
+                            except BaseException:
+                                return False
+                            for index, right_center in enumerate(unmatched):
+                                try:
+                                    dx = left_x - float(right_center[0])
+                                    dy = left_y - float(right_center[1])
+                                    distance = dx * dx + dy * dy
+                                except BaseException:
+                                    continue
+                                if distance <= limit and (
+                                    best_distance is None or distance < best_distance
+                                ):
+                                    best_index = index
+                                    best_distance = distance
+                            if best_index < 0:
+                                return False
+                            unmatched.pop(best_index)
+                        return not unmatched
+
+                    same_undercount = bool(
+                        prior_count == raw_count and
+                        _same_land_centers_with_jitter(
+                            prior_centers, candidate_centers
+                        )
+                    )
+                    hits = prior_hits + 1 if same_undercount else 1
+                    setattr(bot, '_qqfarm_tiny_empty_land_candidate_count', raw_count)
+                    setattr(bot, '_qqfarm_tiny_empty_land_candidate_centers', list(candidate_centers))
+                    setattr(bot, '_qqfarm_tiny_empty_land_candidate_hits', hits)
+                    if hits < 2:
+                        effective_lands = stable_lands
+                        effective_count = stable_count
+                        held_unstable_read = True
+                    else:
+                        setattr(bot, '_qqfarm_stable_empty_lands', list(raw_lands))
+                        setattr(bot, '_qqfarm_stable_empty_land_count', raw_count)
+                        setattr(bot, '_qqfarm_stable_empty_land_ts', now_value)
+                        setattr(bot, '_qqfarm_tiny_empty_land_candidate_hits', 0)
+                else:
+                    setattr(bot, '_qqfarm_stable_empty_lands', list(raw_lands))
+                    setattr(bot, '_qqfarm_stable_empty_land_count', raw_count)
+                    setattr(bot, '_qqfarm_stable_empty_land_ts', now_value)
+                    setattr(bot, '_qqfarm_tiny_empty_land_candidate_count', -1)
+                    setattr(bot, '_qqfarm_tiny_empty_land_candidate_centers', [])
+                    setattr(bot, '_qqfarm_tiny_empty_land_candidate_hits', 0)
+                setattr(bot, '_qqfarm_last_empty_land_raw_count', raw_count)
+                setattr(bot, '_qqfarm_last_empty_land_raw_centers', list(raw_centers))
+                setattr(bot, '_qqfarm_last_empty_land_raw_lands', list(raw_lands))
+                setattr(bot, '_qqfarm_last_empty_land_raw_ts', now_value)
+                effective_centers = []
+                for item in effective_lands:
+                    center = item.get('center') if isinstance(item, dict) else None
+                    if isinstance(center, (tuple, list)) and len(center) >= 2:
+                        effective_centers.append((
+                            int(round(float(center[0]))),
+                            int(round(float(center[1]))),
+                        ))
+                setattr(bot, '_qqfarm_recent_empty_land_count', int(effective_count))
+                setattr(bot, '_qqfarm_recent_empty_land_centers', effective_centers)
+                setattr(bot, '_qqfarm_recent_empty_lands', list(effective_lands))
+                setattr(bot, '_qqfarm_recent_empty_land_rejected_centers', rejected_centers)
                 setattr(bot, '_qqfarm_recent_empty_land_ts', now_value)
+                if effective_count > 0:
+                    setattr(bot, '_qqfarm_empty_land_scene_confirmed_full', False)
+                    setattr(bot, '_qqfarm_empty_land_scene_confirmed_full_ts', 0.0)
                 priority_fn = globals().get('_qqfarm_update_home_priority')
                 if callable(priority_fn):
                     priority_fn(
-                        bot, int(count), now_ts=now_value,
+                        bot, int(effective_count), now_ts=now_value,
                         reason='detect-empty-lands:' + str(name),
                     )
-                if count > 0:
+                if held_unstable_read:
                     _write(
-                        'v220 empty land candidates count=' + str(int(count)) +
-                        ' centers=' + repr(centers)[:360] +
-                        ' raw=' + repr(result)[:720] +
+                        'v236 unstable empty land undercount held raw=' +
+                        str(raw_count) + ' stable=' + str(stable_count) +
+                        ' name=' + str(name)
+                    )
+                elif effective_count > 0:
+                    _write(
+                        'v220 empty land candidates count=' + str(int(effective_count)) +
+                        ' centers=' + repr(effective_centers)[:360] +
+                        ' raw=' + repr(effective_lands)[:720] +
                         ' name=' + str(name)
                     )
             except BaseException:
                 pass
-            return result
+            return effective_lands
 
         _wrapped.__name__ = getattr(fn, '__name__', 'empty_land_state_wrapper')
         _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
@@ -2171,6 +2715,60 @@ def _wrap_buy_seed_for_crop_backpack_guard(fn, name=''):
                 now_value = __import__('time').time()
             except BaseException:
                 now_value = 0.0
+
+            if bot is not None:
+                try:
+                    dynamic_level_pending = bool(getattr(
+                        bot, '_qqfarm_player_level_dynamic_pending', False
+                    ))
+                    level_based_shop_blocked = bool(getattr(
+                        bot, '_qqfarm_block_level_based_shop', False
+                    ))
+                except BaseException:
+                    dynamic_level_pending = False
+                    level_based_shop_blocked = False
+                if dynamic_level_pending or level_based_shop_blocked:
+                    try:
+                        setattr(
+                            bot, 'planting_buy_retry_no_buy_quota',
+                            max(1, int(getattr(
+                                bot, 'planting_buy_retry_no_buy_quota', 0
+                            ) or 0)),
+                        )
+                        _write(
+                            'v251 deferred seed shop: live player level unavailable; '
+                            'backpack-only mode crop=' + str(crop_name) +
+                            ' name=' + str(name)
+                        )
+                    except BaseException:
+                        pass
+                    return False
+
+            if bot is not None:
+                try:
+                    full_frame = bool(getattr(
+                        bot, '_qqfarm_empty_land_scene_confirmed_full', False
+                    ))
+                    full_frame_ts = float(getattr(
+                        bot, '_qqfarm_empty_land_scene_confirmed_full_ts', 0.0
+                    ) or 0.0)
+                    full_frame_age = (
+                        max(0.0, now_value - full_frame_ts)
+                        if full_frame_ts > 0.0 else 999999.0
+                    )
+                except BaseException:
+                    full_frame = False
+                    full_frame_age = 999999.0
+                if full_frame and full_frame_age <= 15.0:
+                    try:
+                        _write(
+                            'v250 deferred seed shop after confirmed full-land frame ' +
+                            'age=' + ('%.1f' % full_frame_age) +
+                            ' crop=' + str(crop_name) + ' name=' + str(name)
+                        )
+                    except BaseException:
+                        pass
+                    return False
 
             if bot is not None and crop_name == '\u767d\u841d\u535c':
                 try:
@@ -2316,16 +2914,39 @@ def _wrap_buy_seed_for_crop_backpack_guard(fn, name=''):
                     max(0.0, now_value - seen_ts)
                     if seen_ts > 0 else 999999.0
                 )
+                candidate_centers = list(getattr(
+                    bot, '_qqfarm_backpack_candidate_centers', []
+                ) or [])
+                exhausted_seen_ts = float(getattr(
+                    bot, '_qqfarm_backpack_candidates_exhausted_seen_ts', 0.0
+                ) or 0.0)
                 inventory_retry_count = max(0, int(getattr(
                     bot, '_qqfarm_backpack_inventory_retry_count', 0
                 ) or 0))
             except BaseException:
                 seen_ts = 0.0
                 age = 999999.0
+                candidate_centers = []
+                exhausted_seen_ts = 0.0
                 inventory_retry_count = 0
-            if seen_ts > 0 and age <= 300.0 and inventory_retry_count < 1:
+            # A click/drag failure invalidates that exact inventory snapshot.  A
+            # later visual badge scan clears this marker before it can defer the
+            # shop again.  Empty candidates are an explicit "no ordinary seed"
+            # observation and must not inherit the old 15-minute latch.
+            snapshot_exhausted = bool(
+                exhausted_seen_ts > 0.0 and
+                (seen_ts <= 0.0 or exhausted_seen_ts >= (seen_ts - 0.01))
+            )
+            # A visible ordinary backpack seed badge is inventory evidence, not a
+            # one-shot hint.  Keep the bot on the local planting path only while
+            # this candidate snapshot remains valid.
+            if (
+                candidate_centers and seen_ts > 0.0 and age <= 900.0
+                and not snapshot_exhausted
+            ):
                 try:
-                    setattr(bot, '_qqfarm_backpack_inventory_retry_count', 1)
+                    retry = inventory_retry_count + 1
+                    setattr(bot, '_qqfarm_backpack_inventory_retry_count', retry)
                     setattr(
                         bot,
                         'planting_buy_retry_no_buy_quota',
@@ -2344,41 +2965,114 @@ def _wrap_buy_seed_for_crop_backpack_guard(fn, name=''):
                             reason='backpack-inventory-before-shop',
                         )
                     _write(
-                        'v232 deferred seed shop for bounded backpack retry age=' +
-                        ('%.1f' % age) + ' retry=1/1 name=' + str(name)
+                        'v236 deferred seed shop while fresh backpack inventory remains age=' +
+                        ('%.1f' % age) + ' candidates=' + str(len(candidate_centers)) +
+                        ' retry=' + str(retry) + ' name=' + str(name)
                     )
                 except BaseException:
                     pass
                 return False
 
-            result = fn(*args, **kwargs)
-            if result and bot is not None:
+            if bot is not None and crop_name:
                 try:
-                    setattr(bot, '_qqfarm_radish_inventory_retry_count', 0)
-                    setattr(bot, '_qqfarm_backpack_inventory_retry_count', 0)
-                    if crop_name == '\u767d\u841d\u535c':
-                        conservative_qty = max(1, int(getattr(
-                            bot, '_qqfarm_recent_empty_land_count', 1
-                        ) or 1))
+                    raw_cooldowns = getattr(
+                        bot, '_qqfarm_seed_shop_failure_until', {}
+                    )
+                    active_cooldowns = {}
+                    if isinstance(raw_cooldowns, dict):
+                        for raw_crop, raw_until in raw_cooldowns.items():
+                            until_value = float(raw_until or 0.0)
+                            if until_value > now_value:
+                                active_cooldowns[str(raw_crop)] = until_value
+                    cooldown_until = float(active_cooldowns.get(crop_name, 0.0) or 0.0)
+                    if cooldown_until > now_value:
+                        setattr(bot, '_qqfarm_seed_shop_failure_until', active_cooldowns)
                         setattr(
-                            bot, '_qqfarm_radish_inventory_qty', conservative_qty
-                        )
-                        setattr(
-                            bot, '_qqfarm_radish_inventory_seen_ts', now_value
-                        )
-                        _write(
-                            'v232 cached conservative purchased radish stock=' +
-                            str(conservative_qty) + ' name=' + str(name)
-                        )
-                    priority_fn = globals().get('_qqfarm_update_home_priority')
-                    if callable(priority_fn):
-                        priority_fn(
-                            bot,
+                            bot, 'planting_buy_retry_no_buy_quota',
                             max(1, int(getattr(
+                                bot, 'planting_buy_retry_no_buy_quota', 0
+                            ) or 0)),
+                        )
+                        priority_fn = globals().get('_qqfarm_update_home_priority')
+                        if callable(priority_fn):
+                            priority_fn(
+                                bot,
+                                max(1, int(getattr(
+                                    bot, '_qqfarm_recent_empty_land_count', 1
+                                ) or 1)),
+                                now_ts=now_value,
+                                reason='failed-seed-shop-cooldown:' + crop_name,
+                            )
+                        _write(
+                            'v240 failed seed shop cooldown crop=' + crop_name +
+                            ' remaining=' + str(int(cooldown_until - now_value)) +
+                            's name=' + str(name)
+                        )
+                        return False
+                    setattr(bot, '_qqfarm_seed_shop_failure_until', active_cooldowns)
+                except BaseException:
+                    pass
+
+            result = fn(*args, **kwargs)
+            if bot is not None:
+                try:
+                    raw_cooldowns = getattr(
+                        bot, '_qqfarm_seed_shop_failure_until', {}
+                    )
+                    active_cooldowns = dict(raw_cooldowns) if isinstance(
+                        raw_cooldowns, dict
+                    ) else {}
+                    if result:
+                        active_cooldowns.pop(crop_name, None)
+                        setattr(bot, '_qqfarm_seed_shop_failure_until', active_cooldowns)
+                        setattr(bot, '_qqfarm_radish_inventory_retry_count', 0)
+                        setattr(bot, '_qqfarm_backpack_inventory_retry_count', 0)
+                        if crop_name == '\u767d\u841d\u535c':
+                            conservative_qty = max(1, int(getattr(
                                 bot, '_qqfarm_recent_empty_land_count', 1
-                            ) or 1)),
-                            now_ts=now_value,
-                            reason='buy-seed-complete:' + crop_name,
+                            ) or 1))
+                            setattr(
+                                bot, '_qqfarm_radish_inventory_qty', conservative_qty
+                            )
+                            setattr(
+                                bot, '_qqfarm_radish_inventory_seen_ts', now_value
+                            )
+                            _write(
+                                'v232 cached conservative purchased radish stock=' +
+                                str(conservative_qty) + ' name=' + str(name)
+                            )
+                        priority_fn = globals().get('_qqfarm_update_home_priority')
+                        if callable(priority_fn):
+                            priority_fn(
+                                bot,
+                                max(1, int(getattr(
+                                    bot, '_qqfarm_recent_empty_land_count', 1
+                                ) or 1)),
+                                now_ts=now_value,
+                                reason='buy-seed-complete:' + crop_name,
+                            )
+                    elif crop_name:
+                        active_cooldowns[crop_name] = now_value + 600.0
+                        setattr(bot, '_qqfarm_seed_shop_failure_until', active_cooldowns)
+                        setattr(
+                            bot, 'planting_buy_retry_no_buy_quota',
+                            max(1, int(getattr(
+                                bot, 'planting_buy_retry_no_buy_quota', 0
+                            ) or 0)),
+                        )
+                        priority_fn = globals().get('_qqfarm_update_home_priority')
+                        if callable(priority_fn):
+                            priority_fn(
+                                bot,
+                                max(1, int(getattr(
+                                    bot, '_qqfarm_recent_empty_land_count', 1
+                                ) or 1)),
+                                now_ts=now_value,
+                                reason='failed-seed-shop:' + crop_name,
+                            )
+                        _write(
+                            'v240 failed seed shop cooldown armed crop=' + crop_name +
+                            ' seconds=600 name=' + str(name)
                         )
                 except BaseException:
                     pass
@@ -2696,7 +3390,36 @@ def _wrap_quad_act_seed_transaction(fn, name=''):
                 before_count = len(list(remain_lands or []))
             except BaseException:
                 before_count = 0
+
+            def _quarantine_special_seed():
+                """Keep a 2x2-only card out of the following ordinary-seed retry."""
+                if bot is None:
+                    return
+                try:
+                    seed_center = call_kwargs.get('seed_center')
+                    if seed_center is None and len(call_args) >= 4:
+                        seed_center = call_args[3]
+                    if not isinstance(seed_center, (tuple, list)) or len(seed_center) < 2:
+                        return
+                    key = (
+                        int(round(float(seed_center[0]))),
+                        int(round(float(seed_center[1]))),
+                    )
+                    time_module = globals().get('time') or __import__('time')
+                    cooldown_until = float(time_module.time()) + 180.0
+                    raw_skipped = getattr(
+                        bot, '_qqfarm_backpack_skip_candidate_until', {}
+                    )
+                    skipped = dict(raw_skipped) if isinstance(raw_skipped, dict) else {}
+                    skipped[key] = max(
+                        float(skipped.get(key, 0.0) or 0.0), cooldown_until
+                    )
+                    setattr(bot, '_qqfarm_backpack_skip_candidate_until', skipped)
+                except BaseException:
+                    pass
+
             if before_count < 4:
+                _quarantine_special_seed()
                 if bot is not None:
                     try:
                         setattr(bot, '_qqfarm_quad_skip_and_continue', True)
@@ -2711,6 +3434,28 @@ def _wrap_quad_act_seed_transaction(fn, name=''):
                 except BaseException:
                     pass
                 return False, list(remain_lands or [])
+
+            group_fn = globals().get('_qqfarm_find_all_quad_empty_land_groups')
+            if callable(group_fn):
+                try:
+                    local_groups = list(group_fn(list(remain_lands or [])) or [])
+                except BaseException:
+                    local_groups = []
+                if not local_groups:
+                    _quarantine_special_seed()
+                    if bot is not None:
+                        try:
+                            setattr(bot, '_qqfarm_quad_skip_and_continue', True)
+                        except BaseException:
+                            pass
+                    try:
+                        _write(
+                            'v250 skip 2x2 seed: no local 2x2 empty group; ' +
+                            'continue normal backpack seeds name=' + str(name)
+                        )
+                    except BaseException:
+                        pass
+                    return False, list(remain_lands or [])
 
             marker = object()
             old_threshold = marker
@@ -2810,10 +3555,25 @@ def _wrap_quad_act_seed_transaction(fn, name=''):
                     try:
                         setattr(bot, '_qqfarm_quad_skip_and_continue', True)
                         time_module = globals().get('time') or __import__('time')
-                        setattr(
-                            bot, '_qqfarm_quad_failure_cooldown_until',
-                            float(time_module.time()) + 180.0,
-                        )
+                        cooldown_until = float(time_module.time()) + 180.0
+                        setattr(bot, '_qqfarm_quad_failure_cooldown_until', cooldown_until)
+                        seed_center = call_kwargs.get('seed_center')
+                        if seed_center is None and len(call_args) >= 4:
+                            seed_center = call_args[3]
+                        if isinstance(seed_center, (tuple, list)) and len(seed_center) >= 2:
+                            key = (
+                                int(round(float(seed_center[0]))),
+                                int(round(float(seed_center[1]))),
+                            )
+                            skipped = getattr(
+                                bot, '_qqfarm_backpack_skip_candidate_until', {}
+                            )
+                            if not isinstance(skipped, dict):
+                                skipped = {}
+                            skipped[key] = cooldown_until
+                            setattr(
+                                bot, '_qqfarm_backpack_skip_candidate_until', skipped
+                            )
                         _write(
                             'v235 2x2 transaction failed twice; cooldown 180s, skip '
                             'special seed and continue normal backpack seeds name=' + str(name)
@@ -2857,18 +3617,17 @@ def _qqfarm_configured_player_level_floor(default=120):
 
 
 def _wrap_player_level_fast(fn, name=''):
-    """Probe live OCR first, cache briefly, and synchronize planting strategy level."""
+    """Trust only live OCR or a recent live cache; never invent a configured level."""
     try:
         if not callable(fn):
             return fn, False
         if bool(getattr(fn, '__qqfarm_player_level_fast_wrapped__', False)):
             return fn, False
 
-        def _apply_level(bot, value, source):
+        def _apply_level(bot, value, source, remember_live=False, now_ts=0.0):
             if bot is None:
                 return int(value)
             for attr_name in (
-                '_qqfarm_player_level_cache_value',
                 '_last_player_level_detected',
                 'planting_player_level',
                 'player_level',
@@ -2881,7 +3640,32 @@ def _wrap_player_level_fast(fn, name=''):
                 setattr(bot, '_last_player_level_detect_source', str(source))
             except BaseException:
                 pass
+            if remember_live:
+                try:
+                    stamp = float(now_ts or __import__('time').time())
+                    setattr(bot, '_qqfarm_player_level_cache_value', int(value))
+                    setattr(bot, '_qqfarm_player_level_cache_ts', stamp)
+                    setattr(bot, '_qqfarm_player_level_trusted_value', int(value))
+                    setattr(bot, '_qqfarm_player_level_trusted_ts', stamp)
+                except BaseException:
+                    pass
             return int(value)
+
+        def _call_live_ocr_without_config(call_args, call_kwargs):
+            invoke_args = list(call_args or ())
+            invoke_kwargs = dict(call_kwargs or {})
+            if 'fallback_to_config' in invoke_kwargs:
+                invoke_kwargs['fallback_to_config'] = False
+            elif len(invoke_args) >= 3:
+                invoke_args[2] = False
+            else:
+                try:
+                    signature = __import__('inspect').signature(fn)
+                    if 'fallback_to_config' in signature.parameters:
+                        invoke_kwargs['fallback_to_config'] = False
+                except BaseException:
+                    pass
+            return fn(*tuple(invoke_args), **invoke_kwargs)
 
         def _wrapped(*args, **kwargs):
             bot = args[0] if args else kwargs.get('self')
@@ -2893,13 +3677,32 @@ def _wrap_player_level_fast(fn, name=''):
                 cached = int(getattr(
                     bot, '_qqfarm_player_level_cache_value', 0
                 ) or 0)
+                trusted = int(getattr(
+                    bot, '_qqfarm_player_level_trusted_value', 0
+                ) or 0)
+                trusted_ts = float(getattr(
+                    bot, '_qqfarm_player_level_trusted_ts', 0.0
+                ) or 0.0)
             except BaseException:
                 next_probe = 0.0
                 cached = 0
-            if 1 <= cached <= 999 and now < next_probe:
-                return _apply_level(bot, cached, 'hook-live-cache')
+                trusted = 0
+                trusted_ts = 0.0
+            trusted_age = (
+                max(0.0, now - trusted_ts)
+                if trusted_ts > 0.0 else 999999.0
+            )
+            trusted_fresh = bool(1 <= trusted <= 999 and trusted_age <= 300.0)
+            if (
+                trusted_fresh and cached == trusted
+                and now < next_probe
+            ):
+                return _apply_level(bot, trusted, 'live-ocr-cache')
 
-            result = fn(*args, **kwargs)
+            try:
+                result = _call_live_ocr_without_config(args, kwargs)
+            except BaseException:
+                result = 0
             try:
                 value = int(result or 0)
             except BaseException:
@@ -2907,40 +3710,45 @@ def _wrap_player_level_fast(fn, name=''):
             source = 'live-ocr'
             if 1 <= value <= 999:
                 try:
-                    configured_value = int(_configured_player_level(value))
+                    setattr(bot, '_qqfarm_player_level_next_probe_ts', now + 120.0)
                 except BaseException:
-                    configured_value = value
-                # Levels only increase. Accept a small active-config lead to
-                # correct a one-digit OCR miss, but never let a stale value such
-                # as 40 or an unrelated profile dominate live OCR.
-                lead = configured_value - value
-                same_decade_digit_confusion = bool(
-                    0 < lead <= 9
-                    and value // 10 == configured_value // 10
-                )
-                if (0 < lead <= 3) or same_decade_digit_confusion:
-                    value = configured_value
-                    source = 'live-ocr+active-config-floor'
-            if not 1 <= value <= 999:
+                    pass
+                _apply_level(bot, value, source, remember_live=True, now_ts=now)
                 try:
-                    existing = int(getattr(
-                        bot, '_last_player_level_detected', 0
-                    ) or 0)
+                    setattr(bot, '_qqfarm_player_level_dynamic_pending', False)
                 except BaseException:
-                    existing = 0
-                value = (
-                    existing if 1 <= existing <= 999
-                    else int(_configured_player_level(120))
-                )
-                source = 'configured-fallback'
-            try:
-                setattr(bot, '_qqfarm_player_level_next_probe_ts', now + 120.0)
-            except BaseException:
-                pass
-            _apply_level(bot, value, source)
+                    pass
+            elif trusted_fresh:
+                value = trusted
+                source = 'trusted-level-cache'
+                try:
+                    setattr(bot, '_qqfarm_player_level_next_probe_ts', now + 15.0)
+                except BaseException:
+                    pass
+                _apply_level(bot, value, source)
+                try:
+                    setattr(bot, '_qqfarm_player_level_dynamic_pending', False)
+                except BaseException:
+                    pass
+            else:
+                # A stale profile value is not an OCR result.  Keeping it here
+                # caused crop selection to jump to a previous level after an OCR
+                # timeout.  Leave the current planting level untouched and make
+                # the caller retry a real probe instead.
+                value = 0
+                source = 'live-ocr-unavailable'
+                try:
+                    setattr(bot, '_qqfarm_player_level_next_probe_ts', now + 6.0)
+                    setattr(bot, '_qqfarm_player_level_dynamic_pending', True)
+                except BaseException:
+                    pass
+                try:
+                    setattr(bot, '_last_player_level_detect_source', source)
+                except BaseException:
+                    pass
             try:
                 _write(
-                    'v239 live player level=' + str(value) +
+                    'v239 player level=' + str(value) +
                     ' source=' + source + ' name=' + str(name)
                 )
             except BaseException:
@@ -2955,7 +3763,6 @@ def _wrap_player_level_fast(fn, name=''):
         return _wrapped, True
     except BaseException:
         return fn, False
-
 
 def _wrap_fertilizer_template_fast(fn, name=''):
     """Lower only the contextual fertilizer template threshold and restore state."""
@@ -3072,6 +3879,10 @@ def _wrap_backpack_no_seed_hint_fast(fn, name=''):
                             '_qqfarm_backpack_candidate_centers',
                             [item.get('center') for item in fast_badges],
                         )
+                        # The visible panel is a fresh inventory observation, so it
+                        # replaces any older no-progress candidate snapshot.
+                        setattr(bot, '_qqfarm_backpack_candidates_exhausted_seen_ts', 0.0)
+                        setattr(bot, '_qqfarm_backpack_candidates_exhausted_ts', 0.0)
                         _write(
                             'v219 visible seed inventory bypassed slow no-seed OCR '
                             'count=' + str(len(fast_badges)) + ' name=' + str(name)
@@ -3248,6 +4059,42 @@ def _wrap_planting_flow_fast(fn, name=''):
             except BaseException:
                 crop_name = ''
             is_radish = crop_name == '白萝卜'
+            level_shop_guard_marker = object()
+            old_level_shop_guard = level_shop_guard_marker
+            # Do not let a stale configured level select a crop or open the seed
+            # shop while the live OCR probe is still pending.  The next home pass
+            # performs the short real-level retry; the home-empty priority latch
+            # keeps this work ahead of friend patrols.
+            try:
+                dynamic_level_pending = bool(getattr(
+                    bot, '_qqfarm_player_level_dynamic_pending', False
+                ))
+            except BaseException:
+                dynamic_level_pending = False
+            if dynamic_level_pending:
+                if bot is not None:
+                    try:
+                        old_level_shop_guard = getattr(
+                            bot, '_qqfarm_block_level_based_shop'
+                        )
+                    except BaseException:
+                        old_level_shop_guard = level_shop_guard_marker
+                    try:
+                        setattr(bot, '_qqfarm_block_level_based_shop', True)
+                    except BaseException:
+                        pass
+                if len(call_args) >= 4:
+                    call_args[3] = False
+                else:
+                    call_kwargs['allow_buy'] = False
+                try:
+                    _write(
+                        'v251 dynamic level unavailable; continuing backpack-only '
+                        'crop flow with seed shop blocked crop=' + str(crop_name) +
+                        ' name=' + str(name)
+                    )
+                except BaseException:
+                    pass
             if bot is not None and is_radish:
                 try:
                     now_value = __import__('time').time()
@@ -3405,6 +4252,19 @@ def _wrap_planting_flow_fast(fn, name=''):
                                 )
                         except BaseException:
                             pass
+                    if old_level_shop_guard is not level_shop_guard_marker:
+                        try:
+                            setattr(
+                                bot, '_qqfarm_block_level_based_shop',
+                                old_level_shop_guard,
+                            )
+                        except BaseException:
+                            pass
+                    elif dynamic_level_pending:
+                        try:
+                            delattr(bot, '_qqfarm_block_level_based_shop')
+                        except BaseException:
+                            pass
                 try:
                     _write(
                         'v232 bounded planting flow elapsed=' +
@@ -3500,6 +4360,24 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                     original_settle = None
                     effective_settle = None
             bot = call_args[0] if call_args else call_kwargs.get('bot')
+            initial_lands = call_kwargs.get('remain_lands')
+            if initial_lands is None and len(call_args) >= 2:
+                initial_lands = call_args[1]
+            try:
+                input_empty_count = len(list(initial_lands or []))
+            except BaseException:
+                input_empty_count = 0
+            try:
+                cached_empty_count = max(0, int(getattr(
+                    bot, '_qqfarm_recent_empty_land_count', 0
+                ) or 0))
+            except BaseException:
+                cached_empty_count = 0
+            baseline_empty_count = max(input_empty_count, cached_empty_count)
+            try:
+                planting_attempt_started_ts = __import__('time').time()
+            except BaseException:
+                planting_attempt_started_ts = 0.0
             marker = object()
             old_active = marker
             old_profile = marker
@@ -3660,6 +4538,106 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                     )
                 except BaseException:
                     pass
+            try:
+                if bot is not None and result is not result_marker and baseline_empty_count > 0:
+                    if isinstance(result, (tuple, list)):
+                        reported_success = bool(result[0]) if result else False
+                        reported_remaining = None
+                        if len(result) >= 2 and isinstance(result[1], (tuple, list)):
+                            reported_remaining = len(result[1])
+                    else:
+                        reported_success = bool(result)
+                        reported_remaining = None
+                    current_empty_count = max(0, int(getattr(
+                        bot, '_qqfarm_recent_empty_land_count', baseline_empty_count
+                    ) or 0))
+                    current_empty_ts = float(getattr(
+                        bot, '_qqfarm_recent_empty_land_ts', 0.0
+                    ) or 0.0)
+                    fresh_after_observation = bool(
+                        current_empty_ts > 0.0 and
+                        current_empty_ts >= (planting_attempt_started_ts - 0.01)
+                    )
+                    verified_drop = bool(
+                        (fresh_after_observation and current_empty_count < baseline_empty_count) or
+                        (
+                            not fresh_after_observation and
+                            reported_remaining is not None and
+                            reported_remaining < baseline_empty_count and
+                            current_empty_count <= baseline_empty_count
+                        )
+                    )
+                    contradicted = bool(
+                        current_empty_count > baseline_empty_count or
+                        (
+                            fresh_after_observation and
+                            current_empty_count >= baseline_empty_count
+                        )
+                    )
+                    setattr(bot, '_qqfarm_backpack_last_attempt_baseline', baseline_empty_count)
+                    setattr(bot, '_qqfarm_backpack_last_attempt_after_count', current_empty_count)
+                    if reported_success and (contradicted or not verified_drop):
+                        setattr(bot, '_qqfarm_backpack_last_attempt_progress', False)
+                        # Do not let a click/drag report keep a stale inventory
+                        # snapshot alive for 15 minutes when the verified empty-land
+                        # count did not drop.  The next panel scan must provide new
+                        # candidate evidence before it can defer shopping again.
+                        try:
+                            failed_snapshot_seen_ts = float(getattr(
+                                bot, '_qqfarm_backpack_candidates_seen_ts', 0.0
+                            ) or 0.0)
+                        except BaseException:
+                            failed_snapshot_seen_ts = 0.0
+                        if failed_snapshot_seen_ts <= 0.0:
+                            failed_snapshot_seen_ts = planting_attempt_started_ts
+                        setattr(
+                            bot,
+                            '_qqfarm_backpack_candidates_exhausted_seen_ts',
+                            failed_snapshot_seen_ts,
+                        )
+                        setattr(
+                            bot,
+                            '_qqfarm_backpack_candidates_exhausted_ts',
+                            planting_attempt_started_ts,
+                        )
+                        setattr(bot, '_qqfarm_backpack_candidates_seen_ts', 0.0)
+                        setattr(bot, '_qqfarm_backpack_candidate_centers', [])
+                        setattr(
+                            bot, 'planting_buy_retry_no_buy_quota',
+                            max(1, int(getattr(
+                                bot, 'planting_buy_retry_no_buy_quota', 0
+                            ) or 0)),
+                        )
+                        priority_fn = globals().get('_qqfarm_update_home_priority')
+                        if callable(priority_fn):
+                            priority_fn(
+                                bot, baseline_empty_count,
+                                now_ts=planting_attempt_started_ts,
+                                reason='backpack-no-stable-empty-land-decrease',
+                            )
+                        _write(
+                            'v236 backpack click/drag ignored: no stable empty-land decrease '
+                            'before=' + str(baseline_empty_count) +
+                            ' after=' + str(current_empty_count) +
+                            ' reported_remaining=' + repr(reported_remaining) +
+                            ' name=' + str(name)
+                        )
+                        if isinstance(result, tuple):
+                            normalized = list(result)
+                            if normalized:
+                                normalized[0] = False
+                            result = tuple(normalized)
+                        elif isinstance(result, list):
+                            normalized = list(result)
+                            if normalized:
+                                normalized[0] = False
+                            result = normalized
+                        else:
+                            result = False
+                    elif reported_success:
+                        setattr(bot, '_qqfarm_backpack_last_attempt_progress', True)
+            except BaseException:
+                pass
             return result
 
         _wrapped.__name__ = getattr(fn, '__name__', 'backpack_seed_priority_wrapper')
@@ -3673,14 +4651,8 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
 
 
 def _fast_planting_switch_value(key, desired):
-    """Disable the per-land OCR path that stalls drag planting for tens of seconds."""
-    try:
-        if str(key or '') == 'enhance_empty_land_detection':
-            return False
-    except BaseException:
-        pass
+    """Preserve the user's accuracy switches; never disable land verification at runtime."""
     return bool(desired)
-
 
 def _restore_runtime_business_switches(obj):
     changed = 0
@@ -6268,6 +7240,278 @@ def _wrap_planting_crop_context_func(fn, module, name=''):
         return fn, False
 
 
+def _wrap_planting_outcome_verify_func(fn, name=''):
+    """Require a fresh empty-land decrease before trusting a planting success."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(fn, '__qqfarm_planting_outcome_verify_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            bot = kwargs.get('bot')
+            if bot is None:
+                for value in args:
+                    try:
+                        if value is None or isinstance(
+                            value, (str, bytes, int, float, bool, list, tuple, dict, set)
+                        ):
+                            continue
+                        if any(hasattr(value, attr) for attr in (
+                            '_qqfarm_recent_empty_land_count',
+                            '_qqfarm_recent_empty_lands',
+                            'planting_auto_fertilize_one',
+                            'auto_fertilize_one',
+                        )):
+                            bot = value
+                            break
+                    except BaseException:
+                        pass
+            if bot is None:
+                return fn(*args, **kwargs)
+            try:
+                if bool(getattr(bot, '_qqfarm_planting_outcome_verify_active', False)):
+                    return fn(*args, **kwargs)
+            except BaseException:
+                pass
+
+            input_land_count = 0
+            bound_arguments = {}
+            try:
+                inspect_module = __import__('inspect')
+                inspect_target = getattr(
+                    fn, '__qqfarm_planting_crop_context_orig__', fn
+                )
+                bound = inspect_module.signature(inspect_target).bind_partial(
+                    *args, **kwargs
+                )
+                bound_arguments = dict(bound.arguments)
+                for parameter_name, value in bound_arguments.items():
+                    if 'land' not in str(parameter_name).lower():
+                        continue
+                    if isinstance(value, (str, bytes, dict)):
+                        continue
+                    try:
+                        input_land_count = max(input_land_count, len(list(value or [])))
+                    except BaseException:
+                        pass
+            except BaseException:
+                bound_arguments = dict(kwargs or {})
+                for parameter_name, value in bound_arguments.items():
+                    if 'land' not in str(parameter_name).lower():
+                        continue
+                    if isinstance(value, (str, bytes, dict)):
+                        continue
+                    try:
+                        input_land_count = max(input_land_count, len(list(value or [])))
+                    except BaseException:
+                        pass
+            try:
+                cached_empty_count = max(0, int(getattr(
+                    bot, '_qqfarm_recent_empty_land_count', 0
+                ) or 0))
+            except BaseException:
+                cached_empty_count = 0
+            baseline_empty_count = max(input_land_count, cached_empty_count)
+            try:
+                started_ts = __import__('time').time()
+            except BaseException:
+                started_ts = 0.0
+
+            def _read_empty_observation():
+                try:
+                    count = max(0, int(getattr(
+                        bot, '_qqfarm_recent_empty_land_count', baseline_empty_count
+                    ) or 0))
+                    observed_ts = float(getattr(
+                        bot, '_qqfarm_recent_empty_land_ts', 0.0
+                    ) or 0.0)
+                    return count, observed_ts
+                except BaseException:
+                    return baseline_empty_count, 0.0
+
+            def _post_planting_frame():
+                # The bound frame is often the screenshot captured before the
+                # click/drag.  Prefer a frame the bot refreshed after the action
+                # so visual verification never re-evaluates that stale image.
+                for attr_name in (
+                    '_qqfarm_current_frame', '_qqfarm_last_frame',
+                    '_last_frame', 'current_frame', 'last_frame',
+                ):
+                    try:
+                        value = getattr(bot, attr_name)
+                    except BaseException:
+                        value = None
+                    if value is not None:
+                        return value
+                for key in ('frame', 'screenshot', 'image', 'img'):
+                    try:
+                        value = bound_arguments.get(key)
+                    except BaseException:
+                        value = None
+                    if value is not None:
+                        return value
+                    try:
+                        value = kwargs.get(key)
+                    except BaseException:
+                        value = None
+                    if value is not None:
+                        return value
+                return None
+
+            def _refresh_empty_lands_after_success():
+                current_count, current_ts = _read_empty_observation()
+                if current_ts > 0.0 and current_ts >= (started_ts - 0.01):
+                    return False
+                try:
+                    detector = getattr(bot, '_detect_empty_lands', None)
+                except BaseException:
+                    detector = None
+                if not callable(detector):
+                    return False
+                try:
+                    delay = float(getattr(
+                        bot, 'planting_visual_verify_delay_seconds', 0.45
+                    ) or 0.0)
+                except BaseException:
+                    delay = 0.45
+                delay = min(max(0.0, delay), 1.5)
+                probe_count = 0
+                # Empty-land state deliberately holds the first lower reading to
+                # reject partial screenshots.  A real plant therefore needs one
+                # immediate confirmation probe before this wrapper can decide it
+                # made no progress.  Stop as soon as the stable count decreases.
+                for probe_index in range(2):
+                    probe_delay = delay if probe_index == 0 else min(delay, 0.25)
+                    if probe_delay > 0.0:
+                        try:
+                            __import__('time').sleep(probe_delay)
+                        except BaseException:
+                            pass
+                    frame = _post_planting_frame()
+                    if frame is None:
+                        break
+                    try:
+                        detector(frame)
+                    except TypeError:
+                        try:
+                            detector(bot, frame)
+                        except BaseException:
+                            break
+                    except BaseException:
+                        break
+                    probe_count += 1
+                    observed_count, observed_ts = _read_empty_observation()
+                    if (
+                        observed_ts > 0.0 and
+                        observed_ts >= (started_ts - 0.01) and
+                        observed_count < baseline_empty_count
+                    ):
+                        break
+                if probe_count <= 0:
+                    return False
+                try:
+                    _write(
+                        'v247 planting outcome requested fresh empty-land probe name=' +
+                        str(name) + ' before=' + str(baseline_empty_count) +
+                        ' probes=' + str(probe_count)
+                    )
+                except BaseException:
+                    pass
+                return True
+            marker = object()
+            try:
+                old_active = getattr(bot, '_qqfarm_planting_outcome_verify_active')
+            except BaseException:
+                old_active = marker
+            try:
+                setattr(bot, '_qqfarm_planting_outcome_verify_active', True)
+            except BaseException:
+                pass
+            try:
+                result = fn(*args, **kwargs)
+                if isinstance(result, (tuple, list)):
+                    reported_success = bool(result[0]) if result else False
+                else:
+                    reported_success = bool(result)
+                if reported_success and baseline_empty_count > 0:
+                    _refresh_empty_lands_after_success()
+                current_empty_count, current_empty_ts = _read_empty_observation()
+                fresh_empty_observation = bool(
+                    current_empty_ts > 0.0 and
+                    current_empty_ts >= (started_ts - 0.01)
+                )
+                if reported_success and baseline_empty_count > 0 and fresh_empty_observation:
+                    verified = current_empty_count < baseline_empty_count
+                    try:
+                        setattr(bot, '_qqfarm_last_planting_outcome_verified', verified)
+                        setattr(bot, '_qqfarm_last_planting_outcome_before', baseline_empty_count)
+                        setattr(bot, '_qqfarm_last_planting_outcome_after', current_empty_count)
+                    except BaseException:
+                        pass
+                    if verified:
+                        try:
+                            _write(
+                                'v247 planting action visually verified before=' +
+                                str(baseline_empty_count) + ' after=' +
+                                str(current_empty_count) + ' name=' + str(name)
+                            )
+                        except BaseException:
+                            pass
+                    else:
+                        priority_fn = globals().get('_qqfarm_update_home_priority')
+                        if callable(priority_fn):
+                            try:
+                                priority_fn(
+                                    bot, baseline_empty_count, now_ts=started_ts,
+                                    reason='planting-no-visual-empty-land-decrease',
+                                )
+                            except BaseException:
+                                pass
+                        try:
+                            _write(
+                                'v247 planting action rejected: no visual empty-land decrease ' +
+                                'before=' + str(baseline_empty_count) + ' after=' +
+                                str(current_empty_count) + ' name=' + str(name)
+                            )
+                        except BaseException:
+                            pass
+                        if isinstance(result, tuple):
+                            normalized = list(result)
+                            if normalized:
+                                normalized[0] = False
+                            result = tuple(normalized)
+                        elif isinstance(result, list):
+                            normalized = list(result)
+                            if normalized:
+                                normalized[0] = False
+                            result = normalized
+                        else:
+                            result = False
+                return result
+            finally:
+                try:
+                    if old_active is marker:
+                        delattr(bot, '_qqfarm_planting_outcome_verify_active')
+                    else:
+                        setattr(bot, '_qqfarm_planting_outcome_verify_active', old_active)
+                except BaseException:
+                    pass
+
+        _wrapped.__name__ = getattr(fn, '__name__', 'planting_outcome_verify_wrapper')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        try:
+            _qqfarm_preserve_wrapper_metadata(_wrapped, fn)
+        except BaseException:
+            pass
+        _wrapped.__qqfarm_planting_outcome_verify_wrapped__ = True
+        _wrapped.__qqfarm_planting_outcome_verify_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
+
+
 def _land_center_xy(land):
     try:
         import math
@@ -6726,6 +7970,68 @@ def _wrap_home_planting_cooldown(fn, name=''):
                 context = None
             if context is None and args:
                 context = args[0]
+            # Probe the dynamic level before the native home routine gets a
+            # chance to substitute a stale profile value. A zero/unavailable
+            # live result is an explicit defer: retain the self/home route and
+            # wait for a real OCR value rather than choosing a crop by config.
+            try:
+                dynamic_level_pending = bool(getattr(
+                    context, '_qqfarm_player_level_dynamic_pending', False
+                ))
+            except BaseException:
+                dynamic_level_pending = False
+            live_level = 0
+            if not dynamic_level_pending:
+                try:
+                    level_reader = getattr(context, 'get_current_player_level', None)
+                except BaseException:
+                    level_reader = None
+                if callable(level_reader):
+                    try:
+                        live_level = int(level_reader() or 0)
+                    except BaseException:
+                        live_level = 0
+                    try:
+                        dynamic_level_pending = bool(getattr(
+                            context, '_qqfarm_player_level_dynamic_pending', False
+                        )) or not (1 <= int(live_level) <= 999)
+                    except BaseException:
+                        dynamic_level_pending = not (1 <= int(live_level) <= 999)
+            if dynamic_level_pending:
+                home_shop_guard_marker = object()
+                old_home_shop_guard = home_shop_guard_marker
+                try:
+                    setattr(context, '_qqfarm_force_self_cycle_next', True)
+                    setattr(context, '_qqfarm_cycle_branch_hint', 'self')
+                    try:
+                        old_home_shop_guard = getattr(
+                            context, '_qqfarm_block_level_based_shop'
+                        )
+                    except BaseException:
+                        old_home_shop_guard = home_shop_guard_marker
+                    setattr(context, '_qqfarm_block_level_based_shop', True)
+                except BaseException:
+                    pass
+                try:
+                    _write(
+                        'v251 live OCR unavailable; continuing home backpack-only '
+                        'planting with level-based seed shop blocked name=' + str(name)
+                    )
+                except BaseException:
+                    pass
+                try:
+                    return fn(*args, **kwargs)
+                finally:
+                    try:
+                        if old_home_shop_guard is home_shop_guard_marker:
+                            delattr(context, '_qqfarm_block_level_based_shop')
+                        else:
+                            setattr(
+                                context, '_qqfarm_block_level_based_shop',
+                                old_home_shop_guard,
+                            )
+                    except BaseException:
+                        pass
             try:
                 pending_single = bool(getattr(
                     context, '_qqfarm_single_harvest_planting_pending', False
@@ -12686,13 +13992,24 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
             )
         except BaseException:
             guard_list_mode = False
-        method_names = (
-            ('check_friend_icon',)
-            if guard_list_mode else (
+        try:
+            prefer_friend_icon = bool(getattr(
+                context, '_qqfarm_friend_entry_prefer_icon', False
+            ))
+        except BaseException:
+            prefer_friend_icon = False
+        if guard_list_mode:
+            method_names = ('check_friend_icon',)
+        elif prefer_friend_icon:
+            method_names = (
+                'check_friend_icon',
+                'check_friend_help_request_entry',
+            )
+        else:
+            method_names = (
                 'check_friend_help_request_entry',
                 'check_friend_icon',
             )
-        )
         if guard_list_mode:
             try:
                 _write(
@@ -12728,6 +14045,30 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
             except BaseException:
                 pass
             if accepted:
+                try:
+                    now_fn = globals().get('_friend_watchdog_now')
+                    clicked_ts = float(
+                        now_fn() if callable(now_fn)
+                        else __import__('time').time()
+                    )
+                except BaseException:
+                    clicked_ts = 0.0
+                try:
+                    setattr(context, '_qqfarm_friend_entry_pending', True)
+                    setattr(context, '_qqfarm_friend_entry_clicked_ts', clicked_ts)
+                    setattr(context, '_qqfarm_friend_chain_pending', True)
+                    setattr(context, '_qqfarm_friend_chain_exhausted', False)
+                    setattr(context, '_qqfarm_cycle_branch_hint', 'friend')
+                except BaseException:
+                    pass
+                try:
+                    _write(
+                        'v241 friend entry accepted; waiting for a real friend ' +
+                        'surface method=' + method_name +
+                        ' clicked_ts=' + ('%.3f' % clicked_ts)
+                    )
+                except BaseException:
+                    pass
                 return True
 
         # This helper runs after the compiled run_cycle dispatcher has already
@@ -12938,7 +14279,7 @@ def _apply_visual_friend_route_watchdog(
                     getattr(context, '_qqfarm_friend_home_recovery_ts', 0.0) or 0.0
                 )
                 recovery_due = bool(
-                    home_noop_count >= 2
+                    home_noop_count >= 1
                     and (
                         last_recovery_ts <= 0.0
                         or (now_ts - last_recovery_ts) >= 3.0
@@ -12946,9 +14287,26 @@ def _apply_visual_friend_route_watchdog(
                 )
                 if recovery_due:
                     recovery_fn = globals().get('_invoke_friend_branch_from_home')
-                    recovered = bool(
-                        recovery_fn(context, frame)
-                    ) if callable(recovery_fn) else False
+                    try:
+                        previous_prefer_icon = bool(getattr(
+                            context, '_qqfarm_friend_entry_prefer_icon', False
+                        ))
+                    except BaseException:
+                        previous_prefer_icon = False
+                    try:
+                        setattr(context, '_qqfarm_friend_entry_prefer_icon', True)
+                        recovered = bool(
+                            recovery_fn(context, frame)
+                        ) if callable(recovery_fn) else False
+                    finally:
+                        try:
+                            setattr(
+                                context,
+                                '_qqfarm_friend_entry_prefer_icon',
+                                previous_prefer_icon,
+                            )
+                        except BaseException:
+                            pass
                     setattr(context, '_qqfarm_friend_home_noop_count', 0)
                     setattr(context, '_qqfarm_friend_home_recovery_ts', now_ts)
                     stale_cleared = False
@@ -13910,9 +15268,17 @@ def _patch_vip_business_loaded(tag=''):
                                 old, prefix + '.' + n
                             )
                         elif n == '_plant_seed_over_lands':
-                            new, ok = _wrap_planting_crop_context_func(old, m, prefix + '.' + n)
+                            new, crop_context_ok = _wrap_planting_crop_context_func(old, m, prefix + '.' + n)
+                            new, outcome_ok = _wrap_planting_outcome_verify_func(
+                                new, prefix + '.' + n
+                            )
+                            ok = bool(crop_context_ok or outcome_ok)
                         elif n == '_execute_planting_by_mode':
-                            new, ok = _wrap_planting_crop_context_func(old, m, prefix + '.' + n)
+                            new, crop_context_ok = _wrap_planting_crop_context_func(old, m, prefix + '.' + n)
+                            new, outcome_ok = _wrap_planting_outcome_verify_func(
+                                new, prefix + '.' + n
+                            )
+                            ok = bool(crop_context_ok or outcome_ok)
                         elif n == '_run_auto_fertilize_after_planting':
                             new, ok = _wrap_radish_fertilizer_func(old, m, prefix + '.' + n)
                         elif n == '_run_backpack_seed_priority_planting':
@@ -15005,6 +16371,23 @@ def _wrap_runtime_diag_method(fn, label):
                 try:
                     _write(
                         'v231 home-priority run-cycle gate error=' +
+                        repr(error)[:220]
+                    )
+                except BaseException:
+                    pass
+        if is_run_cycle:
+            try:
+                initial_home_fn = globals().get('_run_initial_home_probe')
+                handled, result = (
+                    initial_home_fn(self_obj)
+                    if callable(initial_home_fn) else (False, None)
+                )
+                if handled:
+                    return result
+            except BaseException as error:
+                try:
+                    _write(
+                        'v246 initial home probe run-cycle gate error=' +
                         repr(error)[:220]
                     )
                 except BaseException:

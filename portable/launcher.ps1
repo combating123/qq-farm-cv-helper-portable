@@ -23,13 +23,25 @@ if (!$NoLaunch -and !$env:QQFARM_LAUNCHER_ELEVATED -and !(Test-IsAdministrator))
     exit 0
 }
 $AppDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+# Keep the original host paths only as one-time, read-only migration sources.
+# The packaged assistant itself receives E:\...\UserData paths through its
+# inherited environment, so regular runs do not create or sync user state on C:.
+$HostLocalAppData = $env:LOCALAPPDATA
+$HostAppData = $env:APPDATA
 $PortableRoot = Join-Path $AppDir 'UserData'
-$LegacyPortable = Join-Path $PortableRoot 'legacy-qq-farm-bot-rev'
-$CurrentPortable = Join-Path $PortableRoot 'QQFarmCopilot'
-$LegacyProfile = Join-Path $env:LOCALAPPDATA 'qq-farm-bot-rev'
-$CurrentProfile = Join-Path $env:APPDATA 'QQFarmCopilot'
+$PortableProfileRoot = Join-Path $PortableRoot 'WindowsProfile'
+$PortableLocalAppData = Join-Path $PortableProfileRoot 'LocalAppData'
+$PortableAppData = Join-Path $PortableProfileRoot 'RoamingAppData'
+$HostLegacyProfile = Join-Path $HostLocalAppData 'qq-farm-bot-rev'
+$HostCurrentProfile = Join-Path $HostAppData 'QQFarmCopilot'
+# These were used by earlier portable launchers. They are migration sources only.
+$PreviousLegacyProfile = Join-Path $PortableRoot 'legacy-qq-farm-bot-rev'
+$PreviousCurrentProfile = Join-Path $PortableRoot 'QQFarmCopilot'
+$LegacyProfile = Join-Path $PortableLocalAppData 'qq-farm-bot-rev'
+$CurrentProfile = Join-Path $PortableAppData 'QQFarmCopilot'
+$MigrationMarker = Join-Path $PortableProfileRoot 'migration-v1.complete'
 $LogDir = Join-Path $AppDir 'logs'
-$HookLogDir = Join-Path $env:LOCALAPPDATA 'qq-farm-bot-rev\logs'
+$HookLogDir = Join-Path $AppDir 'logs'
 $Exe = Join-Path $AppDir 'QQFarmCVHelper.exe'
 $ExcludedDirs = @('logs','models','screenshots','captures','cache','__pycache__','crash')
 
@@ -49,51 +61,31 @@ function Test-ExcludedRelativePath([string]$RelativePath) {
     }
     $name = [IO.Path]::GetFileName($RelativePath)
     if ($name -ieq 'config-multi.ini') { return $true }
+    if ($name -in @('daily_flow_status.json', 'daily_counters.json', 'daily_counters.hook.json', 'daily_task_retry_state.json')) { return $true }
     if ($name -like '*.log' -or $name -like '*.tmp' -or $name -like '*.bak*' -or $name -like '*.bad-*') { return $true }
     return $false
 }
 
-function Sync-NewerFiles([string]$Source, [string]$Destination) {
+function Import-MissingProfileFiles([string]$Source, [string]$Destination) {
     if (!(Test-Path -LiteralPath $Source -PathType Container)) { return }
     New-Item -ItemType Directory -Force -Path $Destination | Out-Null
-    $prefixLength = $Source.TrimEnd('\').Length + 1
+    $prefixLength = $Source.TrimEnd('\\').Length + 1
     Get-ChildItem -LiteralPath $Source -Recurse -File -Force | ForEach-Object {
         $relative = $_.FullName.Substring($prefixLength)
         if (Test-ExcludedRelativePath $relative) { return }
         $target = Join-Path $Destination $relative
-        $copy = !(Test-Path -LiteralPath $target -PathType Leaf)
-        if (!$copy) {
-            $targetItem = Get-Item -LiteralPath $target
-            $copy = $_.LastWriteTimeUtc -gt $targetItem.LastWriteTimeUtc.AddMilliseconds(500)
-        }
-        if ($copy) {
+        if (!(Test-Path -LiteralPath $target -PathType Leaf)) {
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
             Copy-Item -LiteralPath $_.FullName -Destination $target -Force
         }
     }
 }
 
-function Sync-LegacyUserConfig([string]$ProfileConfig, [string]$PortableConfig) {
-    # config-multi.ini is never parsed or rewritten by the launcher. The active
-    # profile is authoritative while it exists; Copy-Item preserves the exact
-    # bytes/BOM and therefore cannot corrupt Chinese setting values.
-    if (Test-Path -LiteralPath $ProfileConfig -PathType Leaf) {
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $PortableConfig) | Out-Null
-        Copy-Item -LiteralPath $ProfileConfig -Destination $PortableConfig -Force
-        return
-    }
-    if (Test-Path -LiteralPath $PortableConfig -PathType Leaf) {
-        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ProfileConfig) | Out-Null
-        Copy-Item -LiteralPath $PortableConfig -Destination $ProfileConfig -Force
-    }
-}
-
-
 function Remove-Utf8BomFromConfig([string]$Path) {
     # The packaged application reads config-multi.ini as plain UTF-8. A BOM is
     # interpreted as text before the first section header and makes the entire
-    # file look malformed. Remove only those three marker bytes; every setting
-    # byte after them stays unchanged.
+    # file look malformed. This function is intentionally called on the E: copy
+    # only; the original C: config is never opened for writing by this launcher.
     if (!(Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
     $bytes = [IO.File]::ReadAllBytes($Path)
     if ($bytes.Length -lt 3) { return $false }
@@ -101,6 +93,85 @@ function Remove-Utf8BomFromConfig([string]$Path) {
     $clean = New-Object byte[] ($bytes.Length - 3)
     [Array]::Copy($bytes, 3, $clean, 0, $clean.Length)
     [IO.File]::WriteAllBytes($Path, $clean)
+    return $true
+}
+
+function Initialize-PortableConfiguration(
+    [string]$HostConfig,
+    [string]$PreviousPortableConfig,
+    [string]$PortableConfig
+) {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $PortableConfig) | Out-Null
+    # On the first portable migration, the user's existing C: config wins even
+    # if an older E: portable copy exists. Copy-Item is byte-for-byte.
+    if (Test-Path -LiteralPath $HostConfig -PathType Leaf) {
+        Copy-Item -LiteralPath $HostConfig -Destination $PortableConfig -Force
+    } elseif (Test-Path -LiteralPath $PreviousPortableConfig -PathType Leaf) {
+        Copy-Item -LiteralPath $PreviousPortableConfig -Destination $PortableConfig -Force
+    }
+    [void](Remove-Utf8BomFromConfig -Path $PortableConfig)
+}
+
+function Import-MostRecentFile([string[]]$Sources, [string]$Destination) {
+    if (Test-Path -LiteralPath $Destination -PathType Leaf) { return $false }
+    $available = @(
+        $Sources |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Sort-Object { (Get-Item -LiteralPath $_).LastWriteTimeUtc } -Descending
+    )
+    if ($available.Count -eq 0) { return $false }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Destination) | Out-Null
+    Copy-Item -LiteralPath $available[0] -Destination $Destination -Force
+    return $true
+}
+
+function Initialize-PortableProfile(
+    [string]$HostLegacyProfile,
+    [string]$HostCurrentProfile,
+    [string]$PreviousLegacyProfile,
+    [string]$PreviousCurrentProfile,
+    [string]$LegacyProfile,
+    [string]$CurrentProfile,
+    [string]$MigrationMarker
+) {
+    # A marker turns migration into a one-time import. No automatic E: -> C:
+    # sync exists, and later C: changes cannot overwrite E: user settings.
+    if (Test-Path -LiteralPath $MigrationMarker -PathType Leaf) { return $false }
+
+    New-Item -ItemType Directory -Force -Path `
+        $LegacyProfile, $CurrentProfile, (Split-Path -Parent $MigrationMarker) | Out-Null
+
+    Import-MissingProfileFiles -Source $HostLegacyProfile -Destination $LegacyProfile
+    Import-MissingProfileFiles -Source $PreviousLegacyProfile -Destination $LegacyProfile
+    Import-MissingProfileFiles -Source $HostCurrentProfile -Destination $CurrentProfile
+    Import-MissingProfileFiles -Source $PreviousCurrentProfile -Destination $CurrentProfile
+
+    Initialize-PortableConfiguration `
+        -HostConfig (Join-Path $HostLegacyProfile 'config-multi.ini') `
+        -PreviousPortableConfig (Join-Path $PreviousLegacyProfile 'config-multi.ini') `
+        -PortableConfig (Join-Path $LegacyProfile 'config-multi.ini')
+
+    # Daily completion records must follow the same-day newest state exactly
+    # once; after migration, every update remains under E:\\...\\UserData.
+    foreach ($stateName in @(
+        'daily_flow_status.json',
+        'daily_counters.json',
+        'daily_counters.hook.json',
+        'daily_task_retry_state.json'
+    )) {
+        [void](Import-MostRecentFile -Sources @(
+            (Join-Path $HostLegacyProfile $stateName),
+            (Join-Path $HostCurrentProfile $stateName),
+            (Join-Path $PreviousLegacyProfile $stateName),
+            (Join-Path $PreviousCurrentProfile $stateName)
+        ) -Destination (Join-Path $CurrentProfile $stateName))
+    }
+
+    [IO.File]::WriteAllText(
+        $MigrationMarker,
+        'completed=' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + "`r`n",
+        [Text.UTF8Encoding]::new($false)
+    )
     return $true
 }
 
@@ -203,24 +274,24 @@ function Write-WatchdogLog([string]$Message) {
     } catch {}
 }
 
-New-Item -ItemType Directory -Force -Path $LogDir,$HookLogDir,$LegacyPortable,$CurrentPortable | Out-Null
-$LegacyProfileConfig = Join-Path $LegacyProfile 'config-multi.ini'
-$LegacyPortableConfig = Join-Path $LegacyPortable 'config-multi.ini'
-# Preserve all setting bytes while removing the UTF-8 BOM that the packaged
-# application's plain UTF-8 parser treats as a malformed first section.
-[void](Remove-Utf8BomFromConfig -Path $LegacyProfileConfig)
-[void](Remove-Utf8BomFromConfig -Path $LegacyPortableConfig)
-# Generic profile sync explicitly excludes config-multi.ini so timestamp
-# ordering can never replace the active settings.
-Sync-LegacyUserConfig `
-    $LegacyProfileConfig `
-    $LegacyPortableConfig
-Sync-NewerFiles $LegacyProfile $LegacyPortable
-Sync-NewerFiles $CurrentProfile $CurrentPortable
-Sync-NewerFiles $LegacyPortable $LegacyProfile
-Sync-NewerFiles $CurrentPortable $CurrentProfile
+New-Item -ItemType Directory -Force -Path `
+    $LogDir, $HookLogDir, $PortableProfileRoot, $PortableLocalAppData, $PortableAppData, $LegacyProfile, $CurrentProfile | Out-Null
+[void](Initialize-PortableProfile `
+    -HostLegacyProfile $HostLegacyProfile `
+    -HostCurrentProfile $HostCurrentProfile `
+    -PreviousLegacyProfile $PreviousLegacyProfile `
+    -PreviousCurrentProfile $PreviousCurrentProfile `
+    -LegacyProfile $LegacyProfile `
+    -CurrentProfile $CurrentProfile `
+    -MigrationMarker $MigrationMarker)
+
+# Every child process, including QQFarmCVHelper.exe, inherits the E: profile.
+$env:LOCALAPPDATA = $PortableLocalAppData
+$env:APPDATA = $PortableAppData
 
 $env:QQFARM_HOOK_LOG_PATH = Join-Path $HookLogDir 'hook_runtime_log.txt'
+$env:QQFARM_DAILY_FLOW_STATUS_PATH = Join-Path $CurrentProfile 'daily_flow_status.json'
+$env:QQFARM_DAILY_COUNTERS_PATH = Join-Path $CurrentProfile 'daily_counters.json'
 $env:QQFARM_PROXY_LOG_PATH = Join-Path $LogDir 'proxy_dll_load.log'
 $env:QQFARM_MAX_NATIVE_THREADS = '2'
 $env:QQFARM_CPU_AFFINITY_CORES = '4'
@@ -257,13 +328,7 @@ while ($true) {
     $lastExitCode = [int]$assistantProcess.ExitCode
     $runtimeSeconds = [int]((Get-Date) - $startedAt).TotalSeconds
 
-    # Save the active settings as an exact byte copy; never parse or normalize it.
-    Sync-LegacyUserConfig `
-        (Join-Path $LegacyProfile 'config-multi.ini') `
-        (Join-Path $LegacyPortable 'config-multi.ini')
-    Sync-NewerFiles $LegacyProfile $LegacyPortable
-    Sync-NewerFiles $CurrentProfile $CurrentPortable
-
+    # The child uses the portable E: profile and writes its current settings there.
     $disposition = Get-AssistantExitDisposition $lastExitCode
     if ($disposition -ne 'restart') {
         Write-WatchdogLog (
