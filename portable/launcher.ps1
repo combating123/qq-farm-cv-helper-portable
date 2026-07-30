@@ -32,6 +32,7 @@ $PortableRoot = Join-Path $AppDir 'UserData'
 $PortableProfileRoot = Join-Path $PortableRoot 'WindowsProfile'
 $PortableLocalAppData = Join-Path $PortableProfileRoot 'LocalAppData'
 $PortableAppData = Join-Path $PortableProfileRoot 'RoamingAppData'
+$PortableTemp = Join-Path $PortableProfileRoot 'Temp'
 $HostLegacyProfile = Join-Path $HostLocalAppData 'qq-farm-bot-rev'
 $HostCurrentProfile = Join-Path $HostAppData 'QQFarmCopilot'
 # These were used by earlier portable launchers. They are migration sources only.
@@ -275,7 +276,7 @@ function Write-WatchdogLog([string]$Message) {
 }
 
 New-Item -ItemType Directory -Force -Path `
-    $LogDir, $HookLogDir, $PortableProfileRoot, $PortableLocalAppData, $PortableAppData, $LegacyProfile, $CurrentProfile | Out-Null
+    $LogDir, $HookLogDir, $PortableProfileRoot, $PortableLocalAppData, $PortableAppData, $PortableTemp, $LegacyProfile, $CurrentProfile | Out-Null
 [void](Initialize-PortableProfile `
     -HostLegacyProfile $HostLegacyProfile `
     -HostCurrentProfile $HostCurrentProfile `
@@ -288,6 +289,8 @@ New-Item -ItemType Directory -Force -Path `
 # Every child process, including QQFarmCVHelper.exe, inherits the E: profile.
 $env:LOCALAPPDATA = $PortableLocalAppData
 $env:APPDATA = $PortableAppData
+$env:TEMP = $PortableTemp
+$env:TMP = $PortableTemp
 
 $env:QQFARM_HOOK_LOG_PATH = Join-Path $HookLogDir 'hook_runtime_log.txt'
 $env:QQFARM_DAILY_FLOW_STATUS_PATH = Join-Path $CurrentProfile 'daily_flow_status.json'

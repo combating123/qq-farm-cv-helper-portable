@@ -314,6 +314,200 @@ class HomeEmptyLandPriorityTests(unittest.TestCase):
         self.assertTrue(context._qqfarm_force_self_cycle_next)
 
 
+    def test_home_priority_self_pass_directly_starts_planting_after_empty_self_pass(self):
+        """A false self-farm pass must immediately enter the native planting flow."""
+        namespace = load_functions(
+            "_qqfarm_home_priority_active",
+            "_qqfarm_update_home_priority",
+            "_run_home_priority_self_pass",
+        )
+        frame = object()
+        self_calls = []
+        planting_calls = []
+        namespace.update({
+            "_get_frame_from_bot": lambda _context: frame,
+            "_friend_guard_friend_ui_state": lambda _candidate: False,
+            "_invoke_friend_guard_action": (
+                lambda action, _target, args, kwargs: action(
+                    *(args[1:] if getattr(action, "__self__", None) is args[0] else args),
+                    **kwargs,
+                )
+            ),
+            "_set_friend_chain_fast_interval": lambda _owner, _active: True,
+            "_write": lambda _message: None,
+        })
+
+        class Context:
+            def process_self_farm(self, candidate_frame):
+                self_calls.append(candidate_frame)
+                return False
+
+            def handle_home_planting(
+                self, candidate_frame, trigger_source="normal"
+            ):
+                planting_calls.append((candidate_frame, trigger_source))
+                return "planting-started"
+
+        context = Context()
+        namespace["_qqfarm_update_home_priority"](
+            context, 2, now_ts=100.0, reason="detected-empty"
+        )
+        handled, result = namespace["_run_home_priority_self_pass"](context)
+
+        self.assertTrue(handled)
+        self.assertEqual("planting-started", result)
+        self.assertEqual([frame], self_calls)
+        self.assertEqual([(frame, "home-empty-priority")], planting_calls)
+        self.assertTrue(namespace["_qqfarm_home_priority_active"](context))
+        self.assertTrue(context._qqfarm_force_self_cycle_next)
+    def test_home_priority_direct_planting_uses_short_retry_backoff(self):
+        """A failed direct planting attempt must not be retried on every fast self pass."""
+        namespace = load_functions(
+            "_qqfarm_home_priority_active",
+            "_qqfarm_update_home_priority",
+            "_run_home_priority_self_pass",
+        )
+        now = [100.0]
+        frame = object()
+        self_calls = []
+        planting_calls = []
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: now[0]),
+            "_get_frame_from_bot": lambda _context: frame,
+            "_friend_guard_friend_ui_state": lambda _candidate: False,
+            "_invoke_friend_guard_action": (
+                lambda action, _target, args, kwargs: action(
+                    *(args[1:] if getattr(action, "__self__", None) is args[0] else args),
+                    **kwargs,
+                )
+            ),
+            "_set_friend_chain_fast_interval": lambda _owner, _active: True,
+            "_write": lambda _message: None,
+        })
+
+        class Context:
+            home_priority_direct_planting_retry_seconds = 8.0
+
+            def process_self_farm(self, candidate_frame):
+                self_calls.append(candidate_frame)
+                return False
+
+            def handle_home_planting(
+                self, candidate_frame, trigger_source="normal"
+            ):
+                planting_calls.append((candidate_frame, trigger_source))
+                return False
+
+        context = Context()
+        namespace["_qqfarm_update_home_priority"](
+            context, 2, now_ts=100.0, reason="detected-empty"
+        )
+        self.assertEqual((True, False), namespace["_run_home_priority_self_pass"](context))
+        self.assertEqual((True, False), namespace["_run_home_priority_self_pass"](context))
+
+        self.assertEqual([frame, frame], self_calls)
+        self.assertEqual([(frame, "home-empty-priority")], planting_calls)
+        self.assertTrue(namespace["_qqfarm_home_priority_active"](context))
+
+    def test_home_priority_direct_planting_retries_after_backoff_expires(self):
+        """The direct planting fallback is retried once its short retry window expires."""
+        namespace = load_functions(
+            "_qqfarm_home_priority_active",
+            "_qqfarm_update_home_priority",
+            "_run_home_priority_self_pass",
+        )
+        now = [100.0]
+        frame = object()
+        planting_calls = []
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: now[0]),
+            "_get_frame_from_bot": lambda _context: frame,
+            "_friend_guard_friend_ui_state": lambda _candidate: False,
+            "_invoke_friend_guard_action": (
+                lambda action, _target, args, kwargs: action(
+                    *(args[1:] if getattr(action, "__self__", None) is args[0] else args),
+                    **kwargs,
+                )
+            ),
+            "_set_friend_chain_fast_interval": lambda _owner, _active: True,
+            "_write": lambda _message: None,
+        })
+
+        class Context:
+            home_priority_direct_planting_retry_seconds = 8.0
+
+            def process_self_farm(self, _candidate_frame):
+                return False
+
+            def handle_home_planting(
+                self, candidate_frame, trigger_source="normal"
+            ):
+                planting_calls.append((candidate_frame, trigger_source))
+                return False
+
+        context = Context()
+        namespace["_qqfarm_update_home_priority"](
+            context, 2, now_ts=100.0, reason="detected-empty"
+        )
+        namespace["_run_home_priority_self_pass"](context)
+        now[0] = 107.9
+        namespace["_run_home_priority_self_pass"](context)
+        now[0] = 108.0
+        namespace["_run_home_priority_self_pass"](context)
+
+        self.assertEqual(
+            [(frame, "home-empty-priority"), (frame, "home-empty-priority")],
+            planting_calls,
+        )
+
+    def test_home_priority_direct_planting_finds_native_delegate_on_bot_state(self):
+        """The fallback reaches the native planting handler stored below the bot object."""
+        namespace = load_functions(
+            "_qqfarm_home_priority_active",
+            "_qqfarm_update_home_priority",
+            "_qqfarm_resolve_home_planting_action",
+            "_run_home_priority_self_pass",
+        )
+        frame = object()
+        planting_calls = []
+        namespace.update({
+            "time": types.SimpleNamespace(time=lambda: 100.0),
+            "_get_frame_from_bot": lambda _context: frame,
+            "_friend_guard_friend_ui_state": lambda _candidate: False,
+            "_invoke_friend_guard_action": (
+                lambda action, _target, args, kwargs: action(
+                    *(args[1:] if getattr(action, "__self__", None) is args[0] else args),
+                    **kwargs,
+                )
+            ),
+            "_set_friend_chain_fast_interval": lambda _owner, _active: True,
+            "_write": lambda _message: None,
+        })
+
+        class NativePlantingDelegate:
+            def handle_home_planting(
+                self, candidate_frame, trigger_source="normal"
+            ):
+                planting_calls.append((candidate_frame, trigger_source))
+                return "delegate-started"
+
+        class Context:
+            def __init__(self):
+                self._native_farm_state = NativePlantingDelegate()
+
+            def process_self_farm(self, _candidate_frame):
+                return False
+
+        context = Context()
+        namespace["_qqfarm_update_home_priority"](
+            context, 2, now_ts=100.0, reason="detected-empty"
+        )
+        handled, result = namespace["_run_home_priority_self_pass"](context)
+
+        self.assertTrue(handled)
+        self.assertEqual("delegate-started", result)
+        self.assertEqual([(frame, "home-empty-priority")], planting_calls)
+
     def test_initial_home_probe_returns_from_friend_before_friend_preflight(self):
         namespace = load_functions("_run_initial_home_probe")
         frame = object()

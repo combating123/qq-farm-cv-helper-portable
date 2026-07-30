@@ -69,6 +69,7 @@ $projectInfo = @(
     '3. 2x2 特殊种子仅使用真实相邻田字型，失败后继续普通种子；',
     '4. 好友链保留首位、护主、偷取后务农、封禁返回和装扮门禁；',
     '5. 每日分享只在精确目标、单联系人、直接发送和对话框关闭全部校验后记录成功。',
+    '6. LocalAppData、RoamingAppData、TEMP、TMP、日志和每日状态都在 UserData\WindowsProfile，更新时保留 UserData。',
     '',
     '完整迭代内容请查看 README.md 和 版本与更新日志.md。'
 ) -join [Environment]::NewLine

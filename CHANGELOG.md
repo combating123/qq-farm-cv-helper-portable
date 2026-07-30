@@ -2,6 +2,18 @@
 
 本项目从 `v1.0.0` 起使用语义化版本号。每个公开版本均对应独立 Git 标签与 Release，便于查看修改历史并回退。
 
+## [1.4.12] - 2026-07-30
+
+### 修复
+- 自家空地优先锁在 `process_self_farm` 返回无动作后，不再只重复自家巡检：会在受限对象树中定位原生 `handle_home_planting` 入口并直达播种。空地未稳定连续两次确认清零前，好友巡视仍被拦截。
+- 原生播种入口如果位于当前 bot 的嵌套运行时状态中，也会携带正确 owner 调用；直接播种暂时未生效时采用 8 秒短退避后重试，防止每个快速巡检周期反复点击同一面板。
+- 便携启动器新增 `UserData\WindowsProfile\Temp`，并向主程序继承 `TEMP`、`TMP`；LocalAppData、RoamingAppData、临时文件、日志、每日状态和用户配置均留在 E 盘应用目录，不回写 C 盘。
+
+### 验证
+- 完整自动回归：`python -m unittest discover -s tests -p "test*.py" -v` → **526 项通过**。
+- 定向回归：自家空地直达原生播种、嵌套入口发现、失败短退避及到期重试 **4 项通过**；便携 TEMP/TMP 重定向和 PowerShell 语法检查通过。
+- 静态验证：`python -m py_compile portable\hook.py` 与 `git diff --check` 通过。
+
 ## [1.4.11] - 2026-07-30
 
 ### 修复

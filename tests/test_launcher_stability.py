@@ -88,6 +88,13 @@ class LauncherStabilityTests(unittest.TestCase):
         self.assertNotIn("Copy-Item -LiteralPath $LegacyProfileConfig -Destination $HostLegacyConfig", text)
         self.assertNotIn("Remove-Utf8BomFromConfig -Path $HostLegacyConfig", text)
 
+    def test_launcher_redirects_temp_files_to_the_portable_windows_profile(self):
+        text = LAUNCHER.read_text(encoding="utf-8-sig")
+        self.assertIn("$PortableTemp = Join-Path $PortableProfileRoot 'Temp'", text)
+        self.assertIn("$PortableTemp", text[text.index("New-Item -ItemType Directory -Force -Path"):])
+        self.assertIn("$env:TEMP = $PortableTemp", text)
+        self.assertIn("$env:TMP = $PortableTemp", text)
+
     def test_portable_initial_migration_keeps_host_config_byte_exact_and_never_reimports_after_marker(self):
         text = LAUNCHER.read_text(encoding="utf-8-sig")
         required_functions = (

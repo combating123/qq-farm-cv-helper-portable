@@ -4,8 +4,8 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.11-32C98A?style=flat-square)](#版本与更新)
-  [![Tests](https://img.shields.io/badge/回归测试-521%20passed-17345F?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.12-32C98A?style=flat-square)](#版本与更新)
+  [![Tests](https://img.shields.io/badge/回归测试-526%20passed-17345F?style=flat-square)](#版本与更新)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
   [![Portable](https://img.shields.io/badge/交付方式-单目录便携-F2A93B?style=flat-square)](#便携目录与数据保留)
@@ -235,11 +235,12 @@ CV农场助手/
 
 ## 版本与更新
 
-当前本地部署版本为 **v1.4.11**。项目采用独立 Git 标签和 Release 记录每轮公开修改，不再只保留一个无法区分迭代历史的安装包。
+当前本地部署版本为 **v1.4.12**。项目采用独立 Git 标签和 Release 记录每轮公开修改，不再只保留一个无法区分迭代历史的安装包。
 
 | 版本 | 重点变化 | 验证 |
 | --- | --- | --- |
-| v1.4.11（本地部署） | OCR 暂时失败时继续消费背包种子但禁止按旧等级买种；每日任务状态、配置和运行数据迁移至 `E:` 便携档案；双击快捷方式/VBS 隐藏启动 | 521 项测试 |
+| v1.4.12（本地部署） | 自家空地巡检无动作时直达原生播种并短退避重试；`TEMP`/`TMP` 同步重定向到 `E:` 便携档案；双击快捷方式/VBS 隐藏启动 | 526 项测试 |
+| v1.4.11 | OCR 暂时失败时继续消费背包种子但禁止按旧等级买种；每日任务状态、配置和运行数据迁移至 `E:` 便携档案；双击快捷方式/VBS 隐藏启动 | 521 项测试 |
 | v1.4.10 | 自家空地未清零时持续执行自家维护；稳定空地快照防止单帧误判；好友入口点击后等待真实好友界面确认 | 490 项测试 |
 | [v1.4.8](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.8) | 用户设置字节级保留、自家空地优先种满并施肥、等级末位纠错、分享四项证据闭环与好友链收敛 | 481 项测试 |
 | [v1.4.7](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.7) | 商城每日福利包装幂等、递归异常退避；保留全土地局部 2×2 田字型枚举 | 445 项测试 |

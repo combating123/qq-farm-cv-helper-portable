@@ -2319,6 +2319,51 @@ def _run_initial_home_probe(context):
     return True, result
 
 
+
+def _qqfarm_resolve_home_planting_action(context):
+    """Find the native home-planting entry point on the bot or its small state tree."""
+    try:
+        action = getattr(context, 'handle_home_planting', None)
+    except BaseException:
+        action = None
+    if callable(action):
+        return action, context, 'context.handle_home_planting'
+
+    # Some released builds keep the planting handler on one obfuscated child
+    # object instead of exposing it directly on the scheduler bot. Traverse a
+    # deliberately shallow, bounded object tree so the fallback remains local
+    # and cannot wander through application-wide state.
+    queue = [(context, 'context', 0)]
+    seen = {id(context)}
+    while queue and len(seen) <= 96:
+        owner, owner_label, depth = queue.pop(0)
+        try:
+            state = vars(owner)
+        except BaseException:
+            state = getattr(owner, '__dict__', None)
+        if not isinstance(state, dict):
+            continue
+        try:
+            items = list(state.items())[:80]
+        except BaseException:
+            items = []
+        for attr_name, child in items:
+            if child is None or id(child) in seen:
+                continue
+            if isinstance(child, (str, bytes, bytearray, int, float, bool)):
+                continue
+            seen.add(id(child))
+            child_label = owner_label + '.' + str(attr_name)
+            try:
+                action = getattr(child, 'handle_home_planting', None)
+            except BaseException:
+                action = None
+            if callable(action):
+                return action, child, child_label + '.handle_home_planting'
+            if depth < 2 and hasattr(child, '__dict__'):
+                queue.append((child, child_label, depth + 1))
+    return None, None, ''
+
 def _run_home_priority_self_pass(context):
     """Run one self-farm pass while the home empty-land latch is active."""
     if not _qqfarm_home_priority_active(context):
@@ -2401,6 +2446,115 @@ def _run_home_priority_self_pass(context):
         )
     except BaseException:
         pass
+
+    # A self-farm pass can report literal False even after the empty-land
+    # detector has armed the home-priority latch. Do not then spin through
+    # empty self checks: invoke the native planting entry point directly while
+    # retaining the latch, so its backpack-first and visual verification logic
+    # gets a chance to fill the confirmed empty plots.
+    if visual_state is False and label == 'process_self_farm' and result is False:
+        # Fast scheduler passes run about every two seconds. Keep a small
+        # retry window around a failed direct planting attempt, otherwise an
+        # unstable land panel can be clicked repeatedly before it settles.
+        try:
+            retry_seconds = float(getattr(
+                context, 'home_priority_direct_planting_retry_seconds', 8.0
+            ) or 8.0)
+        except BaseException:
+            retry_seconds = 8.0
+        retry_seconds = max(2.0, min(30.0, retry_seconds))
+        try:
+            now_ts = float(time.time())
+        except BaseException:
+            now_ts = 0.0
+        try:
+            next_retry_ts = float(getattr(
+                context, '_qqfarm_home_priority_direct_planting_next_ts', 0.0
+            ) or 0.0)
+        except BaseException:
+            next_retry_ts = 0.0
+        if now_ts > 0.0 and next_retry_ts > now_ts:
+            try:
+                _write(
+                    'v257 home-priority direct planting backoff remaining=' +
+                    ('%.1f' % (next_retry_ts - now_ts))
+                )
+            except BaseException:
+                pass
+        else:
+            try:
+                if now_ts > 0.0:
+                    setattr(
+                        context,
+                        '_qqfarm_home_priority_direct_planting_next_ts',
+                        now_ts + retry_seconds,
+                    )
+            except BaseException:
+                pass
+            planting_action = None
+            planting_owner = context
+            planting_label = ''
+            try:
+                resolve_fn = globals().get('_qqfarm_resolve_home_planting_action')
+                if callable(resolve_fn):
+                    planting_action, planting_owner, planting_label = resolve_fn(context)
+                else:
+                    planting_action = getattr(context, 'handle_home_planting', None)
+                    planting_owner = context
+                    planting_label = 'context.handle_home_planting'
+            except BaseException:
+                planting_action = None
+                planting_owner = context
+                planting_label = ''
+            if callable(planting_action):
+                direct_result = False
+                try:
+                    invoke_fn = globals().get('_invoke_friend_guard_action')
+                    if callable(invoke_fn):
+                        direct_result = invoke_fn(
+                            planting_action,
+                            None,
+                            (planting_owner, frame),
+                            {'trigger_source': 'home-empty-priority'},
+                        )
+                    else:
+                        direct_result = planting_action(
+                            frame, trigger_source='home-empty-priority'
+                        )
+                except TypeError:
+                    try:
+                        direct_result = planting_action(frame)
+                    except BaseException as error:
+                        try:
+                            _write(
+                                'v257 home-priority direct planting error=' +
+                                repr(error)[:220]
+                            )
+                        except BaseException:
+                            pass
+                except BaseException as error:
+                    try:
+                        _write(
+                            'v257 home-priority direct planting error=' +
+                            repr(error)[:220]
+                        )
+                    except BaseException:
+                        pass
+                try:
+                    _write(
+                        'v257 home-priority direct planting fallback label=' +
+                        str(planting_label) + ' result=' +
+                        repr(direct_result)[:160]
+                    )
+                except BaseException:
+                    pass
+                if direct_result is not False:
+                    return True, direct_result
+            else:
+                try:
+                    _write('v257 home-priority direct planting action unavailable')
+                except BaseException:
+                    pass
     return True, result
 
 def _wrap_detect_empty_lands_state(fn, name=''):
