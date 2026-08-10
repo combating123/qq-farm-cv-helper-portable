@@ -4,7 +4,7 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.50-32C98A?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.51-32C98A?style=flat-square)](#版本与更新)
   [![Status](https://img.shields.io/badge/状态-稳定版本-17345F?style=flat-square)](#快速开始)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
@@ -248,10 +248,11 @@ CV农场助手/
 
 ## 版本与更新
 
-当前发布版本为 **v1.4.50（2026-08-11）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
+当前发布版本为 **v1.4.51（2026-08-11）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
 
 | 版本 | 面向使用者的主要更新 |
 | --- | --- |
+| **v1.4.51** | 修复四宫格种子确认按钮可用却没有完成播种，以及确认层未关闭时重复打开背包的问题 |
 | **v1.4.50** | 修复好友底部入口点击后页面未切换却反复处理同一好友的问题，增加真实页面切换确认与有界收敛 |
 | **v1.4.49** | 修复好友捣乱计数把累计值当成本次增量，造成计数翻倍的问题 |
 | **v1.4.48** | 增强隐藏小程序、自动售卖与护主犬好友筛选的跨电脑兼容性，保持现有界面和用户配置 |

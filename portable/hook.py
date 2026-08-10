@@ -14693,7 +14693,7 @@ def _qqfarm_quad_overlay_observation(frame):
                 blob_width >= max(34, int(width * 0.075)) and
                 blob_height >= max(32, int(height * 0.040)) and
                 0.65 <= aspect <= 1.75 and
-                fill_ratio >= 0.45
+                fill_ratio >= 0.38
             ):
                 continue
             glyph = _nearest_white_glyph(item['center'])
@@ -14730,7 +14730,8 @@ def _qqfarm_quad_overlay_observation(frame):
                         height * 0.04 <= dy <= height * 0.22 and
                         area >= max(900, int(width * height * 0.0025)) and
                         blob_width >= max(36, int(width * 0.08)) and
-                        blob_height >= max(32, int(height * 0.04))
+                        blob_height >= max(32, int(height * 0.04)) and
+                        area <= max(12000, int(width * height * 0.03))
                     ):
                         continue
                     if kind == 'green':
@@ -20232,6 +20233,10 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                         overlay_released = False
                 if not overlay_released:
                     try:
+                        setattr(bot, '_qqfarm_quad_overlay_block_fallback', True)
+                    except BaseException:
+                        pass
+                    try:
                         _write(
                             'v343 unresolved 2x2 overlay hard-gated before backpack; '
                             'no reopen/drag/shop name=' + str(name)
@@ -20477,6 +20482,22 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                 if bot is not None and bool(getattr(
                     bot, '_qqfarm_quad_overlay_block_fallback', False
                 )):
+                    # A still-visible 2x2 layer is a hard stop. The native
+                    # helper may have returned early after the confirm/cancel
+                    # probe, but reopening the backpack or retrying ordinary
+                    # planting on the same frame only repeats the stuck action.
+                    # The resolver clears this flag only after a fresh frame
+                    # proves that the layer is gone.
+                    unresolved_overlay = True
+                    if unresolved_overlay:
+                        try:
+                            _write(
+                                'v463 unresolved 2x2 overlay hard-stop; '
+                                'skip same-round backpack reopen name=' + str(name)
+                            )
+                        except BaseException:
+                            pass
+                        return result
                     try:
                         setattr(bot, '_qqfarm_quad_overlay_block_fallback', False)
                         setattr(bot, '_qqfarm_post_harvest_pending', True)

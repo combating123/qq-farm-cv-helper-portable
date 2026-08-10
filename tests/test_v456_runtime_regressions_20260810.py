@@ -29,7 +29,7 @@ class V456Regressions(unittest.TestCase):
         self.assertTrue(ns['_native_v225_call_daily'](wrap_a, object()))
         self.assertEqual(['native'], events)
 
-    def test_unresolved_quad_overlay_retries_ordinary_seed_same_round(self):
+    def test_unresolved_quad_overlay_stops_same_round_backpack_reopen(self):
         ns = load('_wrap_backpack_seed_priority_planting_fast')
         calls = []
         def native(bot):
@@ -47,9 +47,9 @@ class V456Regressions(unittest.TestCase):
         wrapped, changed = ns['_wrap_backpack_seed_priority_planting_fast'](native, 'fixture')
         self.assertTrue(changed)
         wrapped(bot)
-        self.assertEqual([True, False], calls)
-        self.assertTrue(bot._qqfarm_post_harvest_pending)
-        self.assertFalse(getattr(bot, '_qqfarm_quad_overlay_block_fallback', False))
+        self.assertEqual([True], calls)
+        self.assertFalse(getattr(bot, '_qqfarm_post_harvest_pending', False))
+        self.assertTrue(getattr(bot, '_qqfarm_quad_overlay_block_fallback', False))
 
     def test_prompt_not_found_share_is_soft_block_only_until_backoff(self):
         ns = load('_daily_flow_retry_blocked')
