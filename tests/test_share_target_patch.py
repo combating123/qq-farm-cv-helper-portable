@@ -1531,7 +1531,13 @@ class ShareTargetPatchTests(unittest.TestCase):
                 'dialog_closed': True,
             },
         ))
-        sync.assert_called_once_with(context, today=today, force=True)
+        sync.assert_called_once_with(
+            context, today=today, force=True,
+            exact_context_fields=(
+                'share_last_date', 'daily_flow_retry_date',
+                'daily_flow_retry_counts',
+            ),
+        )
 
     def test_share_success_counter_does_not_rewrite_already_current_files(self):
         import json

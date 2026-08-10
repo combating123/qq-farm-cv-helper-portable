@@ -3280,12 +3280,24 @@ def _daily_flow_retry_blocked(
             except BaseException:
                 max_attempts = 3
             max_attempts = max(1, min(6, max_attempts))
-            # A capped same-day failure is terminal for that day.  The original
-            # scheduler only honored next_retry_at, so the task reopened after
-            # its backoff elapsed (and again after a process restart).
+            next_retry = float(entry.get('next_retry_at', 0.0) or 0.0)
+            reason = str(entry.get('reason', '') or '').strip().lower()
+            soft_share_miss = bool(
+                flow_key == 'share' and any(token in reason for token in (
+                    'prompt-not-found', 'contact-dialog-missing',
+                ))
+            )
+            # A missing prompt/dialog means the page was not ready; it is not a
+            # completed transaction failure.  Honor the normal backoff, then
+            # permit another fresh-frame recovery even if old attempts reached
+            # the generic daily cap.
+            if soft_share_miss:
+                if next_retry > now_value:
+                    return True
+                continue
+            # Other capped same-day failures remain terminal for that day.
             if attempts >= max_attempts:
                 return True
-            next_retry = float(entry.get('next_retry_at', 0.0) or 0.0)
             if next_retry > now_value:
                 return True
         return False
@@ -20356,13 +20368,41 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                     bot, '_qqfarm_quad_overlay_block_fallback', False
                 )):
                     try:
-                        _write(
-                            'v343 unresolved 2x2 overlay stopped current backpack '
-                            'pass before second open/1x1 drag/shop name=' + str(name)
-                        )
+                        setattr(bot, '_qqfarm_quad_overlay_block_fallback', False)
+                        setattr(bot, '_qqfarm_post_harvest_pending', True)
+                        setattr(bot, '_qqfarm_single_harvest_planting_pending', True)
+                        setattr(bot, '_qqfarm_terminal_zero_empty_confirmed', False)
                     except BaseException:
                         pass
-                    return result
+                    old_quad_switches = {}
+                    marker_value = object()
+                    try:
+                        for switch_name in ('enable_quad_act_seeds', 'quad_act_seeds'):
+                            try:
+                                old_quad_switches[switch_name] = getattr(bot, switch_name)
+                            except BaseException:
+                                old_quad_switches[switch_name] = marker_value
+                            try:
+                                setattr(bot, switch_name, False)
+                            except BaseException:
+                                pass
+                        try:
+                            _write(
+                                'v456 incomplete 2x2 isolated; retry ordinary 1x1 '
+                                'backpack seed in same round name=' + str(name)
+                            )
+                        except BaseException:
+                            pass
+                        result = fn(*tuple(call_args), **call_kwargs)
+                    finally:
+                        for switch_name, old_value in old_quad_switches.items():
+                            try:
+                                if old_value is marker_value:
+                                    delattr(bot, switch_name)
+                                else:
+                                    setattr(bot, switch_name, old_value)
+                            except BaseException:
+                                pass
                 skip_quad = False
                 if bot is not None:
                     try:
@@ -34517,6 +34557,57 @@ def _wrap_first_party_friend_troublemaker_entry(fn, name=''):
             )
         except BaseException:
             after_count = before_count
+        if context is not None and after_count <= before_count and not bool(result):
+            try:
+                now_value = float(__import__('time').time())
+            except BaseException:
+                now_value = 0.0
+            try:
+                cooldown_until = float(getattr(
+                    context, '_qqfarm_trouble_visual_fallback_cooldown_until', 0.0
+                ) or 0.0)
+            except BaseException:
+                cooldown_until = 0.0
+            if now_value >= cooldown_until:
+                capture_fn = globals().get('_get_frame_from_bot')
+                fallback_fn = globals().get('_run_first_party_friend_troublemaker')
+                try:
+                    fresh_frame = capture_fn(context) if callable(capture_fn) else None
+                except BaseException:
+                    fresh_frame = None
+                fallback_ok = False
+                if fresh_frame is not None and callable(fallback_fn):
+                    try:
+                        fallback_ok = bool(fallback_fn(context, fresh_frame))
+                    except BaseException as error:
+                        try:
+                            _write('v457 trouble visual fallback error=' + repr(error)[:220])
+                        except BaseException:
+                            pass
+                try:
+                    setattr(
+                        context, '_qqfarm_trouble_visual_fallback_cooldown_until',
+                        now_value + (90.0 if fallback_ok else 300.0),
+                    )
+                except BaseException:
+                    pass
+                if fallback_ok:
+                    result = True
+                    try:
+                        after_count = int(
+                            snapshot_fn(context) if callable(snapshot_fn)
+                            else getattr(context, 'friend_trouble_daily_count', before_count + 1)
+                        )
+                    except BaseException:
+                        after_count = max(after_count, before_count + 1)
+                    try:
+                        _write(
+                            'v457 native zero result recovered by bounded visual SeedLand '
+                            'fallback count=' + str(before_count) + '->' + str(after_count)
+                        )
+                    except BaseException:
+                        pass
+
         if context is not None and after_count > before_count:
             day_fn = globals().get('_daily_business_date')
             try:
@@ -35313,10 +35404,44 @@ def _native_v225_request_home_for_daily(context):
     return False
 
 
+def _qqfarm_unwrap_daily_callable(fn):
+    """Resolve a wrapper chain to its deepest callable without following cycles."""
+    current = fn
+    seen = set()
+    attrs = (
+        '__qqfarm_daily_flow_status_orig__',
+        '__qqfarm_share_entry_settle_orig__',
+        '__qqfarm_daily_claim_orig__',
+        '__qqfarm_native_daily_orig__',
+        '__wrapped__',
+    )
+    while callable(current) and id(current) not in seen:
+        seen.add(id(current))
+        next_callable = None
+        for attr in attrs:
+            try:
+                candidate = getattr(current, attr, None)
+            except BaseException:
+                candidate = None
+            if callable(candidate) and id(candidate) not in seen:
+                next_callable = candidate
+                break
+        if next_callable is None:
+            break
+        current = next_callable
+    return current if callable(current) else fn
+
+
 def _native_v225_call_daily(fn, context):
-    """Invoke a native daily callable with its actual positional signature."""
+    """Invoke the native daily leaf while avoiding cyclic runtime wrappers."""
     if not callable(fn):
         return False
+    unwrap_fn = globals().get('_qqfarm_unwrap_daily_callable')
+    if callable(unwrap_fn):
+        try:
+            fn = unwrap_fn(fn)
+        except BaseException:
+            pass
     frame = None
     frame_fn = globals().get('_get_frame_from_bot')
     try:
@@ -48535,7 +48660,13 @@ def _share_mark_runtime_success(context, evidence=None):
     try:
         sync_fn = globals().get('_daily_metrics_sync_runtime')
         if callable(sync_fn):
-            sync_fn(context, today=today, force=True)
+            sync_fn(
+                context, today=today, force=True,
+                exact_context_fields=(
+                    'share_last_date', 'daily_flow_retry_date',
+                    'daily_flow_retry_counts',
+                ),
+            )
             changed = True
     except BaseException as e:
         try:
