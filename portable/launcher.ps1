@@ -1,4 +1,4 @@
-﻿param([switch]$NoLaunch)
+param([switch]$NoLaunch, [switch]$Restart)
 $ErrorActionPreference = 'Stop'
 
 function Test-IsAdministrator {
@@ -15,7 +15,8 @@ function Test-IsAdministrator {
 # Start-Process -Wait supervises the real process instead of the UAC proxy.
 if (!$NoLaunch -and !$env:QQFARM_LAUNCHER_ELEVATED -and !(Test-IsAdministrator)) {
     $escapedScriptPath = $PSCommandPath.Replace("'", "''")
-    $elevatedCommand = "`$env:QQFARM_LAUNCHER_ELEVATED='1'; & '$escapedScriptPath'"
+    $restartArgument = if ($Restart) { ' -Restart' } else { '' }
+    $elevatedCommand = "`$env:QQFARM_LAUNCHER_ELEVATED='1'; & '$escapedScriptPath'$restartArgument"
     $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($elevatedCommand))
     Start-Process -FilePath 'powershell.exe' -Verb RunAs -WindowStyle Hidden -ArgumentList @(
         '-NoProfile', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encodedCommand
@@ -177,11 +178,21 @@ function Initialize-PortableProfile(
 }
 
 
+function Get-ExistingAssistantInstanceAction(
+    [int]$ExistingCount,
+    [bool]$RestartRequested = $false
+) {
+    if ($ExistingCount -le 0) { return 'start' }
+    if ($RestartRequested) { return 'restart-existing' }
+    return 'preserve-existing'
+}
+
+
 function Stop-ExistingAssistantInstances {
     $existing = @(Get-Process -Name 'QQFarmCVHelper' -ErrorAction SilentlyContinue)
     if ($existing.Count -eq 0) { return $true }
 
-    # 检测到旧实例时直接尝试关闭；只有权限不足时才显示系统权限确认。
+    # 妫€娴嬪埌鏃у疄渚嬫椂鐩存帴灏濊瘯鍏抽棴锛涘彧鏈夋潈闄愪笉瓒虫椂鎵嶆樉绀虹郴缁熸潈闄愮‘璁ゃ€?
 
     foreach ($item in $existing) {
         try { [void]$item.CloseMainWindow() } catch {}
@@ -205,9 +216,9 @@ function Stop-ExistingAssistantInstances {
         $admin = Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encoded
         ) -PassThru -Wait
-        if ($admin.ExitCode -ne 0) { throw "管理员结束进程返回代码 $($admin.ExitCode)" }
+        if ($admin.ExitCode -ne 0) { throw "绠＄悊鍛樼粨鏉熻繘绋嬭繑鍥炰唬鐮?$($admin.ExitCode)" }
     } catch {
-        Show-LauncherMessage '旧实例仍在运行。请在权限确认窗口点击“是”，然后重新双击启动文件。' 48
+        Show-LauncherMessage 'The previous assistant instance is still running. Accept the Windows permission prompt, then launch it again.' 48
         return $false
     }
 
@@ -216,7 +227,7 @@ function Stop-ExistingAssistantInstances {
     }
     $stillRunning = @($remaining | Where-Object { Get-Process -Id $_.Id -ErrorAction SilentlyContinue })
     if ($stillRunning.Count -gt 0) {
-        Show-LauncherMessage '旧实例仍未退出。请在任务管理器中结束 QQFarmCVHelper.exe 后重新启动。' 48
+        Show-LauncherMessage 'The previous assistant instance did not exit. End QQFarmCVHelper.exe in Task Manager, then launch it again.' 48
         return $false
     }
     return $true
@@ -293,6 +304,11 @@ $env:TEMP = $PortableTemp
 $env:TMP = $PortableTemp
 
 $env:QQFARM_HOOK_LOG_PATH = Join-Path $HookLogDir 'hook_runtime_log.txt'
+# Strict 24-slot rollout: the child must prove exactly which deployed hook it
+# loaded and stay inside self-farm planting until this live acceptance closes.
+$env:QQFARM_PROXY_DIR = $AppDir
+$env:QQFARM_PERF_MARKER_LOG_PATH = Join-Path $HookLogDir 'strict-24slot-rollout-marker.log'
+$env:QQFARM_STRICT_PLANTING_ROLLOUT = '1'
 $env:QQFARM_DAILY_FLOW_STATUS_PATH = Join-Path $CurrentProfile 'daily_flow_status.json'
 $env:QQFARM_DAILY_COUNTERS_PATH = Join-Path $CurrentProfile 'daily_counters.json'
 $env:QQFARM_PROXY_LOG_PATH = Join-Path $LogDir 'proxy_dll_load.log'
@@ -309,7 +325,29 @@ $env:ORT_INTER_OP_NUM_THREADS = '1'
 $env:OMP_WAIT_POLICY = 'PASSIVE'
 if (!(Test-Path -LiteralPath $Exe -PathType Leaf)) { throw "Missing main program: $Exe" }
 if ($NoLaunch) { exit 0 }
-if (!(Stop-ExistingAssistantInstances)) { exit 5 }
+
+# Double-clicking the shortcut while the assistant is loading used to kill the
+# still-initialising window.  The normal entry now preserves it; only an
+# explicit `launcher.ps1 -Restart` is allowed to close an existing instance.
+$existingAssistantInstances = @(Get-Process -Name 'QQFarmCVHelper' -ErrorAction SilentlyContinue)
+$existingInstanceAction = Get-ExistingAssistantInstanceAction `
+    -ExistingCount $existingAssistantInstances.Count `
+    -RestartRequested ([bool]$Restart)
+if ($existingInstanceAction -eq 'preserve-existing') {
+    $existingPidList = ($existingAssistantInstances.Id -join ',')
+    Write-WatchdogLog (
+        'existing_instance pid=' + $existingPidList +
+        ' action=preserve-existing restartRequested=False'
+    )
+    exit 0
+}
+if ($existingInstanceAction -eq 'restart-existing') {
+    Write-WatchdogLog (
+        'existing_instance pid=' + ($existingAssistantInstances.Id -join ',') +
+        ' action=restart-existing restartRequested=True'
+    )
+    if (!(Stop-ExistingAssistantInstances)) { exit 5 }
+}
 
 $RecoverableCrashBurstLimit = 3
 $StableRuntimeResetSeconds = 600

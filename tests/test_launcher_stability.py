@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = ROOT / "portable" / "launcher.ps1"
 START_CMD = next((ROOT / "portable").glob("*.cmd"))
 START_VBS = ROOT / "portable" / "StartFarmAssistant.vbs"
+REPAIR_VBS = ROOT / "portable" / "RepairFarmAssistant.vbs"
 
 
 def extract_powershell_function(text, name):
@@ -48,6 +49,33 @@ def call_powershell_function(name, *args):
 
 
 class LauncherStabilityTests(unittest.TestCase):
+    def test_existing_instance_policy_preserves_default_launch_and_restarts_only_on_request(self):
+        """Repeated one-click launches must not kill an instance that is still loading."""
+        text = LAUNCHER.read_text(encoding="utf-8-sig")
+        self.assertIn("function Get-ExistingAssistantInstanceAction", text)
+        self.assertEqual("start", call_powershell_function(
+            "Get-ExistingAssistantInstanceAction", 0, 0
+        ))
+        self.assertEqual("preserve-existing", call_powershell_function(
+            "Get-ExistingAssistantInstanceAction", 1, 0
+        ))
+        self.assertEqual("restart-existing", call_powershell_function(
+            "Get-ExistingAssistantInstanceAction", 1, 1
+        ))
+
+    def test_default_launcher_branch_keeps_an_existing_window_and_vbs_warns_not_to_repeat_clicks(self):
+        """The normal shortcut route preserves existing work and states the loading wait."""
+        launcher = LAUNCHER.read_text(encoding="utf-8-sig")
+        vbs = START_VBS.read_text(encoding="utf-8-sig")
+        self.assertIn("$existingInstanceAction = Get-ExistingAssistantInstanceAction", launcher)
+        self.assertIn("action=preserve-existing", launcher)
+        self.assertIn("if ($Restart)", launcher)
+        self.assertIn("Launch request sent.", vbs)
+        self.assertIn("about 60 seconds", vbs)
+        self.assertIn("Do not click again", vbs)
+        self.assertIn("keeps it open instead of closing it", vbs)
+        self.assertNotIn("????", vbs)
+
     def test_launcher_file_parses_in_windows_powershell(self):
         launcher_escaped = str(LAUNCHER).replace("'", "''")
         command = (
@@ -304,6 +332,56 @@ class LauncherStabilityTests(unittest.TestCase):
             f'-File "{launcher_path}"'
         )
         self.assertEqual(expected, completed.stdout.strip())
+
+    def test_repair_vbs_requests_an_explicit_restart_for_an_unresponsive_existing_window(self):
+        """The no-response repair entry must close only the stuck existing app then relaunch it."""
+        self.assertTrue(REPAIR_VBS.is_file(), "missing one-click start-repair VBS entry")
+        text = REPAIR_VBS.read_text(encoding="utf-8-sig")
+        self.assertIn("--check", text)
+        self.assertIn("-Restart", text)
+        self.assertIn("shell.Run commandLine, 0, False", text)
+
+        instrumented = text.replace(
+            "shell.Run commandLine, 0, False",
+            "WScript.Echo commandLine\nWScript.Quit 0",
+            1,
+        )
+        self.assertNotEqual(text, instrumented)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            script_path = temp_root / "RepairFarmAssistant.vbs"
+            launcher_path = temp_root / "launcher.ps1"
+            script_path.write_text(instrumented, encoding="utf-8")
+            launcher_path.write_text("# launcher fixture\n", encoding="utf-8")
+            completed = subprocess.run(
+                ["cscript.exe", "//nologo", str(script_path)],
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+
+        self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
+        expected = (
+            "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass "
+            f'-File "{launcher_path}" -Restart'
+        )
+        self.assertEqual(expected, completed.stdout.strip())
+
+    def test_repair_vbs_check_mode_executes_without_a_script_parse_error(self):
+        """The deployed repair entry must be plain VBScript text, including its first byte."""
+        completed = subprocess.run(
+            ["cscript.exe", "//nologo", str(REPAIR_VBS), "--check"],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr or completed.stdout)
+        self.assertIn("start-repair launcher parsed", completed.stdout)
 
     def test_cmd_starts_powershell_hidden(self):
         text = START_CMD.read_text(encoding="utf-8-sig")

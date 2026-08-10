@@ -27,13 +27,20 @@ if (Test-Path -LiteralPath $stageFull) {
 }
 New-Item -ItemType Directory -Force -Path $stageFull | Out-Null
 
-$excludedDirs = @('UserData', 'logs', '__pycache__', 'screenshots', 'captures', 'cache', 'crash')
+$excludedDirs = @('UserData', 'logs', '__pycache__', 'screenshots', 'captures', 'cache', 'crash', 'backups', 'artifacts', 'diagnostics', 'maintenance-backup', 'runtime-v2.2.5', 'deployment-backups', 'migration-archive')
 $sourcePrefixLength = $source.TrimEnd('\').Length + 1
 Get-ChildItem -LiteralPath $source -Recurse -File -Force | ForEach-Object {
     $relative = $_.FullName.Substring($sourcePrefixLength)
     $parts = $relative -split '[\\/]'
     if (@($parts | Where-Object { $excludedDirs -contains $_ }).Count -gt 0) { return }
-    if ($_.Name -like '*.bak-*' -or $_.Name -like '*.tmp*' -or $_.Name -like '*.log' -or $_.Name -like '*.pyc') { return }
+    if ($_.Name -like '*.bak-*' -or $_.Name -like '*.backup-*' -or $_.Name -like '*.tmp*' -or $_.Name -like '*.log' -or $_.Name -like '*.pyc' -or $_.Name -like '*.lnk') { return }
+    if ($parts.Count -eq 1 -and (
+        $_.Name -like 'desktop-*.png' -or
+        $_.Name -like '_analysis*.png' -or
+        $_.Name -like 'live-*.png' -or
+        $_.Name -like 'annotated-*.png' -or
+        $_.Name -eq 'StartFarmAssistant-Clean.ps1'
+    )) { return }
     $target = Join-Path $stageFull $relative
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
     Copy-Item -LiteralPath $_.FullName -Destination $target -Force
@@ -62,6 +69,7 @@ $projectInfo = @(
     'CV 农场助手 v' + $Version,
     '项目仓库：https://github.com/combating123/qq-farm-cv-helper-portable',
     '发布页：https://github.com/combating123/qq-farm-cv-helper-portable/releases',
+    '费用声明：本项目免费发布，维护者不会向任何用户收取费用。',
     '',
     '更新说明：',
     '1. 启动、更新和监督重启均保留用户原设置；',

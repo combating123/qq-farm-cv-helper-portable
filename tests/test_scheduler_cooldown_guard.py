@@ -101,6 +101,8 @@ class SchedulerCooldownGuardTests(unittest.TestCase):
             "enable_friend_steal_one_fallback",
             "enable_bottom_friend_list_help_all",
             "enable_bottom_friend_list_steal",
+            "force_help_after_steal_success",
+            "friend_only_help_request_mode",
         }
         namespace.update({
             "_active_bot_sections": lambda: ["instance.1.bot", "bot"],
@@ -122,11 +124,22 @@ class SchedulerCooldownGuardTests(unittest.TestCase):
             enable_friend_steal_one_fallback = False
             enable_bottom_friend_list_help_all = False
             enable_bottom_friend_list_steal = False
+            force_help_after_steal_success = False
+            friend_only_help_request_mode = False
 
         scheduler = Scheduler()
+        scheduler.settings = {key: False for key in enabled}
+        scheduler.config = {
+            "enable_process_friend": False,
+            "enable_steal": False,
+            "enable_help": False,
+            "enable_bottom_friend_list_steal": False,
+            "force_help_after_steal_success": False,
+            "friend_only_help_request_mode": False,
+        }
         changed = namespace["_restore_runtime_business_switches"](scheduler)
 
-        self.assertGreaterEqual(changed, 10)
+        self.assertGreaterEqual(changed, 10 + len(enabled) + 4)
         for attr in (
             "enable_process_friend",
             "enable_process_friend_help_entry",
@@ -138,8 +151,14 @@ class SchedulerCooldownGuardTests(unittest.TestCase):
             "enable_friend_steal_one_fallback",
             "enable_bottom_friend_list_help_all",
             "enable_bottom_friend_list_steal",
+            "force_help_after_steal_success",
+            "friend_only_help_request_mode",
         ):
             self.assertIs(True, getattr(scheduler, attr), attr)
+        for key in enabled:
+            self.assertIs(True, scheduler.settings[key], "settings." + key)
+        for key in scheduler.config:
+            self.assertIs(True, scheduler.config[key], "config." + key)
 
 
 if __name__ == "__main__":

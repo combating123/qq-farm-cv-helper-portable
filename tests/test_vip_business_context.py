@@ -72,6 +72,7 @@ def load_home_business_patcher():
         "_wrap_planting_crop_context_func": lambda fn, *args: (fn, False),
         "_wrap_radish_fertilizer_func": lambda fn, *args: (fn, False),
         "_wrap_vip_business_func": lambda fn, *args: (fn, False),
+        "_qqfarm_legacy_wrapper_allowed": lambda _name: True,
         "_throttled_write": lambda *args, **kwargs: None,
         "_write": lambda *args, **kwargs: None,
     }
@@ -114,6 +115,19 @@ def load_vip_module_matcher():
 
 
 class VipBusinessContextTests(unittest.TestCase):
+    def test_release_source_contains_no_machine_specific_user_profile_paths(self):
+        source = HOOK.read_text(encoding="utf-8-sig").replace("\\", "/")
+        private_assignments = [
+            line for line in source.splitlines()
+            if line.startswith((
+                "_VIP_WAREHOUSE_STATE_PATH =",
+                "_VIP_WAREHOUSE_RETRY_STATE_PATH =",
+                "_QT_DUMP_PATH =",
+            ))
+        ]
+        self.assertEqual(3, len(private_assignments))
+        self.assertFalse(any("C:/Users/" in line for line in private_assignments))
+
     def test_claims_include_all_known_member_feature_aliases(self):
         flags = load_claims()["feature_flags"]
         expected = {

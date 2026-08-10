@@ -26,3 +26,16 @@ release-output/
 
 portable/comtypes/test/
 portable/pywinauto/tests/
+
+# Local temporary verification captures
+/.tmp-*
+
+# Local field evidence and handoff material
+/.analysis/
+/.codex-*.txt
+/HANDOFF_*.md
+/live-*.png
+/annotated-*.png
+/desktop-*.png
+/_analysis*.png
+/live-user-screenshot-crops/

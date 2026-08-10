@@ -1,11 +1,11 @@
-﻿<div align="center">
+<div align="center">
   <img src="./assets/readme/hero.svg" width="100%" alt="CV 农场助手：面向 QQ 与微信经典农场的 Windows 视觉自动化助手">
 
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.12-32C98A?style=flat-square)](#版本与更新)
-  [![Tests](https://img.shields.io/badge/回归测试-526%20passed-17345F?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.39-32C98A?style=flat-square)](#版本与更新)
+  [![Tests](https://img.shields.io/badge/发布回归-175%20passed-17345F?style=flat-square)](#版本与更新)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
   [![Portable](https://img.shields.io/badge/交付方式-单目录便携-F2A93B?style=flat-square)](#便携目录与数据保留)
@@ -16,6 +16,11 @@
 
   [下载便携包](https://github.com/combating123/qq-farm-cv-helper-portable/releases) · [快速开始](#快速开始) · [常见问题](#常见问题)
 </div>
+
+> [!IMPORTANT]
+> **本项目永久免费，维护者不会向任何用户收取费用。**
+>
+> 下载、使用、功能开关、更新与问题反馈均不收取下载费、会员费、卡密费、激活费或售后费；任何第三方收费转售均与本项目无关。
 
 ---
 
@@ -37,6 +42,8 @@
 
 | 能力 | 做什么 | 使用价值 |
 | --- | --- | --- |
+| v1.4.39 每日事务与免费发布 | 免费福利达到同日重试上限后硬停止；人工领取、精确联系人分享和分享奖励分别保存证明；“已激活”按钮显示本地状态说明；公开包移除用户数据、日志、备份与机器路径 | 175 项发布回归、9 轮现场巡检 |
+| v1.4.37–v1.4.38 24 格账本与原生业务接管 | 以固定 24 格账本处理 1×1/2×2 事务；新鲜物理画面校验满地与局部空地；接入稳定的好友帮助、自动捣乱、自动施肥和每日流程执行路径 | 多轮 RED→GREEN、现场与性能验证 |
 | 自家农场 | 收获、播种、浇水、除草、除虫、施肥、开垦、出售 | 减少高频重复经营操作 |
 | 播种策略 | 等级检测、偏好作物、背包优先、缺种购买、活动种子 | 根据等级和库存选择播种方案 |
 | 好友农场 | 巡检、帮助、可收获作物处理、批量操作、黑名单、保护 | 减少逐个访问好友农场的重复流程 |
@@ -203,7 +210,7 @@ CV农场助手/
 <summary><strong>双击启动后没有界面</strong></summary>
 
 - 确认已经完整解压；
-- 优先双击 `QQFarmCVHelper（双击启动）.lnk`，没有快捷方式时双击 `StartFarmAssistant.vbs`；
+- 优先双击 `StartFarmAssistant.vbs`，也可以运行 `launcher.ps1`；
 - 检查主程序和运行库是否被安全软件隔离；
 - 查看 `logs` 中最近的启动与注入日志；
 - 路径过深或含特殊权限限制时，可移动到较短的普通目录重试。
@@ -228,6 +235,12 @@ CV农场助手/
 </details>
 
 <details>
+<summary><strong>为什么点击“已激活”后显示的是本地状态说明？</strong></summary>
+
+当前公开版把顶部“已激活”作为本地功能状态入口，点击后显示“本地 VIP 已激活”的说明窗口，不再进入原版卡密、购买或续费页面。这个窗口只说明本地功能入口状态；具体业务仍按各功能开关、当天次数与当前游戏画面执行。
+</details>
+
+<details>
 <summary><strong>更新后如何保留原有设置</strong></summary>
 
 保留旧目录中的 `UserData`，再更新其余程序文件。首次迁移完成后，运行配置与每日状态位于 `UserData\WindowsProfile`，更新时不需要重新配置休息时段、好友巡视、施肥、播种或每日任务开关。
@@ -235,29 +248,19 @@ CV农场助手/
 
 ## 版本与更新
 
-当前本地部署版本为 **v1.4.12**。项目采用独立 Git 标签和 Release 记录每轮公开修改，不再只保留一个无法区分迭代历史的安装包。
+当前公开版本为 **v1.4.39（2026-08-10）**。版本号对应可审计的 Git 标签和 Release；完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
 
 | 版本 | 重点变化 | 验证 |
 | --- | --- | --- |
-| v1.4.12（本地部署） | 自家空地巡检无动作时直达原生播种并短退避重试；`TEMP`/`TMP` 同步重定向到 `E:` 便携档案；双击快捷方式/VBS 隐藏启动 | 526 项测试 |
-| v1.4.11 | OCR 暂时失败时继续消费背包种子但禁止按旧等级买种；每日任务状态、配置和运行数据迁移至 `E:` 便携档案；双击快捷方式/VBS 隐藏启动 | 521 项测试 |
-| v1.4.10 | 自家空地未清零时持续执行自家维护；稳定空地快照防止单帧误判；好友入口点击后等待真实好友界面确认 | 490 项测试 |
-| [v1.4.8](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.8) | 用户设置字节级保留、自家空地优先种满并施肥、等级末位纠错、分享四项证据闭环与好友链收敛 | 481 项测试 |
-| [v1.4.7](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.7) | 商城每日福利包装幂等、递归异常退避；保留全土地局部 2×2 田字型枚举 | 445 项测试 |
-| [v1.4.6](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.6) | 24 块土地全候选局部田字型枚举、普通种子降级、当前护主卡复核与中间无动作好友继续扫描 | 440 项测试 |
-| [v1.4.5](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.5) | 2×2 特殊种子事务级确认重试；好友底栏被裁剪时仍依据回家按钮与可见偷取/务农入口执行动作 | 432 项测试 |
-| [v1.4.4](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.4) | 好友首行封禁门禁、同好友偷取+务农、连续好友链、空地与背包播种、自动捣乱有界扫描、关于页和稳定性收敛 | 429 项测试 |
-| [v1.4.3](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.3) | 首位好友优先、多好友底部连续处理、逐好友护主复核、快速列表入口与每日任务状态修复 | 316 项测试 |
-| [v1.4.2](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.2) | 护主好友进入后继承资格，立即执行一键务农，消除约 30–40 秒无动作等待 | 300 项测试 |
-| [v1.4.1](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.1) | 定向分享成功状态持久化，精确选择联系人圆点，避免重复发送 | 296 项测试 |
-| [v1.4.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.4.0) | 好友连续处理、护主名单、每日状态、资源限制与 UIA 便携依赖 | 293 项测试 |
-| [v1.3.1](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.3.1) | 分享目标、运行监督与权益上下文稳定性修复 | 历史稳定点 |
-| [v1.3.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.3.0) | CPU/OCR 限制与好友巡检恢复 | 历史稳定点 |
-| [v1.2.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.2.0) | README、关于页与定向分享设置 | 历史稳定点 |
-| [v1.1.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.1.0) | 单目录合并、旧设置迁移和原生浅色布局 | 历史稳定点 |
-| [v1.0.0](https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.0.0) | 首个便携交付版本 | 历史稳定点 |
+| **v1.4.39** | 免费福利同日封顶硬门、人工领取状态持久化、精确联系人分享与奖励分离、会员状态按钮说明、发布包隐私清理和永久免费声明 | 175 项发布回归；重启后 9 轮巡检无重复福利点击 |
+| **v1.4.38** | 接管稳定的原生业务执行路径；好友帮助、自动捣乱、自动施肥、每日任务与分享恢复使用统一状态证明；物理窗口捕获和场景仲裁增强 | 相关模块专项、编译和现场观察通过 |
+| **v1.4.37** | 建立固定 24 格土地账本；1×1 精确单格事务、2×2 精确四格事务、新鲜同状态画面校验和 120 秒硬上限 | 24 格账本、种植、捕获与好友交接专项通过 |
+| **v1.4.36** | 满地好友求助、收获后单格补种、好友末行恢复和持久游标修复 | 完整回归 1042 项 |
+| **v1.4.35** | 好友动作强证明、真实场景优先和回家有界重试 | 完整回归 1030 项 |
+| [v1.4.8](https://github.com/combating123/qq-farm-cv-helper-portable/tree/v1.4.8) | 设置保留、自家优先、分享证据闭环和好友链收敛 | 历史稳定点 |
 
-完整明细见 [`CHANGELOG.md`](./CHANGELOG.md)。更新时只替换程序文件并保留 `UserData`，即可延续原有实例、好友护主模板和功能设置。
+更新时保留旧目录中的 `UserData`，再覆盖其余程序文件，即可延续已有实例、功能开关和每日状态。公开 Release 包本身不包含任何用户配置、日志、联系人、截图或计数文件。
+
 ## 仓库内容
 
 本仓库主要维护：
@@ -274,5 +277,7 @@ CV农场助手/
 - [下载便携包](https://github.com/combating123/qq-farm-cv-helper-portable/releases)
 - [提交问题](https://github.com/combating123/qq-farm-cv-helper-portable/issues)
 - [查看仓库](https://github.com/combating123/qq-farm-cv-helper-portable)
+
+**费用声明：本项目及其公开 Release 永久免费，维护者不会向任何用户收取费用。**
 
 提交识别问题时，建议附上平台、显示缩放、窗口状态、相关日志片段和当前截图，以便定位具体流程。

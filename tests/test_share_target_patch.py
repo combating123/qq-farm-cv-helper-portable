@@ -455,6 +455,106 @@ class ShareTargetPatchTests(unittest.TestCase):
             ns["_daily_entry_call_kind"]((), {"template_key": "share_btn_click"}),
         )
 
+    def test_share_button_stops_before_target_confirmation_when_pause_arrives_after_template_click(self):
+        ns = load_share_fast_path_functions()
+        context = types.SimpleNamespace(stop_requested=False)
+        events = []
+
+        def native_template_click(*args, **kwargs):
+            events.append("template-click")
+            context.stop_requested = True
+            return True
+
+        ns.update({
+            "_stop_requested_in_args": (
+                lambda args, kwargs=None: bool(context.stop_requested)
+            ),
+            "_stop_gate_return": (
+                lambda name: events.append(("stop", name)) or False
+            ),
+            "_share_target_guard_config": lambda: {
+                "enabled": True,
+                "target_name": "1000000001",
+            },
+            "_share_target_module": lambda: object(),
+            "_share_wait_dialog_hwnd": (
+                lambda *args, **kwargs: events.append("dialog-wait") or 77
+            ),
+            "_share_search_and_maybe_confirm": (
+                lambda *args, **kwargs: events.append("target-confirm") or True
+            ),
+            "_share_context_from_call": lambda args, kwargs: context,
+            "_share_mark_runtime_success": (
+                lambda *args, **kwargs: events.append("persist-success") or True
+            ),
+            "_SHARE_DIRECT_SUCCESS_STATE": {"evidence": {}},
+            "_share_log_runtime": lambda *args, **kwargs: None,
+        })
+
+        wrapped, changed = ns["_wrap_share_entry_settle_func"](native_template_click)
+
+        self.assertTrue(changed)
+        self.assertFalse(wrapped(context, "share_btn_click"))
+        self.assertEqual(
+            ["template-click", ("stop", "daily-share-entry-settle")],
+            events,
+        )
+
+    def test_share_button_stops_after_visual_recovery_click_when_pause_arrives(self):
+        ns = load_share_fast_path_functions()
+        context = types.SimpleNamespace(stop_requested=False)
+        events = []
+
+        def native_template_click(*args, **kwargs):
+            events.append("template-click")
+            return False
+
+        def visual_recovery_click(*args, **kwargs):
+            events.append("visual-recovery-click")
+            context.stop_requested = True
+            return True
+
+        ns.update({
+            "_stop_requested_in_args": (
+                lambda args, kwargs=None: bool(context.stop_requested)
+            ),
+            "_stop_gate_return": (
+                lambda name: events.append(("stop", name)) or False
+            ),
+            "_share_find_prompt_button_center": lambda *args, **kwargs: (500, 600),
+            "_share_click_prompt_button": visual_recovery_click,
+            "_share_target_guard_config": lambda: {
+                "enabled": True,
+                "target_name": "1000000001",
+            },
+            "_share_target_module": lambda: object(),
+            "_share_wait_dialog_hwnd": (
+                lambda *args, **kwargs: events.append("dialog-wait") or 77
+            ),
+            "_share_search_and_maybe_confirm": (
+                lambda *args, **kwargs: events.append("target-confirm") or True
+            ),
+            "_share_context_from_call": lambda args, kwargs: context,
+            "_share_mark_runtime_success": (
+                lambda *args, **kwargs: events.append("persist-success") or True
+            ),
+            "_SHARE_DIRECT_SUCCESS_STATE": {"evidence": {}},
+            "_share_log_runtime": lambda *args, **kwargs: None,
+        })
+
+        wrapped, changed = ns["_wrap_share_entry_settle_func"](native_template_click)
+
+        self.assertTrue(changed)
+        self.assertFalse(wrapped(context, "share_btn_click"))
+        self.assertEqual(
+            [
+                "template-click",
+                "visual-recovery-click",
+                ("stop", "daily-share-entry-settle"),
+            ],
+            events,
+        )
+
     def test_share_recovery_ignores_same_day_runtime_date_without_v2_proof(self):
         ns = load_named_hook_functions("_share_recovery_due")
         context = types.SimpleNamespace(
@@ -481,17 +581,80 @@ class ShareTargetPatchTests(unittest.TestCase):
 
         self.assertTrue(ns["_share_recovery_due"](context))
 
+    def test_share_recovery_schedule_uses_shanghai_clock_not_host_localtime(self):
+        ns = load_named_hook_functions("_share_recovery_due")
+        context = types.SimpleNamespace(
+            share_last_date="",
+            _qqfarm_share_visual_recovery_last_ts=0.0,
+        )
+        # Host-local time says 23:59, while the injected UTC epoch is
+        # 2026-08-05 04:59 in Asia/Shanghai. A 05:00 share is not due yet.
+        ns.update({
+            "_share_retry_backoff_active": lambda value: False,
+            "_active_bot_sections": lambda: ["instance.1.bot", "bot"],
+            "_cfg_get": lambda sections, key, default=None: {
+                "enable_daily_share": "True",
+                "daily_share_time": "05:00",
+            }.get(key, default),
+            "_truthy": lambda value, default=False: str(value).lower() in ("1", "true", "yes", "on"),
+            "_share_target_guard_config": lambda: {"enabled": True, "target_name": "1000000001"},
+            "_share_direct_success_recent": lambda target="": False,
+            "_daily_business_date": lambda: "2026-08-05",
+            "time": types.SimpleNamespace(
+                time=lambda: 1785877140,
+                gmtime=time.gmtime,
+                localtime=lambda: types.SimpleNamespace(tm_hour=23, tm_min=59),
+                monotonic=lambda: 100.0,
+            ),
+        })
+
+        self.assertFalse(ns["_share_recovery_due"](context))
+
+
+    def test_invalid_active_daily_share_time_fails_closed(self):
+        ns = load_named_hook_functions("_parse_hhmm", "_share_recovery_due")
+        context = types.SimpleNamespace(
+            share_last_date="",
+            _qqfarm_share_visual_recovery_last_ts=0.0,
+        )
+        ns.update({
+            "_share_retry_backoff_active": lambda value: False,
+            "_active_bot_sections": lambda: ["instance.1.bot", "bot"],
+            "_cfg_get": lambda sections, key, default=None: {
+                "enable_daily_share": "True",
+                "daily_share_time": "not-a-time",
+            }.get(key, default),
+            "_truthy": lambda value, default=False: str(value).lower() in ("1", "true", "yes", "on"),
+            "_share_target_guard_config": lambda: {"enabled": True, "target_name": "1000000001"},
+            "_share_direct_success_recent": lambda target="": False,
+            "_daily_business_date": lambda: "2026-08-05",
+            "_share_log_runtime": lambda *args, **kwargs: None,
+            "time": types.SimpleNamespace(
+                time=lambda: 1785938400,
+                gmtime=time.gmtime,
+                monotonic=lambda: 100.0,
+            ),
+        })
+
+        self.assertFalse(ns["_share_recovery_due"](context))
+
+
     def test_run_share_prompt_recovery_prefers_native_daily_flow_before_visual_click(self):
         ns = load_named_hook_functions("_run_share_prompt_recovery")
         events = []
         context = types.SimpleNamespace()
-        state = {"dialog": 0}
+        state = {"dialog": 0, "verified": False}
         module = types.SimpleNamespace(__name__="bot.synthetic.freebenefits_flow")
 
         def run_daily_share(bot):
             events.append(("native", bot))
             state["dialog"] = 77
             return False
+
+        def send_exact_target(mod, cfg):
+            events.append(("send", cfg["target_name"]))
+            state["verified"] = True
+            return True
 
         module.run_daily_share = run_daily_share
         ns.update({
@@ -507,22 +670,38 @@ class ShareTargetPatchTests(unittest.TestCase):
             "_share_wait_dialog_hwnd": lambda mod=None, timeout_ms=None: state["dialog"],
             "_share_find_prompt_button_center": lambda *args, **kwargs: events.append(("visual-probe",)) or (500, 600),
             "_share_click_prompt_button": lambda *args, **kwargs: events.append(("visual-click",)) or True,
-            "_share_search_and_maybe_confirm": lambda mod, cfg: events.append(("send", cfg["target_name"])) or True,
-            "_share_mark_runtime_success": lambda value: True,
-            "_share_direct_success_recent": lambda target="": False,
+            "_share_search_and_maybe_confirm": send_exact_target,
+            "_share_direct_success_recent": lambda target="": state["verified"],
+            "_daily_flow_apply_success_context": lambda bot, flow: events.append(("apply", bot, flow)) or True,
+            "_share_clear_retry_backoff": lambda bot: events.append(("backoff-clear", bot)) or True,
             "_share_log_runtime": lambda *args, **kwargs: None,
             "_throttled_write": lambda *args, **kwargs: None,
         })
 
         self.assertTrue(ns["_run_share_prompt_recovery"](context))
-        self.assertEqual([("native", context), ("send", "1000000001")], events)
+        self.assertEqual(
+            [
+                ("native", context),
+                ("send", "1000000001"),
+                ("apply", context, "share"),
+                ("backoff-clear", context),
+            ],
+            events,
+        )
 
     def test_run_share_prompt_recovery_clicks_prompt_sends_target_and_marks_success(self):
         ns = load_named_hook_functions("_run_share_prompt_recovery")
         self.assertTrue(callable(ns.get("_run_share_prompt_recovery")))
         events = []
+        state = {"verified": False}
         context = object()
         module = types.SimpleNamespace(__name__="bot._q8eacf4154f.freebenefits_flow")
+
+        def send_exact_target(mod, cfg):
+            events.append(("send", cfg["target_name"]))
+            state["verified"] = True
+            return True
+
         ns.update({
             "time": type("Clock", (), {"monotonic": staticmethod(lambda: 100.0)}),
             "_share_target_guard_config": lambda: {
@@ -537,15 +716,22 @@ class ShareTargetPatchTests(unittest.TestCase):
             "_share_find_prompt_button_center": lambda args=(), kwargs=None: (500, 600),
             "_share_click_prompt_button": lambda center, args=(), kwargs=None: events.append(("click", center)) or True,
             "_share_wait_dialog_hwnd": lambda mod=None, timeout_ms=None: 77,
-            "_share_search_and_maybe_confirm": lambda mod, cfg: events.append(("send", cfg["target_name"])) or True,
-            "_share_mark_runtime_success": lambda value: events.append(("mark", value)) or True,
+            "_share_search_and_maybe_confirm": send_exact_target,
+            "_share_direct_success_recent": lambda target="": state["verified"],
+            "_daily_flow_apply_success_context": lambda bot, flow: events.append(("apply", bot, flow)) or True,
+            "_share_clear_retry_backoff": lambda bot: events.append(("backoff-clear", bot)) or True,
             "_share_log_runtime": lambda *args, **kwargs: None,
             "_throttled_write": lambda *args, **kwargs: None,
         })
 
         self.assertTrue(ns["_run_share_prompt_recovery"](context))
         self.assertEqual(
-            [("click", (500, 600)), ("send", "1000000001"), ("mark", context)],
+            [
+                ("click", (500, 600)),
+                ("send", "1000000001"),
+                ("apply", context, "share"),
+                ("backoff-clear", context),
+            ],
             events,
         )
 
@@ -652,6 +838,27 @@ class ShareTargetPatchTests(unittest.TestCase):
         self.assertEqual([mod.__name__ + ":1"], changed)
         self.assertEqual("wrapped", mod._q17c9(None, "share_btn_click"))
 
+
+    def test_task_entry_waits_long_enough_for_slow_prompt_render(self):
+        """A successful task-entry click reserves the 2.4 s live render budget."""
+        namespace = load_named_hook_functions("_wrap_share_entry_settle_func")
+        sleeps = []
+        namespace.update({
+            "time": types.SimpleNamespace(sleep=lambda seconds: sleeps.append(seconds)),
+            "_daily_entry_call_kind": lambda args, kwargs: "task_entry",
+            "_stop_requested_in_args": lambda args, kwargs: False,
+            "_stop_gate_return": lambda name: False,
+            "_share_click_result_succeeded": lambda value: bool(value),
+            "_share_int_cfg": lambda key, default: default,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+        wrapped, patched = namespace["_wrap_share_entry_settle_func"](
+            lambda *args, **kwargs: True
+        )
+
+        self.assertTrue(patched)
+        self.assertTrue(wrapped(object(), "task_entry"))
+        self.assertEqual([2.4], sleeps)
 
     def test_green_share_button_detector_finds_real_lime_physical_button(self):
         ns = load_share_fast_path_functions()
@@ -807,8 +1014,8 @@ class ShareTargetPatchTests(unittest.TestCase):
                 lambda target="", max_age=15.0:
                 target == "1000000001" and max_age >= 86400.0
             ),
-            "_share_mark_runtime_success": (
-                lambda bot: events.append(("mark-runtime-success", bot)) or True
+            "_daily_flow_apply_success_context": (
+                lambda bot, flow: events.append(("apply-success-context", bot, flow)) or True
             ),
         }
         exec(compile(module_ast, str(HOOK), "exec"), namespace)
@@ -835,7 +1042,8 @@ class ShareTargetPatchTests(unittest.TestCase):
         self.assertEqual(0, bot.daily_flow_retry_counts["share"])
         self.assertFalse(namespace["_share_retry_backoff_active"](bot))
         self.assertNotIn(("native-failure", "share"), events)
-        self.assertIn(("mark-runtime-success", bot), events)
+        self.assertIn(("apply-success-context", bot, "share"), events)
+        self.assertFalse(any(event[0] == "mark-runtime-success" for event in events))
 
     def test_share_exact_entry_retries_until_clipboard_readback_matches_target(self):
         ns = load_named_hook_functions("_share_enter_target_exact")
@@ -866,6 +1074,31 @@ class ShareTargetPatchTests(unittest.TestCase):
         self.assertTrue(any(key == "target-readback-mismatch" for key, _, _ in logs))
         self.assertTrue(any(key == "target-readback-verified" for key, _, _ in logs))
 
+
+    def test_share_exact_entry_allows_unreadable_readback_to_reach_exact_uia_gate(self):
+        ns = load_named_hook_functions("_share_enter_target_exact")
+        helper = ns.get("_share_enter_target_exact")
+        typed = []
+        logs = []
+        ns.update({
+            "_share_activate_dialog": lambda mod, hwnd: True,
+            "_share_click_dialog_point": lambda *args, **kwargs: True,
+            "_share_type_target": lambda target: typed.append(target) or True,
+            "_share_read_focused_text_via_clipboard": lambda: None,
+            "_share_find_exact_uia_target": lambda *args, **kwargs: None,
+            "_share_find_dialog_hwnd": lambda mod=None: 77,
+            "_share_int_cfg": lambda key, default: 2 if key == "share_target_input_retry_count" else default,
+            "_share_norm_text": lambda value: "".join(str(value or "").split()).casefold(),
+            "_share_log_runtime": lambda key, msg, warning=False: logs.append((key, msg, warning)),
+            "time": type("Clock", (), {"sleep": staticmethod(lambda seconds: None)}),
+        })
+
+        self.assertTrue(helper(None, 77, 100, 50, "1000000001"))
+        self.assertEqual(["1000000001", "1000000001"], typed)
+        self.assertTrue(any(
+            key == "target-readback-provisional" and not warning
+            for key, _msg, warning in logs
+        ))
 
     def test_share_clipboard_reader_prefers_native_value_over_stale_qt_cache(self):
         ns = load_named_hook_functions("_share_get_clipboard_unicode")
@@ -1269,6 +1502,37 @@ class ShareTargetPatchTests(unittest.TestCase):
             calls,
         )
 
+    def test_runtime_share_success_routes_counters_through_canonical_metrics_sync(self):
+        ns = load_named_hook_functions('_share_mark_runtime_success')
+        today = '2026-08-05'
+        sync = mock.Mock(return_value={'date': today})
+        context = types.SimpleNamespace(
+            instance_id='1',
+            share_last_date='',
+            daily_flow_retry_counts={'share': 2},
+        )
+        ns.update({
+            'os': os,
+            'time': time,
+            '__file__': str(ROOT / 'portable' / 'hook.py'),
+            '_daily_business_date': lambda: today,
+            '_daily_metrics_sync_runtime': sync,
+            '_share_clear_retry_backoff': lambda value: None,
+            '_daily_flow_target': lambda flow: '1000000001',
+            '_daily_flow_mark_status': lambda *args, **kwargs: True,
+            '_throttled_write': lambda *args, **kwargs: None,
+        })
+
+        self.assertTrue(ns['_share_mark_runtime_success'](
+            context, evidence={
+                'target_match': True,
+                'selected_count': 1,
+                'confirm_clicked': True,
+                'dialog_closed': True,
+            },
+        ))
+        sync.assert_called_once_with(context, today=today, force=True)
+
     def test_share_success_counter_does_not_rewrite_already_current_files(self):
         import json
         import tempfile
@@ -1494,6 +1758,72 @@ class ShareDirectRecipientSelectorTests(unittest.TestCase):
             sys.modules.pop("comtypes.gen", None)
             if old_gen is not None:
                 sys.modules["comtypes.gen"] = old_gen
+
+
+    def test_share_entry_preflight_blocks_native_template_click_after_completion(self):
+        namespace = load_named_hook_functions("_wrap_share_entry_settle_func")
+        events = []
+        context = types.SimpleNamespace()
+        namespace.update({
+            "time": types.SimpleNamespace(sleep=lambda seconds: None),
+            "_daily_entry_call_kind": lambda args, kwargs: "share_entry",
+            "_share_context_from_call": lambda args, kwargs: context,
+            "_share_preflight_completed": (
+                lambda bot: events.append(("preflight", bot)) or True
+            ),
+            "_stop_requested_in_args": lambda args, kwargs: False,
+            "_stop_gate_return": lambda name: False,
+            "_share_click_result_succeeded": lambda value: bool(value),
+            "_share_int_cfg": lambda key, default: default,
+            "_throttled_write": lambda *args, **kwargs: None,
+            "_share_log_runtime": lambda *args, **kwargs: None,
+        })
+
+        wrapped, patched = namespace["_wrap_share_entry_settle_func"](
+            lambda *args, **kwargs: events.append(("native-click", args)) or True
+        )
+        self.assertTrue(patched)
+        self.assertFalse(wrapped(context, "share_entry"))
+        self.assertEqual([("preflight", context)], events)
+
+
+class SharePostSendPauseTests(unittest.TestCase):
+    def test_target_sender_rechecks_pause_after_direct_send_before_recording(self):
+        """A stop raised while the direct-send dialog closes suppresses late success writes."""
+        namespace = load_named_hook_functions("_share_search_and_maybe_confirm")
+        state = configure_strict_share_namespace(namespace)
+        paused = {"value": False}
+        context = types.SimpleNamespace()
+
+        def hard_gate(bot, phase, cfg=None):
+            state["events"].append(("hard-gate", phase, paused["value"]))
+            return paused["value"]
+
+        def dialog_closed(mod=None, timeout_ms=0):
+            state["events"].append(("dialog-closed",))
+            paused["value"] = True
+            return True
+
+        namespace.update({
+            "_share_action_blocked": hard_gate,
+            "_share_wait_dialog_closed": dialog_closed,
+        })
+        cfg = {
+            "target_name": "1000000001",
+            "allow_group": False,
+            "dry_run": False,
+        }
+
+        self.assertFalse(namespace["_share_search_and_maybe_confirm"](
+            types.SimpleNamespace(), cfg, context=context
+        ))
+        self.assertEqual([], state["recorded"])
+        self.assertTrue(any(
+            item[0] == "hard-gate" and item[1] == "target-confirm-after-direct-send"
+            and item[2]
+            for item in state["events"]
+        ))
+
 
 
 if __name__ == "__main__":

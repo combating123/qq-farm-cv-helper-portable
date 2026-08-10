@@ -23,6 +23,7 @@ End If
 
 commandLine = "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File """ & launcherPath & """"
 shell.Run commandLine, 0, False
-shell.Popup "Launch request sent. If the assistant window is not visible after about 20 seconds, check:" & _
-    vbCrLf & appDir & "\logs\watchdog.log", _
-    4, "QQFarm Assistant", 64
+shell.Popup "Launch request sent. First load may take about 60 seconds. Do not click again." & _
+    vbCrLf & "If an assistant window is already loading, this request keeps it open instead of closing it." & _
+    vbCrLf & "Status log: " & appDir & "\logs\watchdog.log", _
+    5, "QQFarm Assistant", 64

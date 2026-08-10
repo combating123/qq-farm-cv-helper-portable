@@ -99,6 +99,40 @@ class DailyFlowWrapperIdempotenceTests(unittest.TestCase):
         self.assertTrue(module.run_daily_freebenefits(bot))
         self.assertEqual(["run-freebenefits"], events)
 
+    def test_freebenefits_retry_cap_hard_stops_should_and_run_even_when_badge_is_clear(self):
+        ns = load_functions(
+            "_qqfarm_preserve_wrapper_metadata",
+            "_daily_flow_key",
+            "_daily_flow_context_from_args",
+            "_daily_flow_target",
+            "_daily_flow_apply_success_context",
+            "_daily_flow_context_success_today",
+            "_patch_daily_flow_status_for_module",
+        )
+        events = []
+        ns["_daily_flow_retry_blocked"] = lambda flow: flow == "freebenefits"
+        ns["_daily_flow_entry_red_dot_state"] = (
+            lambda context, flow: False if flow == "freebenefits" else None
+        )
+        module = types.ModuleType("bot.synthetic.freebenefits_flow")
+        module.should_run_daily_freebenefits = (
+            lambda bot: events.append("should-native") or True
+        )
+        module.run_daily_freebenefits = (
+            lambda bot: events.append("run-native") or False
+        )
+        bot = types.SimpleNamespace(
+            freebenefits_last_date="",
+            daily_flow_retry_counts={"freebenefits": 25},
+        )
+
+        self.assertGreater(
+            ns["_patch_daily_flow_status_for_module"](module, "unit"), 0
+        )
+        self.assertFalse(module.should_run_daily_freebenefits(bot))
+        self.assertTrue(module.run_daily_freebenefits(bot))
+        self.assertEqual([], events)
+
     def test_daily_run_recursion_error_records_backoff_before_reraising(self):
         ns = load_functions(
             "_qqfarm_preserve_wrapper_metadata",

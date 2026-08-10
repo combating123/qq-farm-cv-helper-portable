@@ -1,5 +1,6 @@
 import ast
 import types
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -40,6 +41,69 @@ class DailyCompletionVisibilityTests(unittest.TestCase):
         self.assertIn("1000000001", message)
         self.assertNotIn("\u672a\u6267\u884c", message)
 
+
+    def test_native_share_success_between_prompt_click_and_probe_blocks_failure(self):
+        namespace = load_functions("_share_recovery_fail")
+        events = []
+        bot = types.SimpleNamespace()
+        cfg = {"enabled": True, "target_name": "1000000001"}
+        namespace.update({
+            "_share_target_guard_config": lambda: cfg,
+            "_share_direct_success_recent": lambda *args, **kwargs: False,
+            "_daily_share_authoritative_success_today": (
+                lambda context=None, cfg=None: events.append("native-success") or True
+            ),
+            "_share_mark_reward_claimed_success": (
+                lambda context, current_cfg:
+                events.append(("persist-reward", current_cfg["target_name"])) or True
+            ),
+            "_share_set_retry_backoff": (
+                lambda context: events.append("backoff")
+            ),
+            "_daily_flow_mark_failure": (
+                lambda *args, **kwargs: events.append("failure") or True
+            ),
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+
+        self.assertFalse(namespace["_share_recovery_fail"](
+            bot, "prompt-not-found"
+        ))
+        self.assertEqual(
+            ["native-success", ("persist-reward", "1000000001")],
+            events,
+        )
+
+    def test_native_share_reward_completion_log_is_authoritative_same_day_proof(self):
+        namespace = load_functions("_daily_share_authoritative_success_today")
+        helper = namespace.get(
+            "_daily_share_authoritative_success_today",
+            lambda *args, **kwargs: False,
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            native_log = Path(temp_dir) / "2026-08-05.log"
+            native_log.write_text(
+                "2026-08-05 13:52:30.847 [INFO] "
+                "?????????share_prompt??????????"
+                "?????2026-08-05\n",
+                encoding="utf-8",
+            )
+            bot = types.SimpleNamespace()
+            cfg = {"enabled": True, "target_name": "1000000001"}
+            persisted = []
+            namespace.update({
+                "_daily_business_date": lambda: "2026-08-05",
+                "_daily_share_native_log_paths": (
+                    lambda today=None: [str(native_log)]
+                ),
+                "_share_mark_reward_claimed_success": (
+                    lambda context, current_cfg:
+                    persisted.append(current_cfg["target_name"]) or True
+                ),
+            })
+
+            self.assertTrue(helper(bot, cfg=cfg))
+            self.assertEqual(["1000000001"], persisted)
 
     def test_native_share_recovery_passes_current_game_frame_when_required(self):
         namespace = load_functions("_run_share_prompt_recovery")
