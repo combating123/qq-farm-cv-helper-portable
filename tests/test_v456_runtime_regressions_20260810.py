@@ -68,4 +68,27 @@ class V456Regressions(unittest.TestCase):
         self.assertFalse(ns['_daily_flow_retry_blocked']('share', now_epoch=101.0))
 
 
+    def test_same_day_freebenefits_dispatch_does_not_reenter_native_runner(self):
+        ns = load('_run_native_v225_daily_catchup')
+        ns['_native_v225_daily_home_ready'] = lambda context: True
+        ns['_daily_flow_success_today'] = lambda flow, **kwargs: False
+        ns['_daily_flow_attempted_today'] = lambda context, flow: False
+        ns['_daily_flow_entry_red_dot_state'] = lambda context, flow: None
+        ns['_daily_business_date'] = lambda: '2026-08-11'
+        ns['_native_v225_daily_flow_due'] = lambda context, flow: True
+        calls = []
+        ns['_native_v225_daily_flow_module'] = lambda: types.SimpleNamespace(
+            run_daily_freebenefits=lambda context: calls.append('run')
+        )
+        context = types.SimpleNamespace(
+            _qqfarm_native_v225_daily_dispatch_day_freebenefits='2026-08-11'
+        )
+        self.assertEqual(
+            '',
+            ns['_run_native_v225_daily_catchup'](context),
+        )
+        self.assertEqual([], calls)
+
+
+
 if __name__ == '__main__': unittest.main()

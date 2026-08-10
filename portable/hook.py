@@ -35556,8 +35556,15 @@ def _run_native_v225_daily_catchup(context):
                 except BaseException:
                     pass
             return 'freebenefits-confirmed'
+        # The catch-up route may be polled many times while the marketplace
+        # remains visible.  Once today's transaction was already dispatched,
+        # skip only this native runner and continue to later daily transactions;
+        # repeated entry can recurse through runtime wrappers and repeat clicks.
         module = _native_v225_daily_flow_module()
-        if _native_v225_daily_flow_due(context, 'freebenefits'):
+        if (
+            not current_dispatch
+            and _native_v225_daily_flow_due(context, 'freebenefits')
+        ):
             run_free = getattr(module, 'run_daily_freebenefits', None) if module is not None else None
             if not callable(run_free):
                 try:
