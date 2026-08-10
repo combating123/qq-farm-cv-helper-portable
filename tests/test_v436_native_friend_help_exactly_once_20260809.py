@@ -165,7 +165,7 @@ class NativeFriendHelpExactlyOnce20260809Tests(unittest.TestCase):
             portable_csv = root / "portable" / "daily_action_stats.csv"
             profile_csv = root / "profile" / "daily_action_stats.csv"
             for path in (primary, mirror):
-                # This is the native v2.2.5 recorder's early durable write.
+                # This is the native runtime recorder's early durable write.
                 write_counter(path, day=day, count=1)
             context = self._context(day, count=1)
 
@@ -287,7 +287,7 @@ class NativeFriendHelpExactlyOnce20260809Tests(unittest.TestCase):
                     }
 
                 def _record_friend_help_action(self):
-                    # Native v2.2.5 persists before fresh visual confirmation.
+                    # Native runtime persists before fresh visual confirmation.
                     self.friend_help_daily_count = 1
                     self._instance_metrics["1"]["friend_farming_count"] = 1
                     self.gui_metrics["friend_farming_count"] = 1
@@ -1378,7 +1378,7 @@ class NativeFriendHelpExactlyOnce20260809Tests(unittest.TestCase):
                     }
 
                 def _record_friend_help_action(self):
-                    # Native v2.2.5 persists before visual confirmation, then
+                    # Native runtime persists before visual confirmation, then
                     # fails.  Its serializer keeps the stale global bucket.
                     self.friend_help_daily_count = baseline + 1
                     self._instance_metrics["1"]["friend_farming_count"] = (

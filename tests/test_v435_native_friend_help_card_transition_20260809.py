@@ -55,7 +55,7 @@ class NativeFriendHelpCardTransition20260809Tests(unittest.TestCase):
                 self.gui_metrics = {"date": "2026-08-09", "friend_farming_count": 0}
 
             def _record_friend_help_action(self):
-                # Mirrors the native v2.2.5 runtime-only counter mutation that
+                # Mirrors the native runtime-only counter mutation that
                 # must not become durable without our fresh confirmation.
                 events.append("native-recorder")
                 self.friend_help_daily_count = 9

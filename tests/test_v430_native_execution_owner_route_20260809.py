@@ -58,11 +58,11 @@ def load_hook_functions(*names):
 def load_router(testcase):
     testcase.assertTrue(
         ROUTER.is_file(),
-        "native-v2.2.5 execution router must be a small independent module",
+        "native-runtime execution router must be a small independent module",
     )
     spec = importlib.util.spec_from_file_location("v430_native_router", ROUTER)
     if spec is None or spec.loader is None:
-        raise AssertionError("native-v2.2.5 execution router cannot be loaded")
+        raise AssertionError("native-runtime execution router cannot be loaded")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -90,7 +90,7 @@ def counting_wrapper(calls):
 
 class NativeExecutionOwnerRoute20260809Tests(unittest.TestCase):
     def test_default_owner_reserves_native_v225_farm_and_friend_callables(self):
-        """The default owner is v2.2.5, with a deliberate legacy rollback switch."""
+        """The default owner is native runtime, with a deliberate legacy rollback switch."""
         router = load_router(self)
 
         self.assertEqual("native-v225", router.execution_owner(environ={}))

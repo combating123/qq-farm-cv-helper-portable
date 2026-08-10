@@ -222,7 +222,7 @@ try:
         execution_owner as _qqfarm_execution_owner,
         legacy_wrapper_allowed as _qqfarm_legacy_wrapper_allowed,
     )
-    _write('v430 native v2.2.5 execution owner=' + str(_qqfarm_execution_owner()))
+    _write('v430 native runtime execution owner=' + str(_qqfarm_execution_owner()))
 except BaseException as e:
     def _qqfarm_legacy_wrapper_allowed(_label):
         return True
@@ -234,7 +234,7 @@ def _qqfarm_legacy_farm_friend_wrappers_enabled():
 
     The root GUI and its config/share/daily support remain patched in both
     modes.  Only the old business-wrapper cluster is withheld while the
-    v2.2.5 native engine is the execution owner.
+    native engine is the execution owner.
     """
     try:
         return bool(_qqfarm_legacy_wrapper_allowed('process_self_farm'))
@@ -34460,7 +34460,7 @@ def _run_first_party_friend_troublemaker(context, frame):
 
 
 def _wrap_first_party_friend_troublemaker_entry(fn, name=''):
-    """Run the complete native-v2.2.5 batch under a temporary VIP context.
+    """Run the complete native-runtime batch under a temporary VIP context.
 
     The native routine owns its normal user-facing logs, one popup selection,
     multi-land drag path, bounded result handling, and return-home behavior.
@@ -34656,7 +34656,7 @@ def _patch_first_party_friend_troublemaker_loaded(tag=''):
     return changed
 
 
-# ---- v448 native-v2.2.5 automatic-fertilizer entitlement bridge ----
+# ---- v448 native-runtime automatic-fertilizer entitlement bridge ----
 _NATIVE_V225_AUTO_FERTILIZE_PATCH_LOG_SEEN = set()
 
 
@@ -34765,7 +34765,7 @@ def _patch_native_v225_auto_fertilize_for_module(module, tag=''):
 
 
 def _patch_native_v225_auto_fertilize_loaded(tag=''):
-    """Install the narrow fertilizer bridge while native v2.2.5 owns planting."""
+    """Install the narrow fertilizer bridge while native runtime owns planting."""
     changed = []
     try:
         sys_module = globals().get('sys') or __import__('sys')
@@ -34795,7 +34795,7 @@ def _patch_native_v225_auto_fertilize_loaded(tag=''):
     return changed
 
 
-# ---- v449 native-v2.2.5 planted friend-land collector bridge ----
+# ---- v449 native-runtime planted friend-land collector bridge ----
 _NATIVE_V225_TROUBLE_SEED_LAND_PATCH_LOG_SEEN = set()
 
 
@@ -34970,7 +34970,7 @@ def _patch_native_v225_trouble_seed_land_loaded(tag=''):
     return changed
 
 
-# ---- v450 native-v2.2.5 daily-flow catch-up bridge ----
+# ---- v450 native-runtime daily-flow catch-up bridge ----
 _NATIVE_V225_DAILY_CATCHUP_PATCH_LOG_SEEN = set()
 
 
@@ -35354,7 +35354,7 @@ def _native_v225_call_daily(fn, context):
 
 
 def _run_native_v225_daily_catchup(context):
-    """Run at most one due daily transaction, preserving native v2.2.5 ownership."""
+    """Run at most one due daily transaction, preserving native runtime ownership."""
     if not _native_v225_daily_home_ready(context):
         return ''
     try:
@@ -35681,7 +35681,7 @@ def _patch_native_v225_daily_catchup_for_module(module, tag=''):
 
 
 def _patch_native_v225_daily_catchup_loaded(tag=''):
-    """Install the daily bridge even when native v2.2.5 owns run_cycle."""
+    """Install the daily bridge even when native runtime owns run_cycle."""
     changed = []
     try:
         sys_module = globals().get('sys') or __import__('sys')
@@ -35747,7 +35747,7 @@ def _run_deferred_friend_troublemaker(context, frame):
             except BaseException:
                 pass
             return False
-        # The clean v2.2.5 runtime owns the complete batch transaction:
+        # The clean native runtime owns the complete batch transaction:
         # select one planted land, choose the trouble item once, then drag the
         # selected item across every planned land.  The old first-party helper
         # clicked several candidate lands while searching for a popup and is
@@ -46653,7 +46653,7 @@ def _patch_runtime_start_diagnostics_loaded(tag=''):
     return changed
 
 
-# ---- v433 native-v2.2.5 full-board planting preflight ----
+# ---- v433 native-runtime full-board planting preflight ----
 def _qqfarm_is_native_full_board_observation(ledger):
     """Return true only for an exact, fresh fixed-24 full-board observation.
 
@@ -46661,7 +46661,7 @@ def _qqfarm_is_native_full_board_observation(ledger):
     physical PrintWindow full-board frames are intentionally observation-only,
     yet they are strong enough to prove that native planting/OCR must not run.
     Any empty, unknown, overlay, clipped, or malformed state delegates to the
-    untouched native-v2.2.5 planting routine.
+    untouched native-runtime planting routine.
     """
     if not isinstance(ledger, dict):
         return False
@@ -46727,7 +46727,7 @@ def _qqfarm_clear_native_full_board_planting_state(context):
 
 
 def _wrap_native_v225_full_board_planting_preflight(fn, name=''):
-    """Prevent native-v2.2.5 planting from entering OCR on a proven full board."""
+    """Prevent native-runtime planting from entering OCR on a proven full board."""
     if getattr(fn, '__qqfarm_native_v225_full_board_preflight_wrapped__', False):
         return fn, False
 
@@ -46765,7 +46765,7 @@ def _wrap_native_v225_full_board_planting_preflight(fn, name=''):
         if _qqfarm_is_native_full_board_observation(ledger):
             _qqfarm_clear_native_full_board_planting_state(self)
             message = (
-                'v433 native-v2.2.5 full board preflight skipped home planting; '
+                'v433 native-runtime full board preflight skipped home planting; '
                 'occupied=24 empty=0 unknown=0; native OCR/strategy not entered'
             )
             try:
@@ -46842,7 +46842,7 @@ def _patch_native_v225_full_board_preflight_for_module(module, tag=''):
             write_fn = globals().get('_write')
             if callable(write_fn):
                 write_fn(
-                    'v433 native-v2.2.5 full-board preflight installed tag=' +
+                    'v433 native-runtime full-board preflight installed tag=' +
                     str(tag) + ' module=' + module_name + ' count=' + str(changed)
                 )
         except BaseException:
@@ -46871,7 +46871,7 @@ def _patch_native_v225_full_board_preflight_loaded(tag=''):
 
 
 
-# ---- v434 native-v2.2.5 friend-help durable confirmation bridge ----
+# ---- v434 native-runtime friend-help durable confirmation bridge ----
 def _qqfarm_native_friend_help_durable_snapshot(
     context=None, counter_paths=None, today=None,
 ):
@@ -47245,7 +47245,7 @@ def _qqfarm_commit_native_friend_help_confirmation(
                 durable_after = current_durable
                 state = 'durable-ahead'
         else:
-            # Native v2.2.5 can save before fresh visual proof.  Revert only a
+            # Native runtime can save before fresh visual proof.  Revert only a
             # prewrite beyond the saved transaction baseline; untouched state
             # needs no disk write in the hot polling path.
             durable_after = durable_baseline
@@ -47279,7 +47279,7 @@ def _qqfarm_commit_native_friend_help_confirmation(
                 instance_metrics[instance_id] = instance_metric
             instance_metric['date'] = day
             instance_metric['friend_farming_count'] = durable_after
-            # Native v2.2.5 can later serialize this shared bucket back
+            # Native runtime can later serialize this shared bucket back
             # into the Local-primary JSON, so normalize it in the same
             # transaction as the current instance and root GUI metrics.
             global_metric = instance_metrics.get('__global__')
@@ -47454,7 +47454,7 @@ def _qqfarm_cache_native_v225_friend_help_candidate(
         candidate = {
             'timestamp': float(time_module.monotonic()),
             # A guard-only candidate is still required when capture/matching
-            # misses: native v2.2.5 can persist +1 before its recorder runs.
+            # misses: native runtime can persist +1 before its recorder runs.
             'guard_only': not proof_ready,
         }
         if proof_ready:
@@ -47463,7 +47463,7 @@ def _qqfarm_cache_native_v225_friend_help_candidate(
                 'before_match': dict(before_match),
                 'card_signature': card_signature,
             })
-        # The native v2.2.5 flow may persist +1 before it invokes the wrapped
+        # The native runtime flow may persist +1 before it invokes the wrapped
         # recorder.  Preserve the pre-action durable ledger with this guard so
         # an unconfirmed action can restore the true transaction baseline.
         try:
@@ -47606,7 +47606,7 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
             pass
         result = fn(self, *args, **kwargs)
 
-        # Native v2.2.5 can serialize Local-primary once more after the
+        # Native runtime can serialize Local-primary once more after the
         # wrapped recorder returns. Read a strict durable quorum again and
         # normalize only a divergent runtime GUI bucket before this process
         # call releases control to the next friend cycle.
@@ -47668,7 +47668,7 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
         except BaseException:
             pass
 
-        # v445: native v2.2.5 may enqueue one more Local-primary serializer
+        # v445: native runtime may enqueue one more Local-primary serializer
         # after its process method returns.  Only a pre-action help-button hit
         # schedules the two bounded UI-loop reconciliations; each replay uses
         # the durable quorum and never performs another increment.
@@ -48041,7 +48041,7 @@ def _patch_native_v225_friend_help_confirmation_for_module(module, tag=''):
             write_fn = globals().get('_write')
             if callable(write_fn):
                 write_fn(
-                    'v434 native-v2.2.5 friend-help confirmation bridge '
+                    'v434 native-runtime friend-help confirmation bridge '
                     'installed tag=' + str(tag) + ' module=' + module_name +
                     ' count=' + str(changed)
                 )
@@ -53027,7 +53027,7 @@ def _patch_loaded(tag=''):
             _runtime_scan(tag)
         except BaseException:
             pass
-        # Native v2.2.5 owns farm/friend execution by default.  Do not even
+        # Native runtime owns farm/friend execution by default.  Do not even
         # scan or re-install the accumulated legacy business wrappers here:
         # _patch_loaded() also runs from the recurring Qt maintenance timer.
         # GUI, config, targeted-share, daily-flow, and start infrastructure
@@ -53062,7 +53062,7 @@ def _patch_loaded(tag=''):
         except BaseException:
             pass
         try:
-            # Keep the native v2.2.5 batch, but broaden its planted-land
+            # Keep the native runtime batch, but broaden its planted-land
             # target evidence across mature crops, dense crops, and land quality.
             _patch_native_v225_trouble_seed_land_loaded(tag)
         except BaseException:
@@ -53074,7 +53074,7 @@ def _patch_loaded(tag=''):
         except BaseException:
             pass
         try:
-            # Native v2.2.5 owns planting; expose entitlement only while its
+            # Native runtime owns planting; expose entitlement only while its
             # automatic-fertilizer transaction is executing.
             _patch_native_v225_auto_fertilize_loaded(tag)
         except BaseException:
@@ -53100,7 +53100,7 @@ def _patch_loaded(tag=''):
         except BaseException:
             pass
         try:
-            # Native v2.2.5 still owns run_cycle. This one-purpose bridge only
+            # Native runtime still owns run_cycle. This one-purpose bridge only
             # re-enters missed home-scene benefits/share transactions.
             _patch_native_v225_daily_catchup_loaded(tag)
         except BaseException:

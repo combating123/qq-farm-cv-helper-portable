@@ -80,7 +80,7 @@ class ReleasePackagingTests(unittest.TestCase):
             (source / "hook.py.backup-20260810").write_text("old", encoding="utf-8")
             for dirname in (
                 "UserData", "logs", "backups", "artifacts", "diagnostics",
-                "maintenance-backup", "runtime-v2.2.5",
+                "maintenance-backup", "legacy-runtime",
             ):
                 folder = source / dirname
                 folder.mkdir()
@@ -106,7 +106,7 @@ class ReleasePackagingTests(unittest.TestCase):
                 self.assertIn("friend_help_request_text.png", names)
                 forbidden = (
                     "UserData/", "logs/", "backups/", "artifacts/",
-                    "diagnostics/", "maintenance-backup/", "runtime-v2.2.5/",
+                    "diagnostics/", "maintenance-backup/", "legacy-runtime/",
                 )
                 self.assertFalse(any(name.startswith(forbidden) for name in names))
                 self.assertNotIn("desktop-current.png", names)

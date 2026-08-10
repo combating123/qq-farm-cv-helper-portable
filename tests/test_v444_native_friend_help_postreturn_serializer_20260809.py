@@ -300,7 +300,7 @@ class NativeFriendHelpPostreturnSerializer20260809Tests(unittest.TestCase):
                     }
 
                 def _record_friend_help_action(self):
-                    # Model native v2.2.5's early exact B+1 write.  The bridge
+                    # Model native runtime's early exact B+1 write.  The bridge
                     # must recognize it as this one confirmed transaction rather
                     # than fabricate another increment.
                     self.friend_help_daily_count = expected

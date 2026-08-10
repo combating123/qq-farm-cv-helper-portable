@@ -1,9 +1,9 @@
-"""Small ownership gate for the v2.2.5 native farm and friend execution path.
+"""Small ownership gate for the native farm and friend execution path.
 
 The legacy hook still owns GUI, configuration, targeted share, counters, and
 runtime infrastructure.  This module only decides whether a legacy business
 wrapper may be installed around a callable that already belongs to the native
-v2.2.5 engine.
+native engine.
 """
 
 import os
@@ -14,7 +14,7 @@ LEGACY_OWNER = "legacy"
 OWNER_ENVIRONMENT_KEY = "QQFARM_EXECUTION_OWNER"
 
 
-# These are the native v2.2.5 business entry points that must have one owner.
+# These are the native runtime business entry points that must have one owner.
 # Names are deliberately simple because hook.py receives both ``name`` and
 # ``Class.name`` labels depending on where a callable was discovered.
 NATIVE_V225_CALLABLE_NAMES = frozenset({
@@ -67,7 +67,7 @@ _LEGACY_OWNER_VALUES = frozenset({"legacy", "legacy-hook", "legacy_hook"})
 def execution_owner(environ=None):
     """Return the requested business-execution owner.
 
-    Native v2.2.5 is the default.  Setting ``QQFARM_EXECUTION_OWNER=legacy``
+    Native runtime is the default.  Setting ``QQFARM_EXECUTION_OWNER=legacy``
     is the explicit rollback path while a production observation is underway.
     """
     values = os.environ if environ is None else environ

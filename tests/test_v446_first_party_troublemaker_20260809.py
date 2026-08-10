@@ -59,7 +59,7 @@ class FirstPartyTroublemaker20260809Tests(unittest.TestCase):
         self.assertEqual(
             ["native-member-gated"],
             calls,
-            "v447 restores the complete native-v2.2.5 batch instead of repeated single-land clicks",
+            "v447 restores the complete native-runtime batch instead of repeated single-land clicks",
         )
 
     def test_first_party_cv_action_clicks_crop_then_verified_popup_action_and_records_once(self):
