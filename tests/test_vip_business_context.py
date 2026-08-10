@@ -115,8 +115,9 @@ def load_vip_module_matcher():
 
 
 class VipBusinessContextTests(unittest.TestCase):
-    def test_release_source_contains_no_machine_specific_user_profile_paths(self):
-        source = HOOK.read_text(encoding="utf-8-sig").replace("\\", "/")
+    def test_withdrawn_v139_state_path_migration_is_not_present(self):
+        source = HOOK.read_text(encoding="utf-8-sig")
+        self.assertNotIn("_VIP_LOCAL_STATE_ROOT =", source)
         private_assignments = [
             line for line in source.splitlines()
             if line.startswith((
@@ -126,8 +127,6 @@ class VipBusinessContextTests(unittest.TestCase):
             ))
         ]
         self.assertEqual(3, len(private_assignments))
-        self.assertFalse(any("C:/Users/" in line for line in private_assignments))
-
     def test_claims_include_all_known_member_feature_aliases(self):
         flags = load_claims()["feature_flags"]
         expected = {

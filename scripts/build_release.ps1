@@ -52,6 +52,7 @@ $changelogSource = Join-Path $repoRoot 'CHANGELOG.md'
 if (!(Test-Path -LiteralPath $readmeSource -PathType Leaf)) { throw "README missing: $readmeSource" }
 if (!(Test-Path -LiteralPath $changelogSource -PathType Leaf)) { throw "CHANGELOG missing: $changelogSource" }
 Copy-Item -LiteralPath $readmeSource -Destination (Join-Path $stageFull 'README.md') -Force
+Copy-Item -LiteralPath $changelogSource -Destination (Join-Path $stageFull 'CHANGELOG.md') -Force
 $releaseNotesName = (
     [char]0x7248 + [char]0x672C + [char]0x4E0E + [char]0x66F4 +
     [char]0x65B0 + [char]0x65E5 + [char]0x5FD7 + '.md'

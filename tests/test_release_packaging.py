@@ -18,6 +18,7 @@ class ReleasePackagingTests(unittest.TestCase):
             output.mkdir()
             (source / "QQFarmCVHelper.exe").write_bytes(b"fixture")
             (source / "\u9879\u76ee\u8bf4\u660e.txt").write_text("fixture", encoding="utf-8")
+            (source / "CHANGELOG.md").write_text("stale deployment changelog", encoding="utf-8")
 
             completed = subprocess.run(
                 [
@@ -49,6 +50,11 @@ class ReleasePackagingTests(unittest.TestCase):
                 self.assertIn("VERSION", names)
                 self.assertIn("README.md", names)
                 self.assertIn("\u7248\u672c\u4e0e\u66f4\u65b0\u65e5\u5fd7.md", names)
+                self.assertIn("CHANGELOG.md", names)
+                self.assertEqual(
+                    (ROOT / "CHANGELOG.md").read_bytes(),
+                    handle.read("CHANGELOG.md"),
+                )
                 self.assertIn("\u9879\u76ee\u8bf4\u660e.txt", names)
                 self.assertEqual("9.9.9", handle.read("VERSION").decode("utf-8").strip())
                 project_info = handle.read("\u9879\u76ee\u8bf4\u660e.txt").decode("utf-8")

@@ -23337,21 +23337,9 @@ _PATCH_LOADED_LAST_TS = 0.0
 _PATCH_LOADED_SEEN_RELEVANT = set()
 _VIP_BUSINESS_LAST_FORCE_WAREHOUSE_TS = 0.0
 _VIP_WAREHOUSE_LAST_DONE_TS = 0.0
-_VIP_LOCAL_STATE_ROOT = __import__('os').path.join(
-    __import__('os').path.dirname(__import__('os').path.abspath(__file__)),
-    'UserData', 'QQFarmCopilot', 'runtime',
-)
-try:
-    __import__('os').makedirs(_VIP_LOCAL_STATE_ROOT, exist_ok=True)
-except BaseException:
-    pass
-_VIP_WAREHOUSE_STATE_PATH = __import__('os').path.join(
-    _VIP_LOCAL_STATE_ROOT, 'warehouse_last_done_ts.txt'
-)
+_VIP_WAREHOUSE_STATE_PATH = r'C:/Users/11616/reverse-cases/qq-farm-vip/work/warehouse_last_done_ts.txt'
 _VIP_WAREHOUSE_MIN_COOLDOWN_SECONDS = 360.0
-_VIP_WAREHOUSE_RETRY_STATE_PATH = __import__('os').path.join(
-    _VIP_LOCAL_STATE_ROOT, 'warehouse_retry_state.json'
-)
+_VIP_WAREHOUSE_RETRY_STATE_PATH = r'C:/Users/11616/reverse-cases/qq-farm-vip/work/warehouse_retry_state.json'
 _VIP_WAREHOUSE_RETRY_SECONDS = 600.0
 _VIP_WAREHOUSE_RETRY_LIMIT = 3
 _VIP_WAREHOUSE_BACKOFF_SECONDS = 3600.0
@@ -53890,9 +53878,7 @@ _QT_WAIT_LOGGED = False
 _QT_ORIG_METHODS = {}
 _QT_DUMP_COUNT = 0
 _QT_UNLOCK_PASS_COUNT = 0
-_QT_DUMP_PATH = __import__('os').path.join(
-    _VIP_LOCAL_STATE_ROOT, 'qt_widget_dump.txt'
-)
+_QT_DUMP_PATH = r'C:/Users/11616/reverse-cases/qq-farm-vip/work/qt_widget_dump.txt'
 
 
 def _safe_str(v):
