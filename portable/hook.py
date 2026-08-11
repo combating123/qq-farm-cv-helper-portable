@@ -32887,6 +32887,51 @@ def _invoke_friend_visual_actions_before_home(context, fresh_frame):
     return False, ''
 
 
+
+def _qqfarm_visible_friend_action_recovery(context, fresh_frame):
+    """Own a visibly actionable friend page even when route latches are stale."""
+    if context is None or fresh_frame is None:
+        return False, ''
+    try:
+        state_fn = globals().get('_friend_guard_friend_ui_state')
+        bounds_fn = globals().get('_friend_selected_carousel_card_bounds')
+        if not callable(state_fn) or state_fn(fresh_frame) is not True:
+            return False, ''
+        bounds = bounds_fn(fresh_frame) if callable(bounds_fn) else None
+        if not isinstance(bounds, dict):
+            return False, ''
+        visible = False
+        for name in ('_friend_guard_help_button_match', '_friend_guard_steal_button_match'):
+            match_fn = globals().get(name)
+            match = match_fn(fresh_frame) if callable(match_fn) else None
+            if isinstance(match, dict) and bool(match.get('matched')):
+                visible = True
+                break
+        if not visible:
+            return False, ''
+        action_fn = globals().get('_invoke_friend_actions_before_home')
+        if not callable(action_fn):
+            return False, ''
+        result, label = action_fn(context, fresh_frame)
+        if result:
+            for attr, value in (
+                ('_qqfarm_friend_entry_pending', False),
+                ('_qqfarm_friend_entry_clicked_ts', 0.0),
+                ('_qqfarm_friend_chain_pending', True),
+                ('_qqfarm_friend_chain_exhausted', False),
+                ('_qqfarm_cycle_branch_hint', 'friend'),
+            ):
+                try:
+                    setattr(context, attr, value)
+                except BaseException:
+                    pass
+            writer = globals().get('_write')
+            if callable(writer):
+                writer('v459 visible friend action recovered from stale route latch label=' + str(label))
+        return bool(result), str(label or '')
+    except BaseException:
+        return False, ''
+
 def _invoke_friend_actions_before_home(context, fresh_frame):
     """Try fast visible actions first, then one bounded native fallback scan."""
     if context is None or fresh_frame is None:
@@ -46371,6 +46416,20 @@ def _wrap_runtime_diag_method(fn, label):
                 preflight_frame = (
                     capture_fn(self_obj) if callable(capture_fn) else None
                 )
+                recovery_fn = globals().get(
+                    '_qqfarm_visible_friend_action_recovery'
+                )
+                if callable(recovery_fn) and preflight_frame is not None:
+                    recovered, recovered_label = recovery_fn(
+                        self_obj, preflight_frame
+                    )
+                    if recovered:
+                        try:
+                            if globals().get('_ACTIVE_RUN_CYCLE_CONTEXT') is self_obj:
+                                globals()['_ACTIVE_RUN_CYCLE_CONTEXT'] = None
+                        except BaseException:
+                            pass
+                        return True
                 resolver_fn = globals().get(
                     '_qqfarm_resolve_friend_route_frame'
                 )
