@@ -1557,6 +1557,11 @@ def _daily_metrics_sync_runtime(
         'friend_trouble_daily_count': 0,
         'daily_radish_exp_count': 0,
         'self_actions_daily_count': 0,
+        'operation_count': 0,
+        'self_harvest_count': 0,
+        'warehouse_sell_count': 0,
+        'reconnect_count': 0,
+        'miniapp_restart_count': 0,
         'planting_count': 0,
     }
     try:
@@ -1759,6 +1764,7 @@ def _daily_metrics_sync_runtime(
         # must never reset or inflate a field that the canonical file supplied.
         primary_counter_keys = set()
         primary_metric_keys = set()
+        observed_panel_metrics = {}
 
         def _merge_counter_value(
             count_key, value, is_primary=False, is_context=False,
@@ -1779,11 +1785,19 @@ def _daily_metrics_sync_runtime(
         def _merge_metric_value(metric_key, value, is_primary=False):
             if is_primary:
                 primary_metric_keys.add(metric_key)
-            if is_primary or metric_key not in primary_metric_keys:
-                summary[metric_key] = max(
-                    int(summary.get(metric_key, 0) or 0),
-                    _safe_nonnegative(value),
-                )
+            # GUI metrics are cumulative observations, not quota authority. A
+            # same-day zero in the configured mirror must not erase a positive
+            # value already recorded by the native runtime or live dashboard.
+            summary[metric_key] = max(
+                int(summary.get(metric_key, 0) or 0),
+                _safe_nonnegative(value),
+            )
+
+        def _merge_panel_metric_value(metric_key, value):
+            observed_panel_metrics[metric_key] = max(
+                int(observed_panel_metrics.get(metric_key, 0) or 0),
+                _safe_nonnegative(value),
+            )
 
         def _sync_derived_counter_totals():
             summary['friend_farming_count'] = int(
@@ -1812,11 +1826,23 @@ def _daily_metrics_sync_runtime(
                 if str(node.get(flow_key, '') or '') == day:
                     flow_dates[flow_key] = day
 
-        def _consume_metrics_node(metrics, is_primary=False):
+        def _consume_metrics_node(
+            metrics, is_primary=False, allow_panel_metrics=True,
+        ):
             if not isinstance(metrics, dict):
                 return
             if str(metrics.get('date', '') or '') != day:
                 return
+            if allow_panel_metrics:
+                for metric_key in (
+                    'operation_count', 'self_harvest_count',
+                    'self_farming_count', 'warehouse_sell_count',
+                    'reconnect_count', 'miniapp_restart_count',
+                ):
+                    if metric_key in metrics:
+                        _merge_panel_metric_value(
+                            metric_key, metrics.get(metric_key, 0)
+                        )
             if 'friend_harvest_count' in metrics:
                 _merge_metric_value(
                     'friend_harvest_count',
@@ -1870,8 +1896,12 @@ def _daily_metrics_sync_runtime(
                 is_primary = False
             payloads.append((path, data))
             _consume_counter_node(data, is_primary=is_primary)
+            allow_panel_metrics = not str(path).lower().endswith(
+                '.hook.json'
+            )
             _consume_metrics_node(
-                data.get('gui_metrics'), is_primary=is_primary
+                data.get('gui_metrics'), is_primary=is_primary,
+                allow_panel_metrics=allow_panel_metrics,
             )
             instances = data.get('instances') if isinstance(data, dict) else None
             if isinstance(instances, dict):
@@ -1881,7 +1911,8 @@ def _daily_metrics_sync_runtime(
                     _consume_counter_node(node, is_primary=is_primary)
                     if isinstance(node, dict):
                         _consume_metrics_node(
-                            node.get('gui_metrics'), is_primary=is_primary
+                            node.get('gui_metrics'), is_primary=is_primary,
+                            allow_panel_metrics=allow_panel_metrics,
                         )
 
         trusted_fields = set()
@@ -1903,6 +1934,15 @@ def _daily_metrics_sync_runtime(
             for field in count_fields:
                 metrics[field] = _safe_nonnegative(metrics.get(field, 0))
             metrics['date'] = day
+            for field in (
+                'operation_count', 'self_harvest_count',
+                'warehouse_sell_count', 'reconnect_count',
+                'miniapp_restart_count',
+            ):
+                metrics[field] = max(
+                    metrics[field],
+                    int(observed_panel_metrics.get(field, 0) or 0),
+                )
             if (
                 'friend_harvest_count' in primary_metric_keys
                 or 'friend_harvest_count' in trusted_fields
@@ -1925,8 +1965,11 @@ def _daily_metrics_sync_runtime(
                     int(summary['friend_farming_count']),
                 )
             if 'self_actions_daily_count' in primary_counter_keys:
-                metrics['self_farming_count'] = int(
-                    summary['self_farming_count']
+                metrics['self_farming_count'] = max(
+                    int(summary['self_farming_count']),
+                    int(observed_panel_metrics.get(
+                        'self_farming_count', 0
+                    ) or 0),
                 )
             else:
                 metrics['self_farming_count'] = max(
@@ -1974,6 +2017,10 @@ def _daily_metrics_sync_runtime(
         live_metrics = getattr(context, '_instance_metrics', None) if context is not None else None
         if isinstance(live_metrics, dict):
             _consume_metrics_node(live_metrics.get(instance_id))
+        try:
+            _consume_metrics_node(getattr(context, 'gui_metrics', None))
+        except BaseException:
+            pass
 
         if context is not None:
             context_node = {}
@@ -2050,6 +2097,19 @@ def _daily_metrics_sync_runtime(
                         _safe_nonnegative(context_node.get(count_key, 0)),
                     )
             _sync_derived_counter_totals()
+            summary['self_farming_count'] = max(
+                int(summary.get('self_farming_count', 0) or 0),
+                int(observed_panel_metrics.get('self_farming_count', 0) or 0),
+            )
+            for field in (
+                'operation_count', 'self_harvest_count',
+                'warehouse_sell_count', 'reconnect_count',
+                'miniapp_restart_count',
+            ):
+                summary[field] = max(
+                    int(summary.get(field, 0) or 0),
+                    int(observed_panel_metrics.get(field, 0) or 0),
+                )
             for count_key, date_key in counter_specs:
                 try:
                     setattr(context, count_key, int(summary.get(count_key, 0) or 0))

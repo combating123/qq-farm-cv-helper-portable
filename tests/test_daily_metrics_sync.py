@@ -696,5 +696,96 @@ class DailyMetricsSyncTests(unittest.TestCase):
             self.assertEqual("0", new_rows[0]["friend_help"])
 
 
+    def test_primary_zero_does_not_erase_same_day_native_and_live_panel_metrics(self):
+        """Periodic sync keeps real same-day GUI progress while durable quotas stay exact."""
+        sync = load_function("_daily_metrics_sync_runtime")
+        self.assertIsNotNone(sync)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            import os
+            from unittest import mock
+
+            root = Path(temp_dir)
+            primary = root / "Roaming" / "QQFarmCopilot" / "daily_counters.json"
+            native = root / "Local" / "qq-farm-bot-rev" / "daily_counters.json"
+            csv_path = root / "daily_action_stats.csv"
+            primary.parent.mkdir(parents=True, exist_ok=True)
+            native.parent.mkdir(parents=True, exist_ok=True)
+            today = "2026-08-11"
+            zero_metrics = {
+                "date": today,
+                "friend_harvest_count": 0,
+                "self_farming_count": 0,
+                "warehouse_sell_count": 0,
+            }
+            primary.write_text(json.dumps({
+                "self_actions_daily_count": 0,
+                "self_actions_daily_date": today,
+                "gui_metrics": dict(zero_metrics),
+            }), encoding="utf-8")
+            native.write_text(json.dumps({
+                "gui_metrics": {
+                    "date": today,
+                    "friend_harvest_count": 2,
+                    "self_farming_count": 8,
+                    "warehouse_sell_count": 16,
+                },
+            }), encoding="utf-8")
+            csv_path.write_text(
+                "date,harvest,operation,friend_steal,friend_help\n"
+                f"{today},0,0,0,0\n",
+                encoding="utf-8",
+            )
+            context = types.SimpleNamespace(
+                instance_id="1",
+                _instance_metrics={
+                    "1": {
+                        "date": today,
+                        "friend_harvest_count": 2,
+                        "self_farming_count": 8,
+                        "warehouse_sell_count": 16,
+                    }
+                },
+            )
+            sync.__globals__.update({
+                "_DAILY_METRICS_LAST_SYNC_TS": 0.0,
+                "_write": lambda _message: None,
+            })
+
+            with mock.patch.dict(os.environ, {
+                "QQFARM_DAILY_COUNTERS_PATH": str(primary),
+            }, clear=False):
+                summary = sync(
+                    context,
+                    counter_paths=[str(primary), str(native)],
+                    csv_paths=[str(csv_path)],
+                    today=today,
+                    force=True,
+                )
+
+            self.assertEqual(2, summary["friend_harvest_count"])
+            self.assertEqual(8, summary["self_farming_count"])
+            self.assertEqual(16, summary["warehouse_sell_count"])
+            self.assertEqual(2, context._instance_metrics["1"]["friend_harvest_count"])
+            self.assertEqual(8, context._instance_metrics["1"]["self_farming_count"])
+            self.assertEqual(16, context._instance_metrics["1"]["warehouse_sell_count"])
+            for path in (primary, native):
+                payload = json.loads(path.read_text(encoding="utf-8"))
+                for metrics in (
+                    payload["gui_metrics"],
+                    payload["instances"]["__global__"]["gui_metrics"],
+                    payload["instances"]["1"]["gui_metrics"],
+                ):
+                    self.assertEqual(2, metrics["friend_harvest_count"])
+                    self.assertEqual(8, metrics["self_farming_count"])
+                    self.assertEqual(16, metrics["warehouse_sell_count"])
+
+            with csv_path.open("r", encoding="utf-8", newline="") as handle:
+                rows = list(csv.DictReader(handle))
+            current = [row for row in rows if row.get("date") == today][0]
+            self.assertEqual("2", current["friend_steal"])
+            self.assertEqual("8", current["operation"])
+
+
 if __name__ == "__main__":
     unittest.main()
