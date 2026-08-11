@@ -24037,14 +24037,51 @@ def _qqfarm_visible_frame_has_farm_scene(frame):
         sky_ratio = float(np_module.mean(sky))
         bright_ratio = float(np_module.mean(bright))
         blue_ratio = float(np_module.mean(blue_dominant))
+        lower = hsv[max(0, int(round(height * 0.45))):height]
+        land = (
+            (lower[:, :, 0] >= 5) & (lower[:, :, 0] <= 30) &
+            (lower[:, :, 1] >= 50) & (lower[:, :, 2] >= 40)
+        )
+        land_ratio = float(np_module.mean(land)) if getattr(lower, 'size', 0) else 0.0
         return bool(
             mean_value >= 70.0 and
             sky_ratio >= 0.07 and
             bright_ratio >= 0.25 and
-            blue_ratio >= 0.12
+            blue_ratio >= 0.12 and
+            land_ratio >= 0.12
         )
     except BaseException:
         return False
+
+
+def _qqfarm_native_capture_frame_is_business_safe(frame):
+    """Reject desktop/occluder pixels returned by a native fallback capture."""
+    if frame is None:
+        return False
+    validator = globals().get('_qqfarm_visible_frame_has_farm_scene')
+    try:
+        valid = bool(not callable(validator) or validator(frame))
+    except BaseException:
+        valid = False
+    if valid:
+        return True
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+    globals()['_QQFARM_VISIBLE_CAPTURE_OCCLUDED_TS'] = float(
+        __import__('time').monotonic()
+    )
+    try:
+        log_fn = globals().get('_throttled_write')
+        if callable(log_fn):
+            log_fn(
+                'v458-native-nonfarm-rejected',
+                'v458 native fallback returned desktop/non-farm pixels; '
+                'cleared stale frame and blocked business recognition',
+                4.0,
+            )
+    except BaseException:
+        pass
+    return False
 
 
 def _qqfarm_install_visible_capture_priority(context):
@@ -24128,6 +24165,12 @@ def _qqfarm_install_visible_capture_priority(context):
                     except BaseException:
                         pass
                 result = __original(*args, **kwargs)
+                if result is not None and qq_mode:
+                    safe_fn = globals().get(
+                        '_qqfarm_native_capture_frame_is_business_safe'
+                    )
+                    if callable(safe_fn) and not bool(safe_fn(result)):
+                        return None
                 if result is not None:
                     try:
                         remember_fn = globals().get(
@@ -24232,6 +24275,13 @@ def _get_frame_from_bot(bot):
                             break
                         native_attempted = True
                         fr = fn()
+                        if fr is not None and qq_mode:
+                            safe_fn = globals().get(
+                                '_qqfarm_native_capture_frame_is_business_safe'
+                            )
+                            if callable(safe_fn) and not bool(safe_fn(fr)):
+                                native_budget_exhausted = True
+                                break
                         if fr is not None:
                             remember_fn = globals().get(
                                 '_qqfarm_remember_good_capture_frame'
@@ -24255,6 +24305,12 @@ def _get_frame_from_bot(bot):
                     if callable(fn):
                         native_attempted = True
                         fr = fn()
+                        if fr is not None and qq_mode:
+                            safe_fn = globals().get(
+                                '_qqfarm_native_capture_frame_is_business_safe'
+                            )
+                            if callable(safe_fn) and not bool(safe_fn(fr)):
+                                break
                         if fr is not None:
                             remember_fn = globals().get(
                                 '_qqfarm_remember_good_capture_frame'
@@ -35201,6 +35257,19 @@ def _native_v225_daily_candidate_due(context, flow, require_home=True):
     flow_key = str(flow or '').strip().lower()
     if flow_key not in ('freebenefits', 'share'):
         return False
+    # Daily popups must not preempt an active friend visit or friend-list chain.
+    try:
+        scene_hint = str(getattr(context, '_qqfarm_live_scene_hint', '') or '').lower()
+        friend_busy = bool(
+            scene_hint in ('friend', 'friend_farm', 'friend-list', 'friend_list')
+            or getattr(context, '_qqfarm_friend_chain_pending', False)
+            or getattr(context, '_qqfarm_friend_list_resume_pending', False)
+            or getattr(context, '_qqfarm_friend_entry_pending', False)
+        )
+    except BaseException:
+        friend_busy = False
+    if friend_busy:
+        return False
     if require_home and not _native_v225_daily_home_ready(context):
         return False
     if flow_key == 'freebenefits':
@@ -35265,8 +35334,11 @@ def _native_v225_daily_candidate_due(context, flow, require_home=True):
     except BaseException:
         blocked = False
     if blocked:
+        # Free benefits has a strict same-day cap: no red-dot/coordinate override.
+        if flow_key == 'freebenefits':
+            return False
         coordinate_override = False
-        if flow_key in ('freebenefits', 'share'):
+        if flow_key == 'share':
             day_fn = globals().get('_daily_business_date')
             try:
                 day = str(
@@ -53971,6 +54043,57 @@ def _qt_runtime_already_running(app):
             pass
     return False
 
+
+def _qqfarm_reenable_start_without_window(app):
+    """Keep Start clickable after Stop when the QQ mini-program window is absent."""
+    if app is None:
+        return 0
+    try:
+        mode_fn = globals().get('_active_is_qq_mode')
+        if callable(mode_fn) and not bool(mode_fn()):
+            return 0
+    except BaseException:
+        return 0
+    running_fn = globals().get('_qt_runtime_already_running')
+    try:
+        if callable(running_fn) and bool(running_fn(app)):
+            return 0
+    except BaseException:
+        return 0
+    hwnd_fn = globals().get('_share_find_farm_window_hwnd')
+    try:
+        if callable(hwnd_fn) and int(hwnd_fn() or 0) > 0:
+            return 0
+    except BaseException:
+        pass
+    try:
+        widgets = list(app.allWidgets())
+    except BaseException:
+        return 0
+    changed = 0
+    for widget in widgets:
+        try:
+            text_fn = getattr(widget, 'text', None)
+            if not callable(text_fn):
+                continue
+            if str(text_fn() or '').strip() not in ('\u5f00\u59cb\u8fd0\u884c', 'Start Running'):
+                continue
+            visible_fn = getattr(widget, 'isVisible', None)
+            if callable(visible_fn) and not bool(visible_fn()):
+                continue
+            enabled_fn = getattr(widget, 'isEnabled', None)
+            if callable(enabled_fn) and bool(enabled_fn()):
+                continue
+            if hasattr(widget, 'setEnabled'):
+                widget.setEnabled(True)
+            if hasattr(widget, 'setDisabled'):
+                widget.setDisabled(False)
+            changed += 1
+        except BaseException:
+            continue
+    return changed
+
+
 def _qt_autostart_running_button(app):
     """Start the configured assistant once after the real main window is ready."""
     global _QT_AUTOSTART_CLICKED
@@ -54451,6 +54574,10 @@ def _qt_unlock_pass():
     if app is None:
         return False
     changed = 0
+    try:
+        changed += int(_qqfarm_reenable_start_without_window(app) or 0)
+    except BaseException:
+        pass
     try:
         changed += int(_qqfarm_deconflict_assistant_window_titles(app) or 0)
     except BaseException:

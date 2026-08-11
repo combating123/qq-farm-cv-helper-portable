@@ -115,21 +115,12 @@ class NativeV225DailyCatchup20260810Tests(unittest.TestCase):
         self.assertEqual("home", bot._qqfarm_live_scene_hint)
         self.assertEqual("home", bot._qqfarm_cycle_branch_hint)
 
-    def test_terminal_freebenefits_failure_requests_home_before_visible_recovery(self):
+    def test_terminal_freebenefits_failure_does_not_interrupt_friend_chain(self):
         namespace = load_functions("_native_v225_daily_candidate_due")
         namespace["_native_v225_daily_schedule_due"] = lambda *args, **kwargs: True
         namespace["_daily_flow_success_today"] = lambda *args, **kwargs: False
         namespace["_daily_flow_retry_blocked"] = lambda flow: True
-        namespace["_daily_business_date"] = lambda: "2026-08-10"
         bot = types.SimpleNamespace(_qqfarm_live_scene_hint="friend")
-
-        self.assertTrue(namespace["_native_v225_daily_candidate_due"](
-            bot, "freebenefits", require_home=False
-        ))
-
-        bot._qqfarm_native_v225_daily_coordinate_override_day_freebenefits = (
-            "2026-08-10"
-        )
         self.assertFalse(namespace["_native_v225_daily_candidate_due"](
             bot, "freebenefits", require_home=False
         ))
@@ -159,7 +150,7 @@ class NativeV225DailyCatchup20260810Tests(unittest.TestCase):
             bot, "share", require_home=True
         ))
 
-    def test_terminal_freebenefits_failure_gets_one_visible_coordinate_recovery_lease(self):
+    def test_terminal_freebenefits_failure_is_hard_stopped_at_retry_cap(self):
         namespace = load_functions("_native_v225_daily_candidate_due")
         namespace["_native_v225_daily_home_ready"] = lambda bot: True
         namespace["_native_v225_daily_schedule_due"] = lambda *args, **kwargs: True
@@ -169,15 +160,19 @@ class NativeV225DailyCatchup20260810Tests(unittest.TestCase):
         namespace["_daily_business_date"] = lambda: "2026-08-10"
         bot = types.SimpleNamespace()
 
-        self.assertTrue(namespace["_native_v225_daily_candidate_due"](
+        self.assertFalse(namespace["_native_v225_daily_candidate_due"](
             bot, "freebenefits", require_home=True
         ))
 
-        bot._qqfarm_native_v225_daily_coordinate_override_day_freebenefits = (
-            "2026-08-10"
-        )
+
+    def test_daily_candidate_never_interrupts_active_friend_chain(self):
+        namespace = load_functions("_native_v225_daily_candidate_due")
+        namespace["_native_v225_daily_schedule_due"] = lambda *a, **k: True
+        namespace["_daily_flow_success_today"] = lambda *a, **k: False
+        namespace["_daily_flow_retry_blocked"] = lambda flow: False
+        bot = types.SimpleNamespace(_qqfarm_live_scene_hint="friend_farm")
         self.assertFalse(namespace["_native_v225_daily_candidate_due"](
-            bot, "freebenefits", require_home=True
+            bot, "freebenefits", require_home=False
         ))
 
     def test_home_catchup_does_not_promote_persisted_attempt_without_current_dispatch(self):
