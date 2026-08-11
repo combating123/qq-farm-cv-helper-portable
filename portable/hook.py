@@ -34798,6 +34798,51 @@ def _run_first_party_friend_troublemaker(context, frame):
             except BaseException:
                 previous_count = 0
             confirmed_count = max(0, previous_count) + 1
+
+            recorder = getattr(context, '_record_friend_trouble_action', None)
+            if not callable(recorder):
+                try:
+                    for module_name, module in list(sys.modules.items()):
+                        if module is None or not str(module_name).startswith('bot.'):
+                            continue
+                        candidate = getattr(module, '_record_friend_trouble_action', None)
+                        if callable(candidate):
+                            recorder = candidate
+                            break
+                except BaseException:
+                    recorder = None
+            if not callable(recorder):
+                try:
+                    _write('first-party troublemaker visual action unrecorded; retryable=True')
+                except BaseException:
+                    pass
+                return False
+            invoke_fn = globals().get('_invoke_friend_guard_action')
+            try:
+                if callable(invoke_fn):
+                    try:
+                        invoke_fn(recorder, context, (1,), {})
+                    except TypeError:
+                        invoke_fn(recorder, context, (), {})
+                else:
+                    bound_owner = getattr(recorder, '__self__', None)
+                    if bound_owner is not None:
+                        try:
+                            recorder(1)
+                        except TypeError:
+                            recorder()
+                    else:
+                        try:
+                            recorder(context, 1)
+                        except TypeError:
+                            recorder(context)
+            except BaseException as error:
+                try:
+                    _write('first-party troublemaker recorder error=' + repr(error)[:220])
+                except BaseException:
+                    pass
+                return False
+
             try:
                 setattr(context, 'friend_trouble_daily_date', business_day)
                 setattr(context, 'friend_trouble_daily_count', confirmed_count)
@@ -34836,50 +34881,6 @@ def _run_first_party_friend_troublemaker(context, frame):
                         )
                     except BaseException:
                         pass
-
-            recorder = getattr(context, '_record_friend_trouble_action', None)
-            if not callable(recorder):
-                try:
-                    for module_name, module in list(sys.modules.items()):
-                        if module is None or not str(module_name).startswith('bot.'):
-                            continue
-                        candidate = getattr(module, '_record_friend_trouble_action', None)
-                        if callable(candidate):
-                            recorder = candidate
-                            break
-                except BaseException:
-                    recorder = None
-            if not callable(recorder):
-                try:
-                    _write('first-party troublemaker visual action unrecorded; retryable=True')
-                except BaseException:
-                    pass
-                return False
-            invoke_fn = globals().get('_invoke_friend_guard_action')
-            try:
-                if callable(invoke_fn):
-                    try:
-                        invoke_fn(recorder, context, (confirmed_count,), {})
-                    except TypeError:
-                        invoke_fn(recorder, context, (), {})
-                else:
-                    bound_owner = getattr(recorder, '__self__', None)
-                    if bound_owner is not None:
-                        try:
-                            recorder(confirmed_count)
-                        except TypeError:
-                            recorder()
-                    else:
-                        try:
-                            recorder(context, confirmed_count)
-                        except TypeError:
-                            recorder(context)
-            except BaseException as error:
-                try:
-                    _write('first-party troublemaker recorder error=' + repr(error)[:220])
-                except BaseException:
-                    pass
-                return False
             try:
                 _write(
                     'first-party troublemaker committed land=' +

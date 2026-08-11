@@ -142,6 +142,56 @@ class FirstPartyTroublemaker20260809Tests(unittest.TestCase):
         )
 
 
+    def test_first_party_visual_fallback_records_one_delta_without_doubling_existing_count(self):
+        namespace = load_functions("_run_first_party_friend_troublemaker")
+        runner = namespace["_run_first_party_friend_troublemaker"]
+        initial_frame = types.SimpleNamespace(shape=(800, 428, 3))
+        popup_frame = types.SimpleNamespace(shape=(800, 428, 3))
+        settled_frame = types.SimpleNamespace(shape=(800, 428, 3))
+        captures = iter((popup_frame, settled_frame))
+        records = []
+        saves = []
+
+        class Scheduler:
+            friend_trouble_daily_date = "2026-08-11"
+            friend_trouble_daily_count = 37
+
+            def _record_friend_trouble_action(self, delta):
+                records.append(delta)
+                self.friend_trouble_daily_count += int(delta)
+                return True
+
+            def _save_daily_counters(self):
+                saves.append(self.friend_trouble_daily_count)
+                return True
+
+        scheduler = Scheduler()
+        namespace.update({
+            "_collect_friend_seed_land_centers_from_frame": (
+                lambda frame: [(190, 610)] if frame is initial_frame else []
+            ),
+            "_invoke_friend_guard_match_coordinate_click": (
+                lambda *_args, **_kwargs: True
+            ),
+            "_get_frame_from_bot": lambda _context: next(captures),
+            "_detect_friend_trouble_popup_action": (
+                lambda frame: {"center": (260, 510)} if frame is popup_frame else None
+            ),
+            "_friend_guard_sleep": lambda _seconds: None,
+            "_daily_business_date": lambda: "2026-08-11",
+            "_friend_trouble_counter_snapshot": (
+                lambda context: context.friend_trouble_daily_count
+            ),
+            "_daily_metrics_sync_runtime": lambda *_args, **_kwargs: {},
+            "_write": lambda *_args, **_kwargs: None,
+        })
+
+        self.assertTrue(runner(scheduler, initial_frame))
+        self.assertEqual([1], records)
+        self.assertEqual(38, scheduler.friend_trouble_daily_count)
+        self.assertTrue(all(value == 38 for value in saves))
+
+
     def test_narrow_entry_preserves_native_v225_transaction_owner(self):
         namespace = load_functions("_wrap_first_party_friend_troublemaker_entry")
         self.assertIn(
