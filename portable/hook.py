@@ -30741,6 +30741,8 @@ def _friend_guard_original_chain(fn):
                 '__qqfarm_vip_business_orig__',
                 '__qqfarm_friend_radish_diag_orig__',
                 '__qqfarm_friend_pause_orig__',
+                '__qqfarm_native_v225_friend_help_candidate_cache_orig__',
+                '__qqfarm_native_v225_friend_help_confirmation_orig__',
                 '__wrapped__',
             ):
                 candidate = getattr(current, key, None)
@@ -47823,10 +47825,13 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
     if not callable(fn):
         return fn, False
     try:
-        if bool(getattr(
-            fn, '__qqfarm_native_v225_friend_help_candidate_cache_wrapped__',
+        chain_fn = globals().get('_friend_guard_original_chain')
+        chain = chain_fn(fn) if callable(chain_fn) else [fn]
+        if any(bool(getattr(
+            item,
+            '__qqfarm_native_v225_friend_help_candidate_cache_wrapped__',
             False,
-        )):
+        )) for item in chain):
             return fn, False
     except BaseException:
         pass
@@ -48050,10 +48055,13 @@ def _wrap_native_v225_friend_help_confirmation(fn, name=''):
     if not callable(fn):
         return fn, False
     try:
-        if bool(getattr(
-            fn, '__qqfarm_native_v225_friend_help_confirmation_wrapped__',
+        chain_fn = globals().get('_friend_guard_original_chain')
+        chain = chain_fn(fn) if callable(chain_fn) else [fn]
+        if any(bool(getattr(
+            item,
+            '__qqfarm_native_v225_friend_help_confirmation_wrapped__',
             False,
-        )):
+        )) for item in chain):
             return fn, False
     except BaseException:
         pass
@@ -48366,6 +48374,12 @@ def _patch_native_v225_friend_help_confirmation_for_module(module, tag=''):
     )
     for attr_name, wrapper_name in targets:
         try:
+            class_marker = (
+                '__qqfarm_native_v225_friend_help_bridge_' +
+                str(attr_name) + '_installed__'
+            )
+            if bool(getattr(cls, class_marker, False)):
+                continue
             old = getattr(cls, attr_name, None)
             wrapper_fn = globals().get(wrapper_name)
             if not callable(old) or not callable(wrapper_fn):
@@ -48375,7 +48389,20 @@ def _patch_native_v225_friend_help_confirmation_for_module(module, tag=''):
             )
             if changed_one:
                 setattr(cls, attr_name, new)
+                setattr(cls, class_marker, True)
                 changed += 1
+            elif any(bool(getattr(
+                item,
+                '__qqfarm_native_v225_friend_help_candidate_cache_wrapped__'
+                if attr_name == 'process_friend_farm' else
+                '__qqfarm_native_v225_friend_help_confirmation_wrapped__',
+                False,
+            )) for item in (
+                globals().get('_friend_guard_original_chain')(old)
+                if callable(globals().get('_friend_guard_original_chain'))
+                else [old]
+            )):
+                setattr(cls, class_marker, True)
         except BaseException:
             continue
     if changed:

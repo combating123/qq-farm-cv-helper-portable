@@ -4,7 +4,7 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.44-32C98A?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.45-32C98A?style=flat-square)](#版本与更新)
   [![Status](https://img.shields.io/badge/状态-稳定版本-17345F?style=flat-square)](#快速开始)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
@@ -248,10 +248,11 @@ CV农场助手/
 
 ## 版本与更新
 
-当前发布版本为 **v1.4.44（2026-08-11）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
+当前发布版本为 **v1.4.45（2026-08-11）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
 
 | 版本 | 面向使用者的主要更新 |
 | --- | --- |
+| **v1.4.45** | 修复长时间运行后好友处理桥接重复叠加，导致好友页面持续空巡检的问题 |
 | **v1.4.44** | 修复好友农场按钮清晰可见但页面跳转状态失效后长期空巡检的问题 |
 | **v1.4.43** | 修复部分电脑在隐藏、恢复或窗口重建后画面仍显示但识别通道失效的问题，自动重建截图会话并重新绑定当前农场窗口 |
 | **v1.4.42** | 修复隐藏窗口桌面误识别、后台画面二次校验、停止后无窗口时重新启动，以及免费福利硬上限和好友流程互斥 |
