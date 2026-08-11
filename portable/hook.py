@@ -3612,6 +3612,17 @@ def _configured_bool(sections, key, default=False):
         return bool(default)
 
 
+def _configured_text(sections, key, default=''):
+    try:
+        value = _cfg_get(sections, key, default)
+        if value is None:
+            return str(default)
+        value = str(value).strip()
+        return value if value else str(default)
+    except BaseException:
+        return str(default)
+
+
 def _planting_callable_inventory(module):
     """Return planting-related callables, including obfuscated helpers found by constants."""
     entries = []
@@ -21287,6 +21298,42 @@ def _restore_runtime_business_switches(obj):
                                 changed += 1
                         except BaseException:
                             pass
+        text_groups = [
+            (_active_bot_sections(), [
+                ('miniapp_hide_mode', ('miniapp_hide_mode',), 'transparent'),
+                ('hidden_miniapp_restart_hide_timing', (
+                    'hidden_miniapp_restart_hide_timing',
+                ), 'detect_window_immediate'),
+            ]),
+        ]
+        for sections, entries in text_groups:
+            for key, aliases, default in entries:
+                desired = _configured_text(sections, key, default)
+                for attr in aliases:
+                    for target in object_targets:
+                        try:
+                            if not hasattr(target, attr):
+                                continue
+                            old = getattr(target, attr)
+                            if callable(old):
+                                continue
+                            if str(old) != desired:
+                                setattr(target, attr, desired)
+                                changed += 1
+                        except BaseException:
+                            pass
+                    for target in dict_targets:
+                        try:
+                            if attr not in target:
+                                continue
+                            old = target.get(attr)
+                            if callable(old):
+                                continue
+                            if str(old) != desired:
+                                target[attr] = desired
+                                changed += 1
+                        except BaseException:
+                            pass
     except BaseException:
         pass
     return changed
@@ -23530,7 +23577,10 @@ _BACKPACK_PROFILE_FUNC_NAMES = set([
 
 _VIP_BUSINESS_FUNC_NAMES = set([
     '_handle_home_auto_sell_fruit',
+    'handle_home_auto_sell_fruit',
+    'self_auto_sell_fruit',
     '_run_warehouse_sell_button_sequence',
+    'run_warehouse_sell_button_sequence',
     'handle_home_maintenance',
     'handle_home_pre_planting_maintenance',
     'handle_home_harvest',
@@ -31291,12 +31341,16 @@ def _friend_guard_help_action_allowed(context, game_frame, match_center):
     predicate = None
     source = ''
     if callable(resolver):
-        try:
-            predicate, source = resolver(
-                context, '_has_guard_dog_for_bottom_help_action'
-            )
-        except BaseException:
-            predicate, source = None, ''
+        for predicate_name in (
+            '_has_guard_dog_for_bottom_help_action',
+            'has_guard_dog_for_bottom_help_action',
+        ):
+            try:
+                predicate, source = resolver(context, predicate_name)
+            except BaseException:
+                predicate, source = None, ''
+            if callable(predicate):
+                break
     if not callable(predicate):
         try:
             _write('v130 guard dog visual help blocked: native bottom predicate missing')
