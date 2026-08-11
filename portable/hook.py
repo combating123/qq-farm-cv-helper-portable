@@ -20233,6 +20233,7 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                 except BaseException:
                     pass
             single_land_mode_active = False
+            incomplete_quad_layout_active = False
             single_land_selected = None
             single_land_selected_index = -1
             single_land_deferred = []
@@ -20243,6 +20244,44 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                     ))
                 except BaseException:
                     single_land_mode_active = False
+            if (
+                not single_land_mode_active and input_empty_count > 1
+                and bot is not None
+            ):
+                try:
+                    quad_enabled = bool(
+                        getattr(bot, 'enable_quad_act_seeds', False)
+                        or getattr(bot, 'quad_act_seeds', False)
+                    )
+                except BaseException:
+                    quad_enabled = False
+                if quad_enabled:
+                    group_fn = globals().get(
+                        '_qqfarm_find_all_quad_empty_land_groups'
+                    )
+                    local_quad_groups = None
+                    if callable(group_fn):
+                        try:
+                            local_quad_groups = list(
+                                group_fn(full_input_lands) or []
+                            )
+                        except BaseException:
+                            local_quad_groups = None
+                    if local_quad_groups == []:
+                        single_land_mode_active = True
+                        incomplete_quad_layout_active = True
+                        try:
+                            setattr(
+                                bot, '_qqfarm_backpack_single_land_mode', True
+                            )
+                            _write(
+                                'v461 incomplete 2x2 backpack layout; bound native '
+                                'land verification to one plot and preserve deferred '
+                                'ordinary-seed work empty=' +
+                                str(input_empty_count) + ' name=' + str(name)
+                            )
+                        except BaseException:
+                            pass
             if single_land_mode_active and full_input_lands:
                 def _single_land_center_at(index):
                     try:
@@ -20874,6 +20913,32 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                             current_empty_count >= baseline_empty_count
                         )
                     )
+                    if (
+                        incomplete_quad_layout_active
+                        and not verified_drop and reported_remaining is not None
+                        and reported_remaining < input_empty_count
+                        and isinstance(result, (tuple, list)) and len(result) >= 2
+                    ):
+                        # Native backpack telemetry may remove every candidate
+                        # after merely clicking/checking its label.  Without a
+                        # fresh visual empty-slot decrease those plots are still
+                        # pending work and must remain available to ordinary seeds
+                        # or the buy-seed fallback in this same planting cycle.
+                        normalized = list(result)
+                        normalized[1] = list(full_input_lands)
+                        result = (
+                            tuple(normalized)
+                            if isinstance(result, tuple) else normalized
+                        )
+                        reported_remaining = input_empty_count
+                        try:
+                            _write(
+                                'v461 restored unverified backpack remaining lands '
+                                'count=' + str(input_empty_count) +
+                                ' name=' + str(name)
+                            )
+                        except BaseException:
+                            pass
                     nested_no_progress = False
                     try:
                         nested_no_progress = bool(
@@ -25510,6 +25575,43 @@ def _wrap_planting_crop_context_func(fn, module, name=''):
             if bot is None:
                 return fn(*a, **k)
             crop_name = _crop_name_from_bound_call(fn, a, k)
+            try:
+                backpack_profile_active = bool(getattr(
+                    bot, '_qqfarm_backpack_profile_active', False
+                ))
+            except BaseException:
+                backpack_profile_active = False
+            fertilizer_name = str(crop_name or '').strip().lower()
+            fertilizer_terms = (
+                '\u5316\u80a5', '\u80a5\u6599', 'fertilizer',
+                'fertiliser', 'manure',
+            )
+            if (
+                backpack_profile_active and
+                str(name or '').endswith('._plant_seed_over_lands') and
+                any(term in fertilizer_name for term in fertilizer_terms)
+            ):
+                # The native backpack loop can OCR a fertilizer card after a
+                # generic quantity-badge candidate and route it through the seed
+                # planting helper.  Reject it before any drag/click; the separate
+                # post-planting fertilizer routine remains untouched.
+                try:
+                    setattr(
+                        bot, '_qqfarm_backpack_round_no_progress_attempts',
+                        max(0, int(getattr(
+                            bot, '_qqfarm_backpack_round_no_progress_attempts', 0
+                        ) or 0)) + 1,
+                    )
+                except BaseException:
+                    pass
+                try:
+                    _write(
+                        'v461 fertilizer candidate blocked before planting helper '
+                        'crop=' + fertilizer_name + ' name=' + str(name)
+                    )
+                except BaseException:
+                    pass
+                return False
             radish_state = _daily_radish_state(module, bot)
             missing = object()
             try:

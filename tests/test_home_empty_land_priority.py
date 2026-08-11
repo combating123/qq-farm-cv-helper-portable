@@ -2695,6 +2695,82 @@ class HomeEmptyLandPriorityTests(unittest.TestCase):
         self.assertEqual(1, len(discarded))
         self.assertEqual(2, len(summaries))
 
+
+    def test_backpack_fertilizer_name_is_blocked_before_seed_planting_helper(self):
+        """The native backpack loop must not drag a fertilizer card as a seed."""
+        namespace = load_functions("_wrap_planting_crop_context_func")
+        logs = []
+        native_calls = []
+        namespace.update({
+            "_write": lambda message: logs.append(str(message)),
+            "_business_bot_from_args": lambda args, kwargs: (
+                kwargs.get("bot") if kwargs.get("bot") is not None else args[0]
+            ),
+            "_crop_name_from_bound_call": lambda _fn, args, _kwargs: str(args[1]),
+            "_daily_radish_state": lambda _module, _bot: "inactive",
+        })
+        bot = types.SimpleNamespace(_qqfarm_backpack_profile_active=True)
+
+        def native(owner, crop_name, lands, seed_candidate=None):
+            native_calls.append((owner, crop_name, list(lands), seed_candidate))
+            return True
+
+        wrapped, changed = namespace["_wrap_planting_crop_context_func"](
+            native, types.SimpleNamespace(), "fixture._plant_seed_over_lands"
+        )
+        result = wrapped(
+            bot,
+            "\u666e\u901a\u5316\u80a5",
+            [{"center": (200, 420)}],
+            {"center": (170, 510), "item_name": "\u666e\u901a\u5316\u80a5"},
+        )
+
+        self.assertTrue(changed)
+        self.assertFalse(result)
+        self.assertEqual([], native_calls)
+        self.assertTrue(any("fertilizer candidate blocked" in message for message in logs))
+
+    def test_incomplete_quad_round_checks_one_land_and_restores_all_on_no_progress(self):
+        """An unaligned 2x2 inventory pass must not consume ten empty plots in a slow scan."""
+        namespace = load_functions("_wrap_backpack_seed_priority_planting_fast")
+        logs = []
+        received = []
+        namespace.update({
+            "_write": lambda message: logs.append(str(message)),
+            "_qqfarm_find_all_quad_empty_land_groups": lambda _lands: [],
+            "_qqfarm_update_home_priority": lambda *_args, **_kwargs: None,
+        })
+        lands = [
+            {"center": (180 + index * 13, 420 + index * 7), "confidence": 0.9}
+            for index in range(10)
+        ]
+        bot = types.SimpleNamespace(
+            enable_quad_act_seeds=True,
+            backpack_seed_priority=True,
+            _qqfarm_recent_empty_land_count=len(lands),
+            _qqfarm_recent_empty_land_ts=time.time() - 60.0,
+        )
+
+        def native(owner, remain_lands, panel_settle=1.0):
+            received.append(list(remain_lands))
+            owner._qqfarm_recent_empty_land_count = len(lands)
+            owner._qqfarm_recent_empty_land_ts = time.time()
+            return True, []
+
+        wrapped, changed = namespace["_wrap_backpack_seed_priority_planting_fast"](
+            native, "fixture._run_backpack_seed_priority_planting"
+        )
+        result = wrapped(bot, lands, 1.0)
+
+        self.assertTrue(changed)
+        self.assertEqual(1, len(received[0]))
+        self.assertFalse(result[0])
+        self.assertEqual(
+            [tuple(item["center"]) for item in lands],
+            [tuple(item["center"]) for item in result[1]],
+        )
+        self.assertTrue(any("incomplete 2x2" in message for message in logs))
+
     def test_backpack_reported_remaining_without_fresh_visual_observation_is_rejected(self):
         """A stale counter plus a native remaining-land report is not visual planting proof."""
         namespace = load_functions("_wrap_backpack_seed_priority_planting_fast")
