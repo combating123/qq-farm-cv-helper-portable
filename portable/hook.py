@@ -23472,6 +23472,8 @@ _QQFARM_LAST_WGC_NORMALIZED_TS = 0.0
 _QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS = 0.0
 _QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID = 0
 _QQFARM_WGC_BLANK_TS = 0.0
+_QQFARM_WGC_BLANK_COUNT = 0
+_QQFARM_WGC_BOUND_HWND = 0
 _QQFARM_LAST_GOOD_CAPTURE_FRAME = None
 _QQFARM_LAST_GOOD_CAPTURE_TS = 0.0
 _QQFARM_NATIVE_CAPTURE_LAST_TS = 0.0
@@ -23648,6 +23650,10 @@ def _qqfarm_wgc_closed(*_args, **_kwargs):
     globals()['_QQFARM_WGC_CAPTURE'] = None
     globals()['_QQFARM_WGC_CONTROL'] = None
     globals()['_QQFARM_WGC_BLANK_TS'] = 0.0
+    globals()['_QQFARM_WGC_BLANK_COUNT'] = 0
+    globals()['_QQFARM_WGC_BOUND_HWND'] = 0
+    globals()['_QQFARM_WGC_FRAME'] = None
+    globals()['_QQFARM_WGC_FRAME_TS'] = 0.0
     globals()['_QQFARM_LAST_WGC_NORMALIZED_FRAME'] = None
     globals()['_QQFARM_LAST_WGC_NORMALIZED_TS'] = 0.0
     globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = 0.0
@@ -23670,6 +23676,10 @@ def _qqfarm_stop_wgc_capture(reason=''):
     globals()['_QQFARM_WGC_CONTROL'] = None
     globals()['_QQFARM_WGC_CAPTURE'] = None
     globals()['_QQFARM_WGC_BLANK_TS'] = 0.0
+    globals()['_QQFARM_WGC_BLANK_COUNT'] = 0
+    globals()['_QQFARM_WGC_BOUND_HWND'] = 0
+    globals()['_QQFARM_WGC_FRAME'] = None
+    globals()['_QQFARM_WGC_FRAME_TS'] = 0.0
     globals()['_QQFARM_LAST_WGC_NORMALIZED_FRAME'] = None
     globals()['_QQFARM_LAST_WGC_NORMALIZED_TS'] = 0.0
     globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = 0.0
@@ -23697,17 +23707,33 @@ def _qqfarm_stop_wgc_capture(reason=''):
 def _qqfarm_start_wgc_capture():
     capture = globals().get('_QQFARM_WGC_CAPTURE')
     control = globals().get('_QQFARM_WGC_CONTROL')
+    farm_hwnd = 0
+    try:
+        find_window_fn = globals().get('_share_find_farm_window_hwnd')
+        if callable(find_window_fn):
+            farm_hwnd = int(find_window_fn() or 0)
+    except BaseException:
+        farm_hwnd = 0
     if capture is not None:
-        try:
-            finished_fn = getattr(control, 'is_finished', None)
-            if callable(finished_fn) and bool(finished_fn()):
-                globals()['_QQFARM_WGC_CAPTURE'] = None
-                globals()['_QQFARM_WGC_CONTROL'] = None
-                globals()['_QQFARM_WGC_BLANK_TS'] = 0.0
-            else:
+        bound_hwnd = int(globals().get('_QQFARM_WGC_BOUND_HWND', 0) or 0)
+        if bound_hwnd > 0 and farm_hwnd > 0 and bound_hwnd != farm_hwnd:
+            stop_fn = globals().get('_qqfarm_stop_wgc_capture')
+            if callable(stop_fn):
+                stop_fn('window-handle-changed')
+            capture = globals().get('_QQFARM_WGC_CAPTURE')
+            control = globals().get('_QQFARM_WGC_CONTROL')
+        if capture is not None:
+            try:
+                finished_fn = getattr(control, 'is_finished', None)
+                if callable(finished_fn) and bool(finished_fn()):
+                    globals()['_QQFARM_WGC_CAPTURE'] = None
+                    globals()['_QQFARM_WGC_CONTROL'] = None
+                    globals()['_QQFARM_WGC_BLANK_TS'] = 0.0
+                    globals()['_QQFARM_WGC_BOUND_HWND'] = 0
+                else:
+                    return True
+            except BaseException:
                 return True
-        except BaseException:
-            return True
     time_module = __import__('time')
     now_value = float(time_module.monotonic())
     last_attempt = float(globals().get(
@@ -23745,13 +23771,13 @@ def _qqfarm_start_wgc_capture():
             # the 0.75s active patrol settle while reducing continuous QQ work.
             'minimum_update_interval': 333,
         }
-        farm_hwnd = 0
-        try:
-            find_window_fn = globals().get('_share_find_farm_window_hwnd')
-            if callable(find_window_fn):
-                farm_hwnd = int(find_window_fn() or 0)
-        except BaseException:
-            farm_hwnd = 0
+        if farm_hwnd <= 0:
+            try:
+                find_window_fn = globals().get('_share_find_farm_window_hwnd')
+                if callable(find_window_fn):
+                    farm_hwnd = int(find_window_fn() or 0)
+            except BaseException:
+                farm_hwnd = 0
         supports_window_hwnd = False
         if farm_hwnd > 0:
             try:
@@ -23782,6 +23808,9 @@ def _qqfarm_start_wgc_capture():
         control = capture.start_free_threaded()
         globals()['_QQFARM_WGC_CONTROL'] = control
         globals()['_QQFARM_WGC_STARTED_TS'] = now_value
+        globals()['_QQFARM_WGC_BOUND_HWND'] = int(
+            farm_hwnd if supports_window_hwnd else 0
+        )
         globals()['_QQFARM_WGC_BAD_GEOMETRY_COUNT'] = 0
         log_fn = globals().get('_throttled_write')
         if callable(log_fn):
@@ -23899,6 +23928,10 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
             '_qqfarm_wgc_frame_is_rendered_game_surface'
         )
         if callable(surface_fn) and not bool(surface_fn(image)):
+            blank_count = int(globals().get(
+                '_QQFARM_WGC_BLANK_COUNT', 0
+            ) or 0) + 1
+            globals()['_QQFARM_WGC_BLANK_COUNT'] = blank_count
             globals()['_QQFARM_WGC_BLANK_TS'] = now_value
             globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
             globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
@@ -23906,6 +23939,16 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
             globals()['_QQFARM_LAST_WGC_NORMALIZED_TS'] = 0.0
             globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = 0.0
             globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID'] = 0
+            if blank_count >= 2:
+                stop_fn = globals().get('_qqfarm_stop_wgc_capture')
+                if callable(stop_fn):
+                    stop_fn('blank-surface')
+                # Preserve the latch until the replacement session produces a
+                # rendered frame. Hidden/minimized windows therefore remain
+                # blocked while a restored visible window may use validated
+                # desktop/native pixels during the WGC warm-up.
+                globals()['_QQFARM_WGC_BLANK_TS'] = now_value
+                globals()['_QQFARM_WGC_BLANK_COUNT'] = 0
             try:
                 log_fn = globals().get('_throttled_write')
                 if callable(log_fn):
@@ -23918,6 +23961,7 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
                 pass
             return None
         globals()['_QQFARM_WGC_BLANK_TS'] = 0.0
+        globals()['_QQFARM_WGC_BLANK_COUNT'] = 0
         source_id = int(id(frame))
         cached_frame = globals().get('_QQFARM_LAST_WGC_NORMALIZED_FRAME')
         cached_source_ts = float(globals().get(
@@ -23954,6 +23998,37 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
         return None
 
 
+
+def _qqfarm_farm_window_is_visible():
+    """Return true only while the current QQ Farm window is shown and restored."""
+    try:
+        find_fn = globals().get('_share_find_farm_window_hwnd')
+        hwnd = int(find_fn() or 0) if callable(find_fn) else 0
+        if hwnd <= 0:
+            return False
+        try:
+            win32gui = __import__('win32gui')
+            if not bool(win32gui.IsWindowVisible(hwnd)):
+                return False
+            if bool(win32gui.IsIconic(hwnd)):
+                return False
+            rect = win32gui.GetWindowRect(hwnd)
+            return bool(
+                rect and len(rect) >= 4 and
+                int(rect[2] - rect[0]) >= 300 and
+                int(rect[3] - rect[1]) >= 400
+            )
+        except BaseException:
+            rect_fn = globals().get('_share_get_rect')
+            rect = rect_fn(hwnd) if callable(rect_fn) else None
+            return bool(
+                rect and len(rect) >= 4 and
+                int(rect[2] - rect[0]) >= 300 and
+                int(rect[3] - rect[1]) >= 400
+            )
+    except BaseException:
+        return False
+
 def _qqfarm_native_capture_fallback_allowed(now=None):
     try:
         time_module = globals().get('time') or __import__('time')
@@ -23964,7 +24039,9 @@ def _qqfarm_native_capture_fallback_allowed(now=None):
             '_QQFARM_WGC_BLANK_TS', 0.0
         ) or 0.0)
         if blank_ts > 0.0:
-            return False
+            visible_fn = globals().get('_qqfarm_farm_window_is_visible')
+            if not callable(visible_fn) or not bool(visible_fn()):
+                return False
         attempt_ts = float(globals().get(
             '_QQFARM_WGC_START_ATTEMPT_TS', 0.0
         ) or 0.0)
@@ -24593,7 +24670,9 @@ def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False
                 return wgc_frame
         blank_ts = float(globals().get('_QQFARM_WGC_BLANK_TS', 0.0) or 0.0)
         if blank_ts > 0.0 and not bool(prefer_desktop):
-            return None
+            visible_fn = globals().get('_qqfarm_farm_window_is_visible')
+            if not callable(visible_fn) or not bool(visible_fn()):
+                return None
         find_fn = globals().get('_share_find_farm_window_hwnd')
         rect_fn = globals().get('_share_get_rect')
         physical_rect_fn = globals().get('_qqfarm_get_physical_window_rect')

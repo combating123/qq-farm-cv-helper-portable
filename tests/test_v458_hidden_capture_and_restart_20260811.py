@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 HOOK = ROOT / "portable" / "hook.py"
@@ -96,6 +97,105 @@ class HiddenCaptureAndRestartTests(unittest.TestCase):
         })
         self.assertEqual(0, ns["_qqfarm_reenable_start_without_window"](app))
         self.assertFalse(button.enabled)
+
+
+    def test_repeated_blank_wgc_surface_restarts_capture_session(self):
+        ns = load_functions("_qqfarm_capture_wgc_farm_frame")
+        events = []
+        blank = np.full((800, 428, 3), 255, dtype=np.uint8)
+
+        def stop_capture(reason=""):
+            events.append(reason)
+            ns["_QQFARM_WGC_CAPTURE"] = None
+            ns["_QQFARM_WGC_CONTROL"] = None
+            return True
+
+        ns.update({
+            "np": np,
+            "_QQFARM_WGC_CAPTURE": object(),
+            "_QQFARM_WGC_CONTROL": object(),
+            "_QQFARM_WGC_FRAME": blank,
+            "_QQFARM_WGC_FRAME_TS": time.monotonic(),
+            "_QQFARM_WGC_BLANK_TS": 0.0,
+            "_QQFARM_WGC_BLANK_COUNT": 0,
+            "_qqfarm_start_wgc_capture": lambda: True,
+            "_qqfarm_wgc_frame_is_rendered_game_surface": lambda _frame: False,
+            "_qqfarm_stop_wgc_capture": stop_capture,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+        self.assertIsNone(ns["_qqfarm_capture_wgc_farm_frame"]())
+        self.assertIsNone(ns["_qqfarm_capture_wgc_farm_frame"]())
+        self.assertIn("blank-surface", events)
+        self.assertGreater(ns.get("_QQFARM_WGC_BLANK_TS", 0.0), 0.0)
+
+
+    def test_visible_window_allows_validated_native_fallback_after_wgc_blank(self):
+        ns = load_functions("_qqfarm_native_capture_fallback_allowed")
+        ns.update({
+            "_QQFARM_WGC_BLANK_TS": 90.0,
+            "_QQFARM_WGC_START_ATTEMPT_TS": 80.0,
+            "_QQFARM_WGC_STARTED_TS": 80.0,
+            "_QQFARM_VISIBLE_CAPTURE_OCCLUDED_TS": 0.0,
+            "_QQFARM_WGC_CAPTURE": object(),
+            "_QQFARM_NATIVE_CAPTURE_LAST_TS": 0.0,
+            "_qqfarm_farm_window_is_visible": lambda: True,
+        })
+        self.assertTrue(ns["_qqfarm_native_capture_fallback_allowed"](now=100.0))
+
+    def test_hidden_window_keeps_native_fallback_blocked_after_wgc_blank(self):
+        ns = load_functions("_qqfarm_native_capture_fallback_allowed")
+        ns.update({
+            "_QQFARM_WGC_BLANK_TS": 90.0,
+            "_QQFARM_WGC_START_ATTEMPT_TS": 80.0,
+            "_QQFARM_WGC_STARTED_TS": 80.0,
+            "_QQFARM_VISIBLE_CAPTURE_OCCLUDED_TS": 0.0,
+            "_QQFARM_WGC_CAPTURE": object(),
+            "_QQFARM_NATIVE_CAPTURE_LAST_TS": 0.0,
+            "_qqfarm_farm_window_is_visible": lambda: False,
+        })
+        self.assertFalse(ns["_qqfarm_native_capture_fallback_allowed"](now=100.0))
+
+    def test_wgc_rebinds_when_qq_farm_window_handle_changes(self):
+        ns = load_functions("_qqfarm_start_wgc_capture")
+        events = []
+
+        class ExistingControl:
+            def is_finished(self): return False
+
+        class ReplacementControl:
+            def is_finished(self): return False
+
+        class ReplacementCapture:
+            def __init__(self, frame_callback, close_callback, window_hwnd=None, **kwargs):
+                events.append(("created", int(window_hwnd or 0)))
+            def start_free_threaded(self):
+                events.append(("started",))
+                return ReplacementControl()
+
+        def stop_capture(reason=""):
+            events.append(("stopped", reason))
+            ns["_QQFARM_WGC_CAPTURE"] = None
+            ns["_QQFARM_WGC_CONTROL"] = None
+            return True
+
+        ns.update({
+            "_QQFARM_WGC_CAPTURE": object(),
+            "_QQFARM_WGC_CONTROL": ExistingControl(),
+            "_QQFARM_WGC_BOUND_HWND": 111,
+            "_QQFARM_WGC_START_ATTEMPT_TS": 0.0,
+            "_share_find_farm_window_hwnd": lambda: 222,
+            "_qqfarm_stop_wgc_capture": stop_capture,
+            "_qqfarm_deconflict_assistant_window_titles": lambda: 0,
+            "_qqfarm_wgc_window_title_conflicted": lambda: False,
+            "_qqfarm_load_native_windows_capture_class": lambda: ReplacementCapture,
+            "_qqfarm_wgc_frame_arrived": lambda *args, **kwargs: None,
+            "_qqfarm_wgc_closed": lambda *args, **kwargs: None,
+            "_throttled_write": lambda *args, **kwargs: None,
+        })
+        self.assertTrue(ns["_qqfarm_start_wgc_capture"]())
+        self.assertIn(("stopped", "window-handle-changed"), events)
+        self.assertIn(("created", 222), events)
+        self.assertEqual(222, ns.get("_QQFARM_WGC_BOUND_HWND"))
 
 
 if __name__ == "__main__": unittest.main()
