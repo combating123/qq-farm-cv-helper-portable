@@ -33931,6 +33931,9 @@ def _friend_chain_begin_dispatch(context):
             setattr(context, '_qqfarm_friend_chain_exhausted', False)
             setattr(context, '_qqfarm_friend_chain_native_home_blocked', False)
             if not was_pending:
+                setattr(
+                    context, '_qqfarm_friend_next_entry_pending_identity', None
+                )
                 # A compiled troublemaker call may have been deferred by the
                 # previous friend chain.  Preserve its callable and arguments
                 # across redispatches until a real counter increment confirms it.
@@ -34138,6 +34141,59 @@ def _wrap_friend_home_func(fn, name=''):
 
 
 
+def _qqfarm_friend_navigation_identity(frame):
+    """Capture the selected friend identity before an adjacent carousel click."""
+    if frame is None:
+        return None
+    card_signature = None
+    page_signature = None
+    try:
+        card_fn = globals().get('_qqfarm_native_friend_help_card_signature')
+        if callable(card_fn):
+            card_signature = card_fn(frame)
+    except BaseException:
+        card_signature = None
+    try:
+        page_fn = globals().get('_friend_navigation_signature')
+        if callable(page_fn):
+            page_signature = page_fn(frame)
+    except BaseException:
+        page_signature = None
+    if card_signature is None and page_signature is None:
+        return None
+    return {
+        'card': card_signature,
+        'page': page_signature,
+    }
+
+
+def _qqfarm_friend_navigation_identity_changed(before_identity, after_frame):
+    """Return True/False when a fresh frame proves changed/unchanged friend identity."""
+    if not isinstance(before_identity, dict) or after_frame is None:
+        return None
+    try:
+        current_identity = _qqfarm_friend_navigation_identity(after_frame)
+    except BaseException:
+        current_identity = None
+    if not isinstance(current_identity, dict):
+        return None
+    before_card = before_identity.get('card')
+    current_card = current_identity.get('card')
+    if before_card is not None and current_card is not None:
+        return bool(before_card != current_card)
+    before_page = before_identity.get('page')
+    if before_page is None:
+        return None
+    try:
+        score_fn = globals().get('_friend_navigation_change_score')
+        score = score_fn(before_page, after_frame) if callable(score_fn) else None
+    except BaseException:
+        score = None
+    if score is None:
+        return None
+    return bool(float(score) >= 0.004)
+
+
 def _wrap_friend_next_entry_func(fn, name=''):
     """Recover a native bottom-entry miss by clicking the immediate next friend."""
     try:
@@ -34147,15 +34203,23 @@ def _wrap_friend_next_entry_func(fn, name=''):
             return fn, False
 
         def _wrapped(*args, **kwargs):
-            result = fn(*args, **kwargs)
-            if result:
-                return result
-
             try:
                 context_fn = globals().get('_friend_guard_context')
                 context = context_fn(args, kwargs) if callable(context_fn) else None
             except BaseException:
                 context = None
+            result = fn(*args, **kwargs)
+            if result:
+                if context is not None:
+                    try:
+                        setattr(
+                            context,
+                            '_qqfarm_friend_next_entry_pending_identity',
+                            None,
+                        )
+                    except BaseException:
+                        pass
+                return result
             if context is None:
                 return result
 
@@ -34190,6 +34254,52 @@ def _wrap_friend_next_entry_func(fn, name=''):
             if friend_state is not True:
                 return result
 
+            current_identity = None
+            try:
+                identity_fn = globals().get('_qqfarm_friend_navigation_identity')
+                if callable(identity_fn):
+                    current_identity = identity_fn(candidate_frame)
+            except BaseException:
+                current_identity = None
+            try:
+                pending_identity = getattr(
+                    context, '_qqfarm_friend_next_entry_pending_identity', None
+                )
+            except BaseException:
+                pending_identity = None
+            if pending_identity is not None and current_identity is not None:
+                try:
+                    changed_fn = globals().get(
+                        '_qqfarm_friend_navigation_identity_changed'
+                    )
+                    identity_changed = (
+                        changed_fn(pending_identity, candidate_frame)
+                        if callable(changed_fn) else None
+                    )
+                except BaseException:
+                    identity_changed = None
+                if identity_changed is False:
+                    try:
+                        log_fn = globals().get('_write')
+                        if callable(log_fn):
+                            log_fn(
+                                'v462 adjacent friend navigation unchanged; '
+                                'suppressing repeated click until this friend chain resets '
+                                + str(name)
+                            )
+                    except BaseException:
+                        pass
+                    return result
+                if identity_changed is True:
+                    try:
+                        setattr(
+                            context,
+                            '_qqfarm_friend_next_entry_pending_identity',
+                            None,
+                        )
+                    except BaseException:
+                        pass
+
             try:
                 navigate_fn = globals().get('_invoke_friend_adjacent_card_navigation')
                 navigation = (
@@ -34214,6 +34324,12 @@ def _wrap_friend_next_entry_func(fn, name=''):
                 setattr(context, '_qqfarm_friend_chain_exhausted', False)
                 setattr(context, '_qqfarm_friend_chain_active', True)
                 setattr(context, '_qqfarm_friend_chain_last_nav_label', label)
+                if current_identity is not None:
+                    setattr(
+                        context,
+                        '_qqfarm_friend_next_entry_pending_identity',
+                        current_identity,
+                    )
             except BaseException:
                 pass
             try:
