@@ -40787,7 +40787,7 @@ def _friend_guard_friend_ui_state(frame):
                 and len(center) >= 2
                 and float(center[0]) >= (width * 384.0 / 428.0)
                 and float(center[0]) <= (width * 404.0 / 428.0)
-                and float(center[1]) >= (height * 596.0 / 800.0)
+                and float(center[1]) >= (height * 590.0 / 800.0)
                 and float(center[1]) <= (height * 626.0 / 800.0)
             )
             # v424/v426: QQ rescales the lower-right return-home artwork before
