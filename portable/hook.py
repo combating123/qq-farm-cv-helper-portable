@@ -36234,6 +36234,145 @@ def _run_native_v225_daily_catchup(context):
             pass
 
 
+def _qqfarm_native_friend_idle_home_recovery(context):
+    """Return a stable actionless native friend page home with bounded retries."""
+    if context is None:
+        return False
+    try:
+        if bool(getattr(context, '_qqfarm_friend_entry_pending', False)):
+            setattr(context, '_qqfarm_native_friend_idle_rounds', 0)
+            return False
+        if bool(getattr(context, '_qqfarm_friend_chain_active', False)):
+            setattr(context, '_qqfarm_native_friend_idle_rounds', 0)
+            return False
+    except BaseException:
+        return False
+    capture_fn = globals().get('_get_frame_from_bot')
+    try:
+        frame = capture_fn(context) if callable(capture_fn) else None
+    except BaseException:
+        frame = None
+    state_fn = globals().get('_friend_guard_friend_ui_state')
+    try:
+        friend_state = state_fn(frame) if callable(state_fn) and frame is not None else None
+    except BaseException:
+        friend_state = None
+    if friend_state is not True:
+        try:
+            setattr(context, '_qqfarm_native_friend_idle_rounds', 0)
+            setattr(context, '_qqfarm_native_friend_idle_home_attempts', 0)
+        except BaseException:
+            pass
+        return False
+    for matcher_name in (
+        '_friend_guard_steal_button_match',
+        '_friend_guard_help_button_match',
+    ):
+        matcher = globals().get(matcher_name)
+        if not callable(matcher):
+            continue
+        try:
+            match = matcher(frame)
+        except BaseException:
+            match = None
+        if isinstance(match, dict) and bool(match.get('matched')):
+            try:
+                setattr(context, '_qqfarm_native_friend_idle_rounds', 0)
+            except BaseException:
+                pass
+            return False
+    try:
+        rounds = int(getattr(
+            context, '_qqfarm_native_friend_idle_rounds', 0
+        ) or 0) + 1
+        setattr(context, '_qqfarm_native_friend_idle_rounds', rounds)
+    except BaseException:
+        rounds = 1
+    if rounds < 2:
+        return False
+    now_fn = globals().get('_friend_watchdog_now')
+    try:
+        now_value = float(now_fn()) if callable(now_fn) else float(__import__('time').time())
+    except BaseException:
+        now_value = 0.0
+    try:
+        last_attempt = float(getattr(
+            context, '_qqfarm_native_friend_idle_home_last_ts', 0.0
+        ) or 0.0)
+        attempts = max(0, int(getattr(
+            context, '_qqfarm_native_friend_idle_home_attempts', 0
+        ) or 0))
+    except BaseException:
+        last_attempt, attempts = 0.0, 0
+    if last_attempt > 0.0 and (now_value - last_attempt) < 8.0:
+        return False
+    if attempts >= 3:
+        # Release the burst, then permit a later fresh bounded recovery instead
+        # of clicking the same coordinate continuously.
+        if last_attempt > 0.0 and (now_value - last_attempt) < 45.0:
+            return False
+        attempts = 0
+    click_fn = globals().get('_invoke_friend_guard_home_coordinate_click')
+    clicked = bool(click_fn(context, frame)) if callable(click_fn) else False
+    next_attempts = attempts + (1 if clicked else 0)
+    try:
+        setattr(context, '_qqfarm_native_friend_idle_rounds', 0)
+        setattr(context, '_qqfarm_native_friend_idle_home_last_ts', now_value)
+        setattr(context, '_qqfarm_native_friend_idle_home_attempts', next_attempts)
+    except BaseException:
+        pass
+    if not clicked:
+        return False
+
+    sleep_fn = globals().get('_friend_guard_sleep')
+    try:
+        if callable(sleep_fn):
+            sleep_fn(0.55)
+        else:
+            __import__('time').sleep(0.55)
+    except BaseException:
+        pass
+    try:
+        post_frame = capture_fn(context) if callable(capture_fn) else None
+    except BaseException:
+        post_frame = None
+    try:
+        post_state = (
+            state_fn(post_frame)
+            if callable(state_fn) and post_frame is not None
+            else None
+        )
+    except BaseException:
+        post_state = None
+
+    writer = globals().get('_write')
+    if post_state is False:
+        try:
+            setattr(context, '_qqfarm_native_friend_idle_home_attempts', 0)
+            setattr(context, '_qqfarm_native_friend_idle_rounds', 0)
+            setattr(context, '_qqfarm_live_scene_hint', 'home')
+            setattr(context, '_qqfarm_cycle_branch_hint', 'home')
+            setattr(context, '_qqfarm_friend_cycle_seen', False)
+        except BaseException:
+            pass
+        try:
+            if callable(writer):
+                writer('v465 native friend idle home transition verified state=False')
+        except BaseException:
+            pass
+        return True
+    try:
+        if callable(writer):
+            writer(
+                'v465 native friend idle home click delivered but transition '
+                'unverified state=' + repr(post_state) + ' attempt=' +
+                str(next_attempts) + '/3'
+            )
+    except BaseException:
+        pass
+    return False
+
+
 def _wrap_native_v225_daily_catchup_run_cycle(fn, name=''):
     """Give the native run cycle one narrow daily catch-up point on home frames."""
     if not callable(fn):
@@ -36285,6 +36424,21 @@ def _wrap_native_v225_daily_catchup_run_cycle(fn, name=''):
                 except BaseException:
                     pass
         result = fn(*args, **kwargs)
+        if not _home_ready(context):
+            recover_fn = globals().get(
+                '_qqfarm_native_friend_idle_home_recovery'
+            )
+            try:
+                if callable(recover_fn) and bool(recover_fn(context)):
+                    return True
+            except BaseException as error:
+                try:
+                    _write(
+                        'v465 native friend idle home recovery error=' +
+                        repr(error)[:240]
+                    )
+                except BaseException:
+                    pass
         if _home_ready(context) and callable(catchup_fn):
             try:
                 if catchup_fn(context):
@@ -40962,6 +41116,15 @@ def _invoke_friend_guard_home_coordinate_click(context, fresh_frame):
         center = home_match.get('center') if isinstance(home_match, dict) else None
         if bool(home_match.get('matched')) and isinstance(center, (tuple, list)) and len(center) >= 2:
             match_x, match_y = int(center[0]), int(center[1])
+            match_mode = str(home_match.get('match_mode', '') or '')
+            if match_mode in (
+                'night-home+selected-carousel',
+                'night-home+selected-carousel-low-edge',
+                'return-home+selected-carousel-exact-low-edge',
+            ):
+                # Night templates include the glow above the button, so their
+                # geometric center lands above the clickable button body.
+                match_y = max(match_y, int(round(height * 0.78)))
             if 0 <= match_x < width and 0 <= match_y < height:
                 frame_x, frame_y = match_x, match_y
     except BaseException:
