@@ -394,6 +394,17 @@ def _runtime_start_entry_label(label):
         return False
 
 
+def _runtime_stop_completion_entry_label(label):
+    """Allow native stop-finalization callbacks to clear the UI stop state."""
+    try:
+        return str(label or '') in (
+            'BotRuntimeService.mark_stopped',
+            'FarmBotWindow._on_bot_stopped',
+        )
+    except BaseException:
+        return False
+
+
 def _runtime_start_is_currently_stopping(args, kwargs=None):
     """Return True only for an active stop transition, not stale stop residue."""
     try:
@@ -46302,11 +46313,21 @@ def _wrap_runtime_diag_method(fn, label):
         self_obj = a[0] if a else None
         is_run_cycle = 'run_cycle' in str(label).lower()
         is_start_entry = False
+        is_stop_completion_entry = False
         try:
             start_label_fn = globals().get('_runtime_start_entry_label')
             is_start_entry = bool(start_label_fn(label)) if callable(start_label_fn) else False
         except BaseException:
             is_start_entry = False
+        try:
+            completion_label_fn = globals().get(
+                '_runtime_stop_completion_entry_label'
+            )
+            is_stop_completion_entry = bool(
+                completion_label_fn(label)
+            ) if callable(completion_label_fn) else False
+        except BaseException:
+            is_stop_completion_entry = False
         strict_planting_rollout = False
         if is_run_cycle:
             try:
@@ -46335,9 +46356,11 @@ def _wrap_runtime_diag_method(fn, label):
                         str(label) + ' changed=' + str(cleared),
                         3.0,
                     )
-            else:
+            elif not is_stop_completion_entry:
                 # A pause/stop must take effect before any cycle preflight,
                 # native action, share recovery, or post-cycle friend routing.
+                # Stop-finalization callbacks are exempt because they are what
+                # clear the GUI's stopping flag and re-enable a later Start.
                 stop_fn = globals().get('_stop_requested_in_args')
                 if callable(stop_fn) and stop_fn(a, k):
                     stop_return = globals().get('_stop_gate_return')
