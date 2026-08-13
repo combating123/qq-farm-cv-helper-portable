@@ -68,6 +68,18 @@ class V466StopRestartCompletionTests(unittest.TestCase):
         self.assertFalse(owner.bot_running)
         self.assertFalse(any(isinstance(item, tuple) and item[0] == "blocked" for item in events))
 
+    def test_daily_radish_state_uses_enabled_planting_config_when_native_checker_is_missing(self):
+        ns = load_functions("_daily_radish_state")
+        ns.update({
+            "_configured_bool": lambda sections, key, default=False: (
+                key == "enable_daily_radish_exp"
+            ),
+            "_active_planting_sections": lambda: ("planting",),
+        })
+        module = types.SimpleNamespace()
+        bot = types.SimpleNamespace()
+        self.assertEqual("active", ns["_daily_radish_state"](module, bot))
+
     def test_ordinary_action_remains_blocked_after_stop_request(self):
         ns = load_functions("_wrap_runtime_diag_method")
         events = []

@@ -25629,7 +25629,22 @@ def _daily_radish_state(module, bot):
         if callable(checker):
             return 'active' if bool(checker(bot)) else 'inactive'
     except BaseException:
-        return 'unknown'
+        pass
+    # Some protected runtime builds do not export the native predicate even
+    # though the public planting setting is present.  Treat the persisted UI
+    # setting as the authority in that case instead of silently disabling the
+    # complete radish-exp branch as ``unknown``.
+    try:
+        configured_fn = globals().get('_configured_bool')
+        sections_fn = globals().get('_active_planting_sections')
+        sections = sections_fn() if callable(sections_fn) else ('planting',)
+        if callable(configured_fn):
+            enabled = bool(configured_fn(
+                sections, 'enable_daily_radish_exp', False
+            ))
+            return 'active' if enabled else 'inactive'
+    except BaseException:
+        pass
     return 'unknown'
 
 
