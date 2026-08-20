@@ -144,13 +144,16 @@ def save_share_target(path=None, target=None, allow_group=False):
     section = _active_section(cfg)
     updates = dict(_SAFE_SHARE_VALUES)
     updates["share_target_name"] = value
-    updates["share_allow_group"] = "True" if allow_group else "False"
+    # The public editor is deliberately limited to a verified direct contact.
+    # Keep the legacy argument for call compatibility, but never widen it to a
+    # group destination from this settings path.
+    updates["share_allow_group"] = "False"
     _update_ini_section(target_path, section, updates)
     return {
         "path": str(target_path),
         "section": section,
         "target": value,
-        "allow_group": bool(allow_group),
+        "allow_group": False,
         "status_text": _status(value),
     }
 

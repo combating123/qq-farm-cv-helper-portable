@@ -776,7 +776,17 @@ def patch_widget(widget, context_getter=None, opener=None):
             )
             return 1
         # Daily share is manual by default and exposes an editable exact recipient.
-        if name == 'dailyShareDescription':
+        # Some packaged builds rename the description label, so accept the
+        # semantic card context as well as the original stable object name.
+        daily_share_anchor = (
+            name == 'dailyShareDescription'
+            or (
+                ('dailyshare' in lower_context or '\u6bcf\u65e5\u5206\u4eab' in (text + ' ' + context))
+                and ('\u5206\u4eab' in text or 'share' in name.lower())
+                and not any(marker in text for marker in ('\u5206\u4eab\u6210\u529f', '\u5206\u4eab\u5931\u8d25'))
+            )
+        )
+        if daily_share_anchor:
             changed = 0
             if '\u968f\u673a' in text or '\u6307\u5b9a\u8054\u7cfb\u4eba' not in text:
                 _safe_call(widget, 'setText', '\u9ed8\u8ba4\u5173\u95ed\u81ea\u52a8\u5206\u4eab\uff1b\u586b\u5199\u6307\u5b9a\u8054\u7cfb\u4eba\u7684\u5b8c\u6574\u597d\u53cb\u6635\u79f0\u6216 QQ \u53f7\uff0c\u4ec5\u5728\u7cbe\u786e\u5339\u914d\u540e\u53d1\u9001')

@@ -22010,6 +22010,25 @@ def _patch_module_functions_generic(m):
 
 def _patch_module(m):
     changed = 0
+    try:
+        startup_policy_module = __import__(
+            'startup_policy_patch',
+            fromlist=['patch_startup_policy_module'],
+        )
+        startup_policy_patch = getattr(
+            startup_policy_module, 'patch_startup_policy_module', None
+        )
+        if callable(startup_policy_patch):
+            changed += int(startup_policy_patch(m) or 0)
+    except BaseException as e:
+        try:
+            _throttled_write(
+                'startup-policy-patch-error',
+                'startup policy patch error ' + repr(e),
+                30.0,
+            )
+        except BaseException:
+            pass
     groups = [
         (['is_vip_unlocked','verify_vip_license','check_vip_license_signature','validate_vip_device_binding','verify_vip_server_challenge','validate_vip_public_key','check_vip_payment_receipt','enable_vip_features','touch_vip_validation_decoys','is_entitlement_enabled','_is_entitlement_enabled','has_entitlement','_has_entitlement','is_vip_active','_is_vip_active','_qf_7df7ee432596','_qf_60adf77be908','_qf_c8757eb57f8d'], _fake_true),
         (['_qf_8a5861d7851e','_qf_907352fde148','_qfp_67e1c320c26c','_qfp_7e78c522d6fd','feature_gate','check_feature_gate','require_feature','require_entitlement','check_entitlement','check_vip_access','has_feature_access'], _fake_gate),
@@ -22202,7 +22221,18 @@ def _is_target_module_name(mn):
     low = str(mn).lower()
     # Keep normal patching narrow, while allowing frozen obfuscated security
     # modules from the crash trace to be inspected by attribute.
-    return (low == 'bot.security' or low.startswith('bot.security.') or (low.startswith('bot.') and 'entitlement' in low))
+    startup_policy = (
+        low.startswith('bot.') and (
+            low.endswith('.version_policy_gate') or
+            low.endswith('.expiry_guard')
+        )
+    )
+    return (
+        low == 'bot.security' or
+        low.startswith('bot.security.') or
+        (low.startswith('bot.') and 'entitlement' in low) or
+        startup_policy
+    )
 
 
 # ---- WeChat focus guard / background click patch v21 ----
@@ -23251,7 +23281,10 @@ def _friend_guard_list_refresh_prequalification(context, frame):
         return False
     match_fn = globals().get('_friend_guard_list_carousel_card_match')
     try:
-        match = match_fn(frame) if callable(match_fn) else {}
+        threshold_fn = globals().get('_guard_dog_match_threshold')
+        threshold = float(threshold_fn('friend_guard_list')) \
+            if callable(threshold_fn) else 0.72
+        match = match_fn(frame, threshold=threshold) if callable(match_fn) else {}
     except BaseException:
         match = {}
     matched = bool(match.get('matched', False)) if isinstance(match, dict) else False
@@ -23402,6 +23435,31 @@ def _guard_dog_detection_mode_config():
         return 'avatar_frame'
     except BaseException:
         return 'avatar_frame'
+
+
+def _guard_dog_match_threshold(mode='avatar_frame'):
+    """Read the user-selected guard matcher strength with stable old defaults."""
+    normalized_mode = str(mode or '').strip().lower().replace('-', '_')
+    default = 0.72 if normalized_mode == 'friend_guard_list' else 0.82
+    try:
+        sections_fn = globals().get('_active_friend_sections')
+        sections = sections_fn() if callable(sections_fn) else ('friend',)
+        getter = globals().get('_cfg_get')
+        if not callable(getter):
+            return default
+        value = default
+        for key in (
+            'guard_dog_frame_threshold',
+            'friend_guard_threshold',
+            'guard_dog_match_threshold',
+        ):
+            candidate = getter(sections, key, None)
+            if candidate not in (None, ''):
+                value = float(str(candidate).strip())
+                break
+        return max(0.05, min(0.99, float(value)))
+    except BaseException:
+        return default
 
 
 def _wrap_guard_dog_mode_func(fn, name):
@@ -23911,6 +23969,51 @@ def _qqfarm_stop_wgc_capture(reason=''):
     return True
 
 
+def _qqfarm_restore_hidden_miniapp_taskbar_card(reason=''):
+    """Restore the QQ farm taskbar identity without activating or moving it."""
+    try:
+        configured_fn = globals().get('_configured_bool')
+        sections_fn = globals().get('_active_bot_sections')
+        sections = sections_fn() if callable(sections_fn) else ('bot',)
+        compat_enabled = bool(configured_fn(
+            sections, 'hide_miniapp_compat_mode', False
+        )) if callable(configured_fn) else False
+        if not compat_enabled:
+            return False
+        visible_fn = globals().get('_qqfarm_farm_window_is_visible')
+        if callable(visible_fn) and bool(visible_fn()):
+            return False
+        finder = globals().get('_share_find_farm_window_hwnd')
+        hwnd = int(finder() or 0) if callable(finder) else int(
+            globals().get('_QQFARM_WGC_BOUND_HWND', 0) or 0
+        )
+        if hwnd <= 0:
+            return False
+        ctypes_module = __import__('ctypes')
+        user32 = ctypes_module.windll.user32
+        get_style = getattr(user32, 'GetWindowLongPtrW', None)
+        set_style = getattr(user32, 'SetWindowLongPtrW', None)
+        if not callable(get_style) or not callable(set_style):
+            get_style = user32.GetWindowLongW
+            set_style = user32.SetWindowLongW
+        ex_style = int(get_style(hwnd, -20) or 0)
+        desired_style = (ex_style & ~0x00000080) | 0x00040000
+        if desired_style != ex_style:
+            set_style(hwnd, -20, desired_style)
+        user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0037)
+        log_fn = globals().get('_throttled_write')
+        if callable(log_fn):
+            log_fn(
+                'v156-hidden-taskbar-card-' + str(reason),
+                'v156 hidden miniapp compatibility restored taskbar card reason=' +
+                str(reason),
+                30.0,
+            )
+        return True
+    except BaseException:
+        return False
+
+
 def _qqfarm_start_wgc_capture():
     capture = globals().get('_QQFARM_WGC_CAPTURE')
     control = globals().get('_QQFARM_WGC_CONTROL')
@@ -24147,6 +24250,14 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
             globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = 0.0
             globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID'] = 0
             if blank_count >= 2:
+                restore_fn = globals().get(
+                    '_qqfarm_restore_hidden_miniapp_taskbar_card'
+                )
+                if callable(restore_fn):
+                    try:
+                        restore_fn('blank-surface')
+                    except BaseException:
+                        pass
                 stop_fn = globals().get('_qqfarm_stop_wgc_capture')
                 if callable(stop_fn):
                     stop_fn('blank-surface')
@@ -40213,7 +40324,10 @@ def _handle_friend_list_surface(context, frame):
                     score = 0.0
                 scored.append((row_y, score))
                 guard_list_candidates.append((row, score, row_y))
-                if score >= 0.72:
+                threshold_fn = globals().get('_guard_dog_match_threshold')
+                guard_threshold = float(threshold_fn('friend_guard_list')) \
+                    if callable(threshold_fn) else 0.72
+                if score >= guard_threshold:
                     verified_guard_rows += 1
             if not guard_list_candidates:
                 return 'native-guard-list'
@@ -40699,7 +40813,10 @@ def _handle_friend_list_surface(context, frame):
                 score = float(score_fn(frame, int(center[1]))) if callable(score_fn) else 0.0
                 row_y = int(center[1])
                 scored.append((row_y, score))
-                if target is None and score >= 0.82:
+                threshold_fn = globals().get('_guard_dog_match_threshold')
+                guard_threshold = float(threshold_fn('avatar_frame')) \
+                    if callable(threshold_fn) else 0.82
+                if target is None and score >= guard_threshold:
                     target = row
                     target_score = float(score)
                     target_row_y = row_y
@@ -40763,7 +40880,12 @@ def _handle_friend_list_surface(context, frame):
                             and guard_list_pending_retry
                         ):
                             setattr(context, '_qqfarm_friend_entry_clicked_ts', now_ts)
-                        if guard_enabled and guard_mode == 'avatar_frame' and target_score >= 0.82:
+                        threshold_fn = globals().get('_guard_dog_match_threshold')
+                        guard_threshold = float(threshold_fn(guard_mode)) \
+                            if callable(threshold_fn) else (
+                                0.72 if guard_mode == 'friend_guard_list' else 0.82
+                            )
+                        if guard_enabled and guard_mode == 'avatar_frame' and target_score >= guard_threshold:
                             setattr(context, '_qqfarm_guard_row_verified', True)
                             setattr(context, '_qqfarm_guard_row_verified_ts', now_ts)
                             setattr(context, '_qqfarm_guard_row_y', int(target_row_y))
@@ -40772,7 +40894,9 @@ def _handle_friend_list_surface(context, frame):
                             setattr(context, '_qqfarm_guard_row_verified', False)
                         if guard_enabled and guard_mode == 'friend_guard_list':
                             setattr(context, '_qqfarm_friend_list_resume_pending', False)
-                            guard_prequalified = bool(float(target_score) >= 0.72)
+                            guard_prequalified = bool(
+                                float(target_score) >= guard_threshold
+                            )
                             setattr(
                                 context,
                                 '_qqfarm_guard_list_prequalified',
@@ -42883,6 +43007,15 @@ def _wrap_vip_business_func(fn, name=''):
         if getattr(fn, '__qqfarm_vip_business_wrapped__', False):
             return fn, False
         lname = str(name).lower()
+        warehouse_home_entry = lname.endswith((
+            '._handle_home_auto_sell_fruit',
+            '.handle_home_auto_sell_fruit',
+            '.self_auto_sell_fruit',
+        ))
+        warehouse_sequence_entry = lname.endswith((
+            '._run_warehouse_sell_button_sequence',
+            '.run_warehouse_sell_button_sequence',
+        ))
         def _wrapped(*a, **k):
             global _VIP_WAREHOUSE_LAST_SEQUENCE_CLASS, _VIP_WAREHOUSE_LAST_SEQUENCE_TS
             vip_context = []
@@ -43137,7 +43270,7 @@ def _wrap_vip_business_func(fn, name=''):
                 )
                 friend_guard_started = __import__('time').time()
             try:
-                if '_handle_home_auto_sell_fruit' in lname:
+                if warehouse_home_entry:
                     if _warehouse_recently_done():
                         cooldown_text = ''
                         try: cooldown_text = ' seconds=' + str(int(_warehouse_cooldown_seconds()))
@@ -43169,10 +43302,10 @@ def _wrap_vip_business_func(fn, name=''):
             try:
                 res = fn(*a, **k)
             except BaseException:
-                if '_run_warehouse_sell_button_sequence' in lname:
+                if warehouse_sequence_entry:
                     _VIP_WAREHOUSE_LAST_SEQUENCE_CLASS = 'failed'
                     _VIP_WAREHOUSE_LAST_SEQUENCE_TS = time.time()
-                elif '_handle_home_auto_sell_fruit' in lname:
+                elif warehouse_home_entry:
                     try:
                         exc = __import__('sys').exc_info()[1]
                         _warehouse_mark_failed(repr(exc)[:160])
@@ -43192,10 +43325,10 @@ def _wrap_vip_business_func(fn, name=''):
                 if vip_context:
                     _throttled_write('v36-vip-context-' + str(name), 'v36 vip entitlement context applied ' + str(name) + ' forced=' + str(len(vip_context)) + ' restored=' + str(restored), 30.0)
             try:
-                if '_run_warehouse_sell_button_sequence' in lname:
+                if warehouse_sequence_entry:
                     _VIP_WAREHOUSE_LAST_SEQUENCE_CLASS = _warehouse_classify_result(res)
                     _VIP_WAREHOUSE_LAST_SEQUENCE_TS = time.time()
-                elif '_handle_home_auto_sell_fruit' in lname:
+                elif warehouse_home_entry:
                     now = time.time()
                     age = now - _VIP_WAREHOUSE_LAST_SEQUENCE_TS
                     if _VIP_WAREHOUSE_LAST_SEQUENCE_TS > 0 and 0.0 <= age < 120.0:
@@ -54283,9 +54416,7 @@ def _coerce_business_value(key, old=None):
         if lk in _VIP_BUSINESS_RESET_NUMERIC or lk in _VIP_BUSINESS_ZERO_COUNTERS:
             return 0
         if lk == 'auto_sell_fruit_interval_hours':
-            if isinstance(old, float) or isinstance(old, int):
-                return 0.10
-            return '0.10'
+            return old
         if lk == 'bottom_friend_list_help_all_limit':
             if isinstance(old, int):
                 return 12
