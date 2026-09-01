@@ -187,6 +187,9 @@ _write('v338 merged-purple occupied-platform fast reject enabled')
 _write('v339 stable full-board lightweight patrol + home-priority interval lease release enabled')
 
 try:
+    # Keep the bootstrap import set minimal.  The packaged proxy loads this
+    # hook before the embedded stdlib has exposed ``threading``; concurrency
+    # helpers import it lazily after the runtime is initialized.
     import sys, time, builtins, importlib, os
     _write('basic imports ok no-thread')
     _write('v32 runtime process pid=' + str(os.getpid()))
@@ -3372,6 +3375,50 @@ def _daily_flow_retry_blocked(
             if next_retry > now_value:
                 return True
         return False
+    except BaseException:
+        return False
+
+
+def _runtime_freebenefits_retry_cap_reached(context, today=None):
+    """Honor the native in-memory 3/3 counter even if its durable mirror lagged."""
+    try:
+        day_fn = globals().get('_daily_business_date')
+        day = str(
+            today or (
+                day_fn() if callable(day_fn)
+                else __import__('time').strftime('%Y-%m-%d')
+            )
+        )
+        max_fn = globals().get('_daily_retry_max_default')
+        try:
+            limit = int(max_fn()) if callable(max_fn) else 3
+        except BaseException:
+            limit = 3
+        limit = max(1, min(6, limit))
+        blocked_fn = globals().get('_daily_flow_retry_blocked')
+        if callable(blocked_fn) and bool(blocked_fn('freebenefits', today=day)):
+            return True
+        if context is None:
+            return False
+        retry_day = str(getattr(context, 'daily_flow_retry_date', day) or day)
+        counts = getattr(context, 'daily_flow_retry_counts', None)
+        count = int(counts.get('freebenefits', 0) or 0) if isinstance(counts, dict) else 0
+        if retry_day != day or count < limit:
+            return False
+        setattr(context, '_qqfarm_freebenefits_hard_block_day', day)
+        mark_fn = globals().get('_daily_flow_mark_failure')
+        if callable(mark_fn):
+            # Converge the durable mirror to the terminal cap without exceeding it.
+            for _index in range(limit):
+                if callable(blocked_fn) and bool(
+                        blocked_fn('freebenefits', today=day)):
+                    break
+                mark_fn(
+                    'freebenefits',
+                    reason='native freebenefits retry cap reached',
+                    today=day,
+                )
+        return True
     except BaseException:
         return False
 
@@ -7575,19 +7622,55 @@ def _qqfarm_run_strict_self_planting_cycle(context):
     # the existing WGC self path untouched.
     if visual_state is False:
         desktop_frame = None
+        # ``_get_frame_from_bot`` already asked the visible-capture selector
+        # for a fresh frame.  When that selector returned a raw PrintWindow
+        # frame, its provenance marker is stronger than a second identical
+        # physical capture: re-capturing here only adds latency and can race a
+        # hide/show transition.  Keep the v411 arbitration for WGC/ImageGrab
+        # frames, but consume the already-validated physical frame once.
         try:
-            visible_capture_fn = globals().get('_qqfarm_capture_visible_farm_frame')
-            if callable(visible_capture_fn):
-                desktop_frame = visible_capture_fn(prefer_desktop=True)
-        except BaseException:
-            desktop_frame = None
-        try:
-            desktop_state = (
-                state_fn(desktop_frame)
-                if desktop_frame is not None and callable(state_fn) else None
+            physical_marker = int(globals().get(
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID', 0
+            ) or 0)
+            visible_marker = int(globals().get(
+                '_QQFARM_LAST_VISIBLE_CAPTURE_FRAME_ID', 0
+            ) or 0)
+            current_frame_is_physical = bool(
+                int(id(frame)) in {
+                    marker for marker in (physical_marker, visible_marker)
+                    if marker > 0
+                }
             )
         except BaseException:
-            desktop_state = None
+            current_frame_is_physical = False
+        if current_frame_is_physical:
+            desktop_frame = frame
+            desktop_state = visual_state
+            try:
+                log_fn = globals().get('_throttled_write')
+                if callable(log_fn):
+                    log_fn(
+                        'v476-strict-reuse-physical-frame',
+                        'v476 strict gate reused the current validated physical '
+                        'frame; skipped duplicate arbitration capture',
+                        2.0,
+                    )
+            except BaseException:
+                pass
+        else:
+            try:
+                visible_capture_fn = globals().get('_qqfarm_capture_visible_farm_frame')
+                if callable(visible_capture_fn):
+                    desktop_frame = visible_capture_fn(prefer_desktop=True)
+            except BaseException:
+                desktop_frame = None
+            try:
+                desktop_state = (
+                    state_fn(desktop_frame)
+                    if desktop_frame is not None and callable(state_fn) else None
+                )
+            except BaseException:
+                desktop_state = None
         if (
                 desktop_state is None and
                 _mark_visible_friend_list_route(
@@ -20576,6 +20659,70 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                             pass
                         same_round_retry_used = True
                         result = fn(*tuple(call_args), **call_kwargs)
+                        if (
+                            incomplete_quad_layout_active and
+                            single_land_deferred and
+                            isinstance(result, (tuple, list)) and
+                            bool(result) and bool(result[0])
+                        ):
+                            # The first ordinary retry is deliberately bounded
+                            # to one plot.  When it succeeds, consume the
+                            # deferred plots in the same ordinary-seed pass
+                            # instead of returning them to the outer strategy
+                            # loop one patrol at a time.  This keeps the 2x2
+                            # card out of the action while still filling all
+                            # real empty plots without shop/strategy fallback.
+                            deferred_args = list(call_args)
+                            deferred_kwargs = dict(call_kwargs)
+                            deferred_lands = list(single_land_deferred)
+                            deferred_bound = False
+                            if 'remain_lands' in deferred_kwargs:
+                                deferred_kwargs['remain_lands'] = deferred_lands
+                                deferred_bound = True
+                            elif 'lands' in deferred_kwargs:
+                                deferred_kwargs['lands'] = deferred_lands
+                                deferred_bound = True
+                            elif len(deferred_args) > lands_arg_index:
+                                deferred_args[lands_arg_index] = deferred_lands
+                                deferred_bound = True
+                            if deferred_bound:
+                                try:
+                                    _write(
+                                        'v462 incomplete 2x2 ordinary fallback; '
+                                        'consume deferred 1x1 lands in same round '
+                                        'count=' + str(len(deferred_lands)) +
+                                        ' name=' + str(name)
+                                    )
+                                except BaseException:
+                                    pass
+                                result = fn(
+                                    *tuple(deferred_args), **deferred_kwargs
+                                )
+                                try:
+                                    after_count = max(0, int(getattr(
+                                        bot,
+                                        '_qqfarm_recent_empty_land_count',
+                                        baseline_empty_count,
+                                    ) or 0))
+                                    after_ts = float(getattr(
+                                        bot, '_qqfarm_recent_empty_land_ts', 0.0
+                                    ) or 0.0)
+                                    board_state = str(getattr(
+                                        bot,
+                                        '_qqfarm_empty_land_board_gate_state',
+                                        'bypass',
+                                    ) or 'bypass').strip().lower()
+                                    deferred_verified = bool(
+                                        isinstance(result, (tuple, list)) and
+                                        bool(result) and bool(result[0]) and
+                                        after_count < baseline_empty_count and
+                                        after_ts >= (planting_attempt_started_ts - 0.01) and
+                                        board_state != 'unknown'
+                                    )
+                                except BaseException:
+                                    deferred_verified = False
+                                if deferred_verified:
+                                    single_land_deferred = []
                     finally:
                         for switch_name, old_value in old_quad_switches.items():
                             try:
@@ -21258,6 +21405,7 @@ def _restore_runtime_business_switches(obj):
                     pass
         groups = [
             (_active_bot_sections(), [
+                ('enable_process_self', ('enable_process_self',)),
                 ('enable_process_friend', ('enable_process_friend',)),
                 ('enable_process_friend_help_entry', ('enable_process_friend_help_entry',)),
                 ('enable_wechat_focus_guard', ('enable_wechat_focus_guard', 'wechat_focus_guard')),
@@ -21265,6 +21413,13 @@ def _restore_runtime_business_switches(obj):
                 ('high_performance_mode', ('high_performance_mode',)),
             ]),
             (_active_self_sections(), [
+                ('enable_harvest', ('enable_harvest',)),
+                ('enable_farming', ('enable_farming',)),
+                ('enable_remove_bug', ('enable_remove_bug',)),
+                ('enable_remove_grass', ('enable_remove_grass',)),
+                ('enable_watering', ('enable_watering',)),
+                ('enable_planting', ('enable_planting',)),
+                ('enable_cultivate_land', ('enable_cultivate_land',)),
                 ('auto_fertilize_one', ('auto_fertilize_one', 'planting_auto_fertilize_one')),
                 ('auto_fertilize_more', ('auto_fertilize_more', 'planting_auto_fertilize_more')),
                 ('auto_fill_fertilizer_container', ('auto_fill_fertilizer_container',)),
@@ -21369,6 +21524,417 @@ def _restore_runtime_business_switches(obj):
     except BaseException:
         pass
     return changed
+
+
+def _runtime_business_switch_keeper_tick(context):
+    """Re-apply configured farm switches after native startup refreshes."""
+    if context is None:
+        return 0
+    try:
+        restore_fn = globals().get('_restore_runtime_business_switches')
+        return int(restore_fn(context) or 0) if callable(restore_fn) else 0
+    except BaseException:
+        return 0
+
+
+def _runtime_business_switch_snapshot(context):
+    """Return a compact view of native route switches for live diagnosis."""
+    if context is None:
+        return '{}'
+    names = (
+        'enable_process_self', 'enable_process_friend',
+        'enable_process_friend_help_entry', 'enable_harvest',
+        'enable_farming', 'enable_planting', 'enable_steal', 'enable_help',
+        'running', 'pause_status',
+    )
+    values = {}
+    for name in names:
+        try:
+            if hasattr(context, name):
+                value = getattr(context, name)
+                if not callable(value):
+                    values[name] = value
+        except BaseException:
+            pass
+    try:
+        owner_dict = getattr(context, '__dict__', None)
+        if isinstance(owner_dict, dict):
+            for child_name in ('config', 'cfg', 'settings', 'state', 'runtime_state'):
+                child = owner_dict.get(child_name)
+                if isinstance(child, dict):
+                    selected = {}
+                    for name in names:
+                        if name in child and not callable(child.get(name)):
+                            selected[name] = child.get(name)
+                    if selected:
+                        values[child_name] = selected
+    except BaseException:
+        pass
+    try:
+        return repr(values)[:1600]
+    except BaseException:
+        return '{}'
+
+
+def _runtime_patrol_rescue_transition(context, message, scheduler=None):
+    """Record a bounded patrol recovery without re-entering the logger's owner.
+
+    The native patrol logger is called from inside the runtime owner's loop.  An
+    inline ``run_cycle`` here re-enters that same loop through the patched logger
+    and can create an unbounded start/end/rescue chain.  A real scheduler may
+    still execute the one-shot worker; the production log path only leaves a
+    pending bit for the next native cycle to consume.
+    """
+    if context is None:
+        return ''
+    text = str(message or '')
+    rescue_state = globals().get('_QQFARM_PATROL_RESCUE_GLOBAL_STATE')
+    if not isinstance(rescue_state, dict):
+        rescue_state = {
+            'pending': False,
+            'consumed': False,
+            'held': False,
+            'episode': 0,
+            'last_consumed_ts': 0.0,
+        }
+        globals()['_QQFARM_PATROL_RESCUE_GLOBAL_STATE'] = rescue_state
+    is_start = bool(
+        '开始新一轮巡检' in text or '寮€濮嬫柊涓€杞' in text
+    )
+    is_end = bool(
+        '本轮巡检执行完毕' in text or '鏈疆宸℃鎵ц瀹屾瘯' in text
+    )
+    is_branch = bool(
+        '正在检查自家农场是否有可执行的任务' in text
+        or '正在检查好友农场是否有可执行的任务' in text
+        or '姝ｅ湪妫€鏌ヨ嚜瀹跺啘鍦' in text
+        or '姝ｅ湪妫€鏌ュソ鍙嬪啘鍦' in text
+    )
+    if is_branch:
+        try:
+            setattr(context, '_qqfarm_patrol_cycle_branch_seen', True)
+            setattr(context, '_qqfarm_patrol_empty_streak', 0)
+            # A real branch is stronger evidence than an earlier empty-frame
+            # rescue request.  Drop any stale pending bit/cooldown so the next
+            # patrol is governed by the live home/friend surface.
+            setattr(context, '_qqfarm_patrol_rescue_pending', False)
+            setattr(context, '_qqfarm_patrol_rescue_pending_ts', 0.0)
+            setattr(context, '_qqfarm_patrol_rescue_cooldown_until', 0.0)
+            setattr(context, '_qqfarm_patrol_rescue_hold', False)
+        except BaseException:
+            pass
+        rescue_state['pending'] = False
+        rescue_state['consumed'] = False
+        rescue_state['held'] = False
+        return 'branch'
+    if is_end:
+        try:
+            branch_seen = bool(getattr(
+                context, '_qqfarm_patrol_cycle_branch_seen', False
+            ))
+            streak = int(getattr(
+                context, '_qqfarm_patrol_empty_streak', 0
+            ) or 0)
+            setattr(
+                context,
+                '_qqfarm_patrol_empty_streak',
+                0 if branch_seen else min(20, streak + 1),
+            )
+        except BaseException:
+            pass
+        return 'end'
+    if not is_start:
+        return ''
+    try:
+        globals()['_ACTIVE_RUN_CYCLE_CONTEXT'] = context
+        stop_requested = False
+        for stop_name in ('is_stop_requested',):
+            try:
+                stop_fn = getattr(context, stop_name, None)
+                if callable(stop_fn) and bool(stop_fn()):
+                    stop_requested = True
+                    break
+            except BaseException:
+                pass
+        if not stop_requested:
+            for event_name in ('_stop_event', 'stop_event'):
+                try:
+                    stop_event = getattr(context, event_name, None)
+                    if stop_event is not None and callable(
+                            getattr(stop_event, 'is_set', None)) and bool(
+                                stop_event.is_set()):
+                        stop_requested = True
+                        break
+                except BaseException:
+                    pass
+        if stop_requested:
+            try:
+                setattr(context, '_qqfarm_patrol_rescue_pending', False)
+                setattr(context, '_qqfarm_patrol_rescue_pending_ts', 0.0)
+                setattr(context, '_qqfarm_patrol_rescue_running', False)
+                setattr(context, '_qqfarm_patrol_rescue_hold', False)
+            except BaseException:
+                pass
+            rescue_state['pending'] = False
+            rescue_state['consumed'] = False
+            rescue_state['held'] = False
+            return 'start'
+        try:
+            cap_fn = globals().get('_runtime_freebenefits_retry_cap_reached')
+            if callable(cap_fn):
+                cap_fn(context)
+        except BaseException:
+            pass
+        setattr(context, '_qqfarm_patrol_cycle_branch_seen', False)
+        streak = int(getattr(context, '_qqfarm_patrol_empty_streak', 0) or 0)
+        if streak < 2 or bool(getattr(
+                context, '_qqfarm_patrol_rescue_running', False)):
+            return 'start'
+        if not bool(getattr(context, 'enable_process_self', False)) and not bool(
+                getattr(context, 'enable_process_friend', False)):
+            return 'start'
+        run_cycle = getattr(context, 'run_cycle', None)
+        if not callable(run_cycle):
+            return 'start'
+        # The logger and the native wrapper may resolve different FarmBotCV
+        # objects for one running service.  Keep the episode state process-wide
+        # so a consumed request cannot be recreated on the next log callback.
+        if bool(rescue_state.get('pending', False)):
+            return 'queued'
+        now_value = float(__import__('time').monotonic())
+        current_capture_generation = int(globals().get(
+            '_QQFARM_WGC_GENERATION', 0
+        ) or 0)
+        held_capture_generation = int(rescue_state.get(
+            'capture_generation', 0
+        ) or 0)
+        if (
+                bool(rescue_state.get('held', False)) and
+                current_capture_generation > 0 and
+                held_capture_generation > 0 and
+                current_capture_generation != held_capture_generation
+        ):
+            # A rebuilt WGC session is new evidence, so permit one bounded
+            # retry for the new surface without reopening the old episode.
+            rescue_state['pending'] = False
+            rescue_state['consumed'] = False
+            rescue_state['held'] = False
+            # The context object can outlive the WGC session.  Clear its
+            # session-local hold together with the process-wide state so a
+            # rebuilt capture gets exactly one fresh, bounded attempt.
+            try:
+                setattr(context, '_qqfarm_patrol_rescue_hold', False)
+            except BaseException:
+                pass
+        if bool(rescue_state.get('held', False)) or bool(
+                getattr(context, '_qqfarm_patrol_rescue_hold', False)):
+            return 'start'
+        try:
+            cooldown_until = float(getattr(
+                context, '_qqfarm_patrol_rescue_cooldown_until', 0.0
+            ) or 0.0)
+        except BaseException:
+            cooldown_until = 0.0
+        if cooldown_until > now_value:
+            return 'start'
+        setattr(context, '_qqfarm_patrol_rescue_running', True)
+
+        def _worker():
+            try:
+                __import__('time').sleep(0.12)
+                stop_checker = getattr(context, 'is_stop_requested', None)
+                if callable(stop_checker) and bool(stop_checker()):
+                    return
+                rescue_state['pending'] = False
+                rescue_state['consumed'] = True
+                rescue_state['held'] = True
+                rescue_state['last_consumed_ts'] = float(
+                    __import__('time').monotonic()
+                )
+                rescue_state['capture_generation'] = int(
+                    globals().get('_QQFARM_WGC_GENERATION', 0) or 0
+                )
+                setattr(context, '_qqfarm_patrol_rescue_hold', True)
+                _write(
+                    'v474 repeated empty patrol rescue dispatching FarmBotCV.run_cycle '
+                    'streak=' + str(streak)
+                )
+                setattr(
+                    context, '_qqfarm_empty_patrol_rescue_bypass_daily', True
+                )
+                try:
+                    result = run_cycle()
+                finally:
+                    setattr(
+                        context, '_qqfarm_empty_patrol_rescue_bypass_daily', False
+                    )
+                _write(
+                    'v474 repeated empty patrol rescue result=' + repr(result)[:200]
+                )
+            except BaseException as error:
+                try:
+                    _write(
+                        'v474 repeated empty patrol rescue error=' +
+                        repr(error)[:260]
+                    )
+                except BaseException:
+                    pass
+            finally:
+                try:
+                    setattr(context, '_qqfarm_patrol_rescue_running', False)
+                    cooldown_seconds = float(globals().get(
+                        '_QQFARM_PATROL_RESCUE_COOLDOWN_SECONDS', 30.0
+                    ) or 30.0)
+                    cooldown_seconds = max(5.0, min(120.0, cooldown_seconds))
+                    setattr(
+                        context,
+                        '_qqfarm_patrol_rescue_cooldown_until',
+                        float(__import__('time').monotonic()) + cooldown_seconds,
+                    )
+                    rescue_state['pending'] = False
+                    rescue_state['consumed'] = True
+                    rescue_state['held'] = True
+                except BaseException:
+                    pass
+
+        if callable(scheduler):
+            scheduler(_worker)
+        else:
+            # Never call run_cycle synchronously from a logging callback.  The
+            # native owner loop will consume this bit on its next real cycle.
+            setattr(context, '_qqfarm_patrol_rescue_running', False)
+            setattr(context, '_qqfarm_patrol_rescue_pending', True)
+            setattr(context, '_qqfarm_patrol_rescue_hold', False)
+            rescue_state['pending'] = True
+            rescue_state['consumed'] = False
+            rescue_state['held'] = False
+            rescue_state['episode'] = int(rescue_state.get('episode', 0) or 0) + 1
+            rescue_state['capture_generation'] = int(
+                globals().get('_QQFARM_WGC_GENERATION', 0) or 0
+            )
+            cooldown_seconds = float(globals().get(
+                '_QQFARM_PATROL_RESCUE_COOLDOWN_SECONDS', 30.0
+            ) or 30.0)
+            cooldown_seconds = max(5.0, min(120.0, cooldown_seconds))
+            setattr(
+                context,
+                '_qqfarm_patrol_rescue_pending_ts',
+                now_value,
+            )
+            setattr(
+                context,
+                '_qqfarm_patrol_rescue_cooldown_until',
+                now_value + cooldown_seconds,
+            )
+            _write(
+                'v474 repeated empty patrol rescue queued for next native cycle '
+                'streak=' + str(streak)
+            )
+            return 'queued'
+        return 'rescue'
+    except BaseException:
+        try:
+            setattr(context, '_qqfarm_patrol_rescue_running', False)
+        except BaseException:
+            pass
+        return 'start'
+
+
+def _ensure_runtime_business_switch_keeper(context, interval_seconds=1.0):
+    """Keep native startup/entitlement refreshes from leaving all farm routes off."""
+    if context is None:
+        return False
+    try:
+        active = getattr(context, '_qqfarm_business_switch_keeper_thread', None)
+        if active is not None and callable(getattr(active, 'is_alive', None)):
+            if bool(active.is_alive()):
+                return False
+    except BaseException:
+        pass
+
+    try:
+        threading_module = __import__('threading')
+        time_module = __import__('time')
+        interval = max(0.5, min(5.0, float(interval_seconds or 1.0)))
+
+        def _stop_requested():
+            try:
+                checker = getattr(context, 'is_stop_requested', None)
+                if callable(checker) and bool(checker()):
+                    return True
+            except BaseException:
+                pass
+            for name in ('_stop_event', 'stop_event'):
+                try:
+                    event = getattr(context, name, None)
+                    if event is not None and callable(getattr(event, 'is_set', None)):
+                        if bool(event.is_set()):
+                            return True
+                except BaseException:
+                    pass
+            return False
+
+        def _worker():
+            seen_running = False
+            try:
+                while not _stop_requested():
+                    try:
+                        running_value = getattr(context, 'running', None)
+                        if running_value is not None:
+                            if bool(running_value):
+                                seen_running = True
+                            elif seen_running:
+                                break
+                    except BaseException:
+                        pass
+                    changed = _runtime_business_switch_keeper_tick(context)
+                    if changed:
+                        try:
+                            log_fn = globals().get('_throttled_write')
+                            message = (
+                                'v474 runtime switch keeper restored configured '
+                                'business switches=' + str(changed)
+                            )
+                            if callable(log_fn):
+                                log_fn('v474-runtime-switch-keeper', message, 5.0)
+                            else:
+                                _write(message)
+                        except BaseException:
+                            pass
+                    time_module.sleep(interval)
+            finally:
+                try:
+                    setattr(context, '_qqfarm_business_switch_keeper_thread', None)
+                except BaseException:
+                    pass
+
+        initial_changed = _runtime_business_switch_keeper_tick(context)
+        try:
+            _write(
+                'v474 runtime switch keeper started changed=' +
+                str(initial_changed) + ' snapshot=' +
+                _runtime_business_switch_snapshot(context)
+            )
+        except BaseException:
+            pass
+        thread = threading_module.Thread(
+            target=_worker,
+            name='qqfarm-business-switch-keeper',
+            daemon=True,
+        )
+        setattr(context, '_qqfarm_business_switch_keeper_thread', thread)
+        thread.start()
+        return True
+    except BaseException as error:
+        try:
+            _throttled_write(
+                'v474-runtime-switch-keeper-error',
+                'v474 runtime switch keeper start error=' + repr(error)[:220],
+                30.0,
+            )
+        except BaseException:
+            pass
+        return False
 
 
 def _core_runtime_refresh_method(self, *a, **k):
@@ -23739,11 +24305,275 @@ _QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID = 0
 _QQFARM_WGC_BLANK_TS = 0.0
 _QQFARM_WGC_BLANK_COUNT = 0
 _QQFARM_WGC_BOUND_HWND = 0
+_QQFARM_LAST_FARM_HWND = 0
+_QQFARM_WGC_STATE = 'idle'
+_QQFARM_WGC_SESSION_READY = False
+_QQFARM_WGC_FIRST_VALID_FRAME_TS = 0.0
 _QQFARM_LAST_GOOD_CAPTURE_FRAME = None
 _QQFARM_LAST_GOOD_CAPTURE_TS = 0.0
+_QQFARM_LAST_GOOD_CAPTURE_GENERATION = 0
+_QQFARM_LAST_GOOD_CAPTURE_HWND = 0
 _QQFARM_NATIVE_CAPTURE_LAST_TS = 0.0
 _QQFARM_NATIVE_CAPTURE_GATE_ACTIVE = False
 _QQFARM_VISIBLE_CAPTURE_OCCLUDED_TS = 0.0
+_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID = 0
+_QQFARM_LAST_VISIBLE_CAPTURE_FRAME_ID = 0
+_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND = 0
+_QQFARM_LAST_PHYSICAL_PRINTWINDOW_RECT = None
+_QQFARM_LAST_PHYSICAL_NORMALIZED_FRAME_ID = 0
+# Hidden/minimized recovery is a cross-callback state transition.  Keep it
+# single-flight so the native hide path and a WGC blank callback cannot issue
+# overlapping restore operations against the same QQ HWND.
+# ``threading`` is intentionally lazy here for the same early-bootstrap
+# reason as above.  The restore routine creates the lock on first use.
+_QQFARM_HIDDEN_RESTORE_LOCK = None
+_QQFARM_HIDDEN_RESTORE_ACTIVE = False
+_QQFARM_HIDDEN_RESTORE_COOLDOWN_UNTIL = 0.0
+_QQFARM_HIDDEN_RESTORE_LAST_TS = 0.0
+_QQFARM_HIDDEN_RESTORE_LAST_HWND = 0
+_QQFARM_HIDDEN_RESTORE_COOLDOWN_SECONDS = 2.5
+# After an automatic hidden-window recovery, the previous WGC frame is not
+# valid business input until the replacement session publishes a rendered
+# frame. Keep this lease short and bounded so a stalled native callback cannot
+# turn into an infinite wait or reuse the pre-restore screenshot.
+_QQFARM_HIDDEN_RESTORE_LEASE_UNTIL = 0.0
+_QQFARM_HIDDEN_RESTORE_LEASE_HWND = 0
+_QQFARM_HIDDEN_RESTORE_WAITING_FOR_FRESH_FRAME = False
+_QQFARM_HIDDEN_RESTORE_BASE_FRAME_ID = 0
+_QQFARM_HIDDEN_RESTORE_BASE_FRAME_TS = 0.0
+_QQFARM_HIDDEN_RESTORE_FRESH_FRAME_LEASE_SECONDS = 5.0
+_QQFARM_PATROL_RESCUE_COOLDOWN_SECONDS = 30.0
+# One patrol-rescue episode is shared by the logger and native cycle wrapper.
+# This prevents a wrapper/context handoff from turning one request into a
+# repeated queue/consume loop.
+_QQFARM_PATROL_RESCUE_GLOBAL_STATE = {
+    'pending': False,
+    'consumed': False,
+    'held': False,
+    'episode': 0,
+    'last_consumed_ts': 0.0,
+}
+# WGC sessions are native objects backed by DWM/DirectX resources.  Keep a
+# generation token and a bounded rebuild budget so a stale callback or a blank
+# surface cannot create an unbounded create/destroy loop in the kernel capture
+# stack.  These values are deliberately process-local and reset on restart.
+_QQFARM_WGC_GENERATION = 0
+_QQFARM_WGC_REBUILD_HISTORY = []
+_QQFARM_WGC_REBUILD_COOLDOWN_UNTIL = 0.0
+_QQFARM_WGC_REBUILD_WINDOW_SECONDS = 300.0
+_QQFARM_WGC_REBUILD_MAX_PER_WINDOW = 3
+_QQFARM_WGC_REBUILD_COOLDOWN_SECONDS = 30.0
+_QQFARM_WGC_REBUILD_BURST_COOLDOWN_SECONDS = 300.0
+# GetPerformanceInfo is a cheap, read-only process-wide sample.  The guard is
+# only consulted at the WGC start/capture boundary (not on every frame copy).
+_QQFARM_KERNEL_POOL_LAST_SAMPLE_TS = 0.0
+_QQFARM_KERNEL_POOL_LAST_BYTES = 0
+_QQFARM_KERNEL_POOL_GUARD_ACTIVE = False
+_QQFARM_KERNEL_POOL_SAMPLE_INTERVAL = 10.0
+
+
+def _qqfarm_wgc_callback_is_current(generation):
+    """Return whether a native callback belongs to the live WGC session."""
+    try:
+        expected = int(globals().get('_QQFARM_WGC_GENERATION', 0) or 0)
+        received = int(generation)
+        return bool(expected > 0 and received == expected)
+    except BaseException:
+        return False
+
+
+def _qqfarm_wgc_rebuild_allowed(reason='', now=None):
+    """Bound WGC rebuilds to prevent native resource accumulation."""
+    try:
+        time_module = globals().get('time') or __import__('time')
+        now_value = float(
+            time_module.monotonic() if now is None else now
+        )
+    except BaseException:
+        now_value = 0.0
+    try:
+        cooldown_until = float(globals().get(
+            '_QQFARM_WGC_REBUILD_COOLDOWN_UNTIL', 0.0
+        ) or 0.0)
+        if cooldown_until >= now_value:
+            return False
+        window = max(1.0, float(globals().get(
+            '_QQFARM_WGC_REBUILD_WINDOW_SECONDS', 300.0
+        ) or 300.0))
+        history = list(globals().get('_QQFARM_WGC_REBUILD_HISTORY', []) or [])
+        history = [float(item) for item in history
+                   if now_value - float(item) < window]
+        globals()['_QQFARM_WGC_REBUILD_HISTORY'] = history
+        limit = max(1, int(globals().get(
+            '_QQFARM_WGC_REBUILD_MAX_PER_WINDOW', 3
+        ) or 3))
+        return bool(len(history) < limit)
+    except BaseException:
+        return True
+
+
+def _qqfarm_wgc_note_rebuild(reason='', now=None):
+    """Record a rebuild and arm a short/burst cooldown."""
+    try:
+        time_module = globals().get('time') or __import__('time')
+        now_value = float(
+            time_module.monotonic() if now is None else now
+        )
+    except BaseException:
+        now_value = 0.0
+    try:
+        window = max(1.0, float(globals().get(
+            '_QQFARM_WGC_REBUILD_WINDOW_SECONDS', 300.0
+        ) or 300.0))
+        history = list(globals().get('_QQFARM_WGC_REBUILD_HISTORY', []) or [])
+        history = [float(item) for item in history
+                   if now_value - float(item) < window]
+        history.append(now_value)
+        globals()['_QQFARM_WGC_REBUILD_HISTORY'] = history
+        limit = max(1, int(globals().get(
+            '_QQFARM_WGC_REBUILD_MAX_PER_WINDOW', 3
+        ) or 3))
+        if len(history) >= limit:
+            delay = float(globals().get(
+                '_QQFARM_WGC_REBUILD_BURST_COOLDOWN_SECONDS', 300.0
+            ) or 300.0)
+        else:
+            delay = float(globals().get(
+                '_QQFARM_WGC_REBUILD_COOLDOWN_SECONDS', 30.0
+            ) or 30.0)
+        globals()['_QQFARM_WGC_REBUILD_COOLDOWN_UNTIL'] = now_value + max(
+            1.0, delay
+        )
+        log_fn = globals().get('_throttled_write')
+        if callable(log_fn):
+            log_fn(
+                'v470-wgc-rebuild-budget',
+                'v470 WGC rebuild budget reason=' + str(reason) +
+                ' count=' + str(len(history)) + '/' + str(limit) +
+                ' cooldown=' + ('%.1f' % delay) + 's',
+                10.0,
+            )
+    except BaseException:
+        pass
+    return True
+
+
+def _qqfarm_kernel_pool_sample():
+    """Read total nonpaged-kernel-pool bytes without allocating a worker."""
+    try:
+        ctypes_module = __import__('ctypes')
+        class _PerformanceInformation(ctypes_module.Structure):
+            _fields_ = [
+                ('cb', ctypes_module.c_uint32),
+                ('CommitTotal', ctypes_module.c_size_t),
+                ('CommitLimit', ctypes_module.c_size_t),
+                ('CommitPeak', ctypes_module.c_size_t),
+                ('PhysicalTotal', ctypes_module.c_size_t),
+                ('PhysicalAvailable', ctypes_module.c_size_t),
+                ('SystemCache', ctypes_module.c_size_t),
+                ('KernelTotal', ctypes_module.c_size_t),
+                ('KernelPaged', ctypes_module.c_size_t),
+                ('KernelNonpaged', ctypes_module.c_size_t),
+                ('PageSize', ctypes_module.c_size_t),
+                ('HandleCount', ctypes_module.c_uint32),
+                ('ProcessCount', ctypes_module.c_uint32),
+                ('ThreadCount', ctypes_module.c_uint32),
+            ]
+        info = _PerformanceInformation()
+        info.cb = ctypes_module.sizeof(info)
+        psapi = ctypes_module.WinDLL('psapi')
+        getter = getattr(psapi, 'GetPerformanceInfo', None)
+        if not callable(getter) or not bool(getter(
+                ctypes_module.byref(info), ctypes_module.sizeof(info))):
+            return {}
+        page_size = max(1, int(info.PageSize))
+        return {
+            'nonpaged_bytes': int(info.KernelNonpaged) * page_size,
+            'paged_bytes': int(info.KernelPaged) * page_size,
+            'page_size': page_size,
+        }
+    except BaseException:
+        return {}
+
+
+def _qqfarm_kernel_pool_guard(now=None):
+    """Latch protection when nonpaged pool reaches a runaway-leak range."""
+    try:
+        # The embedded runtime used by QQFarmCVHelper may omit ``_ctypes``.
+        # The launcher therefore supplies an out-of-process PowerShell sample
+        # through this flag file; checking its existence is intentionally
+        # allocation-free and works in both runtimes.
+        os_module = globals().get('os') or __import__('os')
+        guard_path = str(os_module.environ.get(
+            'QQFARM_KERNEL_GUARD_PATH', ''
+        ) or '').strip()
+        if guard_path and os_module.path.isfile(guard_path):
+            globals()['_QQFARM_KERNEL_POOL_GUARD_ACTIVE'] = True
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v470-kernel-pool-external-trip',
+                    'v470 external nonpaged-pool guard flag detected; '
+                    'WGC start blocked',
+                    30.0,
+                )
+            return True
+        if bool(globals().get('_QQFARM_KERNEL_POOL_GUARD_ACTIVE', False)):
+            return True
+        time_module = globals().get('time') or __import__('time')
+        now_value = float(
+            time_module.monotonic() if now is None else now
+        )
+        last_ts = float(globals().get(
+            '_QQFARM_KERNEL_POOL_LAST_SAMPLE_TS', 0.0
+        ) or 0.0)
+        interval_value = globals().get(
+            '_QQFARM_KERNEL_POOL_SAMPLE_INTERVAL', 10.0
+        )
+        interval = max(0.0, float(
+            10.0 if interval_value is None else interval_value
+        ))
+        if last_ts > 0.0 and (now_value - last_ts) < interval:
+            return False
+        sample_fn = globals().get('_qqfarm_kernel_pool_sample')
+        sample = sample_fn() if callable(sample_fn) else {}
+        globals()['_QQFARM_KERNEL_POOL_LAST_SAMPLE_TS'] = now_value
+        if not isinstance(sample, dict):
+            sample = {}
+        nonpaged = int(sample.get('nonpaged_bytes', 0) or 0)
+        globals()['_QQFARM_KERNEL_POOL_LAST_BYTES'] = nonpaged
+        try:
+            warn_mb = float(os_module.environ.get(
+                'QQFARM_NONPAGED_WARN_MB', '2048'
+            ) or 2048.0)
+            trip_mb = float(os_module.environ.get(
+                'QQFARM_NONPAGED_TRIP_MB', '3072'
+            ) or 3072.0)
+        except BaseException:
+            warn_mb, trip_mb = 2048.0, 3072.0
+        warn_bytes = int(max(256.0, warn_mb) * 1024 * 1024)
+        trip_bytes = int(max(warn_mb + 128.0, trip_mb) * 1024 * 1024)
+        log_fn = globals().get('_throttled_write')
+        if nonpaged >= warn_bytes and callable(log_fn):
+            log_fn(
+                'v470-kernel-pool-warning',
+                'v470 nonpaged pool=' + str(nonpaged) +
+                ' bytes threshold=' + str(warn_bytes),
+                30.0,
+            )
+        if nonpaged >= trip_bytes:
+            globals()['_QQFARM_KERNEL_POOL_GUARD_ACTIVE'] = True
+            if callable(log_fn):
+                log_fn(
+                    'v470-kernel-pool-trip',
+                    'v470 nonpaged pool guard latched=' + str(nonpaged) +
+                    ' bytes; WGC start blocked',
+                    10.0,
+                )
+            return True
+        return False
+    except BaseException:
+        return bool(globals().get('_QQFARM_KERNEL_POOL_GUARD_ACTIVE', False))
 
 
 def _qqfarm_deconflict_assistant_window_titles(app=None):
@@ -23906,24 +24736,52 @@ def _qqfarm_wgc_frame_arrived(
         globals()['_QQFARM_WGC_FRAME'] = frame
         globals()['_QQFARM_WGC_FRAME_TS'] = now_value
         globals()['_QQFARM_WGC_RAW_SIZE'] = (width_value, height_value)
+        globals()['_QQFARM_WGC_STATE'] = 'starting'
+        globals()['_QQFARM_WGC_SESSION_READY'] = False
+        globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
         return None
     except BaseException:
         return None
 
 
 def _qqfarm_wgc_closed(*_args, **_kwargs):
+    # A stop request can return before the native callback thread has drained.
+    # Ignore a late close from an older generation so it cannot tear down a new
+    # capture session that has already been installed.
+    _generation = _kwargs.pop('_qqfarm_generation', None)
+    if _generation is not None:
+        current_fn = globals().get('_qqfarm_wgc_callback_is_current')
+        if callable(current_fn):
+            try:
+                if not bool(current_fn(_generation)):
+                    return None
+            except BaseException:
+                return None
     globals()['_QQFARM_WGC_CAPTURE'] = None
     globals()['_QQFARM_WGC_CONTROL'] = None
     globals()['_QQFARM_WGC_BLANK_TS'] = 0.0
     globals()['_QQFARM_WGC_BLANK_COUNT'] = 0
     globals()['_QQFARM_WGC_BOUND_HWND'] = 0
+    globals()['_QQFARM_WGC_STATE'] = 'idle'
+    globals()['_QQFARM_WGC_SESSION_READY'] = False
+    globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
     globals()['_QQFARM_WGC_FRAME'] = None
     globals()['_QQFARM_WGC_FRAME_TS'] = 0.0
     globals()['_QQFARM_LAST_WGC_NORMALIZED_FRAME'] = None
     globals()['_QQFARM_LAST_WGC_NORMALIZED_TS'] = 0.0
     globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = 0.0
     globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID'] = 0
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_GENERATION'] = 0
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_HWND'] = 0
     globals()['_QQFARM_WGC_CLOSED_TS'] = float(__import__('time').monotonic())
+    note_fn = globals().get('_qqfarm_wgc_note_rebuild')
+    if callable(note_fn):
+        try:
+            note_fn('closed-callback')
+        except BaseException:
+            pass
     try:
         log_fn = globals().get('_throttled_write')
         if callable(log_fn):
@@ -23938,23 +24796,47 @@ def _qqfarm_wgc_closed(*_args, **_kwargs):
 
 def _qqfarm_stop_wgc_capture(reason=''):
     control = globals().get('_QQFARM_WGC_CONTROL')
-    globals()['_QQFARM_WGC_CONTROL'] = None
-    globals()['_QQFARM_WGC_CAPTURE'] = None
+    capture = globals().get('_QQFARM_WGC_CAPTURE')
+    # Invalidate callbacks before asking the native object to stop.  Keep the
+    # Python references alive until stop() returns; dropping them first was the
+    # original path that allowed late callbacks to outlive their owner.
+    globals()['_QQFARM_WGC_GENERATION'] = int(
+        globals().get('_QQFARM_WGC_GENERATION', 0) or 0
+    ) + 1
     globals()['_QQFARM_WGC_BLANK_TS'] = 0.0
     globals()['_QQFARM_WGC_BLANK_COUNT'] = 0
     globals()['_QQFARM_WGC_BOUND_HWND'] = 0
+    globals()['_QQFARM_WGC_STATE'] = 'idle'
+    globals()['_QQFARM_WGC_SESSION_READY'] = False
+    globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
     globals()['_QQFARM_WGC_FRAME'] = None
     globals()['_QQFARM_WGC_FRAME_TS'] = 0.0
     globals()['_QQFARM_LAST_WGC_NORMALIZED_FRAME'] = None
     globals()['_QQFARM_LAST_WGC_NORMALIZED_TS'] = 0.0
     globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = 0.0
     globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID'] = 0
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_GENERATION'] = 0
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_HWND'] = 0
     try:
         stop_fn = getattr(control, 'stop', None)
         if callable(stop_fn):
             stop_fn()
     except BaseException:
         pass
+    finally:
+        if globals().get('_QQFARM_WGC_CONTROL') is control:
+            globals()['_QQFARM_WGC_CONTROL'] = None
+        if globals().get('_QQFARM_WGC_CAPTURE') is capture:
+            globals()['_QQFARM_WGC_CAPTURE'] = None
+    if reason:
+        note_fn = globals().get('_qqfarm_wgc_note_rebuild')
+        if callable(note_fn):
+            try:
+                note_fn(reason)
+            except BaseException:
+                pass
     if reason:
         try:
             log_fn = globals().get('_throttled_write')
@@ -23970,20 +24852,83 @@ def _qqfarm_stop_wgc_capture(reason=''):
 
 
 def _qqfarm_restore_hidden_miniapp_taskbar_card(reason=''):
-    """Restore the QQ farm taskbar identity without activating or moving it."""
+    """Restore a minimized QQ Farm surface as a bounded, single-flight action.
+
+    v2.3.3's observable compatibility behavior is a real window-state recovery,
+    not merely an extended-style tweak: restore the minimized HWND, then issue
+    a no-activate ``SetWindowPos`` containing ``SWP_SHOWWINDOW``.  The guard is
+    intentionally short-lived; it prevents an automatic hide callback and a
+    blank-frame callback from fighting each other while leaving manual show /
+    hide behavior unchanged after the recovery settles.
+    """
+    lock = None
+    locked = False
     try:
+        lock = globals().get('_QQFARM_HIDDEN_RESTORE_LOCK')
+        if lock is None:
+            try:
+                lock = __import__('threading').Lock()
+                globals()['_QQFARM_HIDDEN_RESTORE_LOCK'] = lock
+            except BaseException:
+                lock = None
+        if lock is not None:
+            try:
+                locked = bool(lock.acquire(False))
+            except BaseException:
+                locked = False
+            if not locked:
+                return False
+
+        time_module = __import__('time')
+        now_value = float(time_module.monotonic())
+        old_frame = globals().get('_QQFARM_WGC_FRAME')
+        try:
+            old_frame_id = int(id(old_frame)) if old_frame is not None else int(
+                globals().get('_QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID', 0) or 0
+            )
+        except BaseException:
+            old_frame_id = 0
+        try:
+            old_frame_ts = float(globals().get(
+                '_QQFARM_WGC_FRAME_TS', 0.0
+            ) or globals().get(
+                '_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS', 0.0
+            ) or 0.0)
+        except BaseException:
+            old_frame_ts = 0.0
+        cooldown_until = float(globals().get(
+            '_QQFARM_HIDDEN_RESTORE_COOLDOWN_UNTIL', 0.0
+        ) or 0.0)
+        if cooldown_until > now_value:
+            return False
+        globals()['_QQFARM_HIDDEN_RESTORE_ACTIVE'] = True
+
         configured_fn = globals().get('_configured_bool')
         sections_fn = globals().get('_active_bot_sections')
         sections = sections_fn() if callable(sections_fn) else ('bot',)
         compat_enabled = bool(configured_fn(
             sections, 'hide_miniapp_compat_mode', False
         )) if callable(configured_fn) else False
-        if not compat_enabled:
+        recovery_reason = str(reason or '').strip().lower()
+        automatic_capture_recovery = recovery_reason in {
+            'blank-surface', 'wgc-blank-surface', 'capture-recovery',
+        }
+        # The setting controls optional/manual compatibility behavior.  A
+        # confirmed blank WGC session is a capture-integrity failure, so its
+        # bounded recovery must remain available even when the optional flag
+        # is off; otherwise the hidden window can never produce a fresh frame.
+        if not compat_enabled and not automatic_capture_recovery:
             return False
         visible_fn = globals().get('_qqfarm_farm_window_is_visible')
         if callable(visible_fn) and bool(visible_fn()):
             return False
-        finder = globals().get('_share_find_farm_window_hwnd')
+        # The visible finder intentionally rejects minimized/off-screen
+        # rectangles.  A blank hidden WGC surface still needs the concrete
+        # farm HWND so the compatibility restore can operate on the actual
+        # QQ window instead of returning early.
+        finder = globals().get('_qqfarm_find_farm_capture_hwnd')
+        if not callable(finder):
+            finder = globals().get('_share_find_farm_window_hwnd')
         hwnd = int(finder() or 0) if callable(finder) else int(
             globals().get('_QQFARM_WGC_BOUND_HWND', 0) or 0
         )
@@ -24000,26 +24945,259 @@ def _qqfarm_restore_hidden_miniapp_taskbar_card(reason=''):
         desired_style = (ex_style & ~0x00000080) | 0x00040000
         if desired_style != ex_style:
             set_style(hwnd, -20, desired_style)
-        user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0037)
+
+        # SW_RESTORE=9 clears the minimized state.  Prefer the asynchronous
+        # form so recovery does not synchronously steal the foreground thread;
+        # fall back to ShowWindow on older/mock user32 surfaces.
+        show_fn = getattr(user32, 'ShowWindowAsync', None)
+        if not callable(show_fn):
+            show_fn = getattr(user32, 'ShowWindow', None)
+        show_called = False
+        if callable(show_fn):
+            try:
+                show_fn(hwnd, 9)
+                show_called = True
+            except BaseException:
+                show_called = False
+
+        # SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE |
+        # SWP_SHOWWINDOW.  Unlike the old 0x0037 flags, 0x0057 explicitly
+        # requests that the restored surface be shown.
+        position_called = False
+        try:
+            position_called = bool(user32.SetWindowPos(
+                hwnd, 0, 0, 0, 0, 0, 0x0057
+            ))
+        except BaseException:
+            position_called = False
+        if not show_called and not position_called:
+            return False
+
+        try:
+            cooldown_seconds = float(globals().get(
+                '_QQFARM_HIDDEN_RESTORE_COOLDOWN_SECONDS', 2.5
+            ) or 2.5)
+        except BaseException:
+            cooldown_seconds = 2.5
+        cooldown_seconds = max(0.5, min(10.0, cooldown_seconds))
+        globals()['_QQFARM_HIDDEN_RESTORE_LAST_TS'] = now_value
+        globals()['_QQFARM_HIDDEN_RESTORE_LAST_HWND'] = int(hwnd)
+        globals()['_QQFARM_HIDDEN_RESTORE_COOLDOWN_UNTIL'] = (
+            now_value + cooldown_seconds
+        )
+        try:
+            lease_seconds = float(globals().get(
+                '_QQFARM_HIDDEN_RESTORE_FRESH_FRAME_LEASE_SECONDS', 5.0
+            ) or 5.0)
+        except BaseException:
+            lease_seconds = 5.0
+        lease_seconds = max(1.0, min(15.0, lease_seconds))
+        globals()['_QQFARM_HIDDEN_RESTORE_LEASE_UNTIL'] = (
+            now_value + lease_seconds
+        )
+        globals()['_QQFARM_HIDDEN_RESTORE_LEASE_HWND'] = int(hwnd)
+        globals()['_QQFARM_HIDDEN_RESTORE_WAITING_FOR_FRESH_FRAME'] = True
+        globals()['_QQFARM_HIDDEN_RESTORE_BASE_FRAME_ID'] = int(old_frame_id)
+        globals()['_QQFARM_HIDDEN_RESTORE_BASE_FRAME_TS'] = float(old_frame_ts)
         log_fn = globals().get('_throttled_write')
         if callable(log_fn):
             log_fn(
-                'v156-hidden-taskbar-card-' + str(reason),
-                'v156 hidden miniapp compatibility restored taskbar card reason=' +
-                str(reason),
-                30.0,
+                'v477-hidden-restore-' + str(reason),
+                'v477 hidden miniapp recovery restored QQ Farm HWND=' +
+                str(hwnd) + ' reason=' + str(reason) +
+                ' show=' + str(show_called) + ' pos=' + str(position_called),
+                10.0,
             )
         return True
     except BaseException:
         return False
+    finally:
+        try:
+            globals()['_QQFARM_HIDDEN_RESTORE_ACTIVE'] = False
+        except BaseException:
+            pass
+        if lock is not None and locked:
+            try:
+                lock.release()
+            except BaseException:
+                pass
+
+
+def _qqfarm_find_farm_capture_hwnd():
+    """Find the QQ Farm top-level HWND for capture, including hidden states.
+
+    The visible desktop finder deliberately rejects minimized/off-screen
+    rectangles because those pixels are not valid desktop input.  WGC is
+    different: it can bind directly to the real top-level HWND while QQ has
+    reduced it to a taskbar-sized or off-screen surface during the configured
+    hidden mode.  Keep the two concerns separate and rank exact-title
+    candidates without accepting the assistant's own renamed window.
+    """
+    try:
+        visible_fn = globals().get('_share_find_farm_window_hwnd')
+        if callable(visible_fn):
+            visible_hwnd = int(visible_fn() or 0)
+            if visible_hwnd > 0:
+                globals()['_QQFARM_LAST_FARM_HWND'] = visible_hwnd
+                return visible_hwnd
+    except BaseException:
+        pass
+
+    title_fn = globals().get('_share_is_farm_window_title')
+
+    def _is_farm_title(value):
+        try:
+            if callable(title_fn):
+                return bool(title_fn(value))
+            text = str(value or '').strip()
+            return bool('QQ\u7ecf\u5178\u519c\u573a' in text and
+                        '\u89c6\u89c9\u81ea\u52a8\u5316' not in text)
+        except BaseException:
+            return False
+
+    def _cached_hwnd_is_usable(hwnd):
+        try:
+            window = int(hwnd or 0)
+        except BaseException:
+            return False
+        if window <= 0:
+            return False
+        try:
+            win32gui = __import__('win32gui')
+            if not bool(win32gui.IsWindow(window)):
+                return False
+            title = str(win32gui.GetWindowText(window) or '').strip()
+            return _is_farm_title(title)
+        except BaseException:
+            # A cached handle is still useful on runtimes where win32gui is
+            # not importable; the native capture constructor performs the
+            # final handle validation.
+            return True
+
+    # Prefer a still-live handle from the previous visible session.  This is
+    # the important path when QQ hides/minimizes the window before its bounds
+    # become discoverable through the visible-size finder.
+    for cached in (
+            globals().get('_QQFARM_WGC_BOUND_HWND', 0),
+            globals().get('_QQFARM_LAST_FARM_HWND', 0)):
+        try:
+            cached_value = int(cached or 0)
+        except BaseException:
+            cached_value = 0
+        if _cached_hwnd_is_usable(cached_value):
+            globals()['_QQFARM_LAST_FARM_HWND'] = cached_value
+            return cached_value
+
+    candidates = []
+    try:
+        win32gui = __import__('win32gui')
+
+        def _visit(hwnd, _extra):
+            try:
+                title = str(win32gui.GetWindowText(hwnd) or '').strip()
+                if not _is_farm_title(title):
+                    return True
+                visible = bool(win32gui.IsWindowVisible(hwnd))
+                iconic = bool(win32gui.IsIconic(hwnd))
+                rect = win32gui.GetWindowRect(hwnd)
+                width = max(0, int(rect[2] - rect[0])) if rect else 0
+                height = max(0, int(rect[3] - rect[1])) if rect else 0
+                # Exact title is the primary identity.  Prefer a real visible
+                # farm-sized surface, but retain minimized/hidden candidates.
+                score = (
+                    0 if title == '\u0051\u0051\u7ecf\u5178\u519c\u573a' else 1,
+                    0 if visible and not iconic else 1,
+                    abs(width - 428) + abs(height - 800),
+                    -width * height,
+                    int(hwnd),
+                )
+                candidates.append((score, int(hwnd)))
+            except BaseException:
+                pass
+            return True
+
+        win32gui.EnumWindows(_visit, None)
+    except BaseException:
+        pass
+
+    if not candidates:
+        try:
+            ctypes_module = __import__('ctypes')
+            user32 = ctypes_module.windll.user32
+            callback_type = ctypes_module.WINFUNCTYPE(
+                ctypes_module.c_bool,
+                ctypes_module.c_void_p,
+                ctypes_module.c_void_p,
+            )
+
+            def _visit(hwnd, _lparam):
+                try:
+                    window = int(hwnd)
+                    length = int(user32.GetWindowTextLengthW(hwnd) or 0)
+                    if length <= 0:
+                        return True
+                    buffer = ctypes_module.create_unicode_buffer(length + 1)
+                    user32.GetWindowTextW(hwnd, buffer, length + 1)
+                    title = str(buffer.value or '').strip()
+                    if not _is_farm_title(title):
+                        return True
+                    visible = bool(user32.IsWindowVisible(hwnd))
+                    iconic_fn = getattr(user32, 'IsIconic', None)
+                    iconic = bool(iconic_fn(hwnd)) if callable(iconic_fn) else False
+                    rect_fn = globals().get('_share_get_rect')
+                    rect = rect_fn(window) if callable(rect_fn) else None
+                    width = max(0, int(rect[2] - rect[0])) if rect else 0
+                    height = max(0, int(rect[3] - rect[1])) if rect else 0
+                    score = (
+                        0 if title == '\u0051\u0051\u7ecf\u5178\u519c\u573a' else 1,
+                        0 if visible and not iconic else 1,
+                        abs(width - 428) + abs(height - 800),
+                        -width * height,
+                        window,
+                    )
+                    candidates.append((score, window))
+                except BaseException:
+                    pass
+                return True
+
+            user32.EnumWindows(callback_type(_visit), 0)
+        except BaseException:
+            pass
+
+    if candidates:
+        candidates.sort(key=lambda item: item[0])
+        selected = int(candidates[0][1])
+        globals()['_QQFARM_LAST_FARM_HWND'] = selected
+        return selected
+    return 0
 
 
 def _qqfarm_start_wgc_capture():
     capture = globals().get('_QQFARM_WGC_CAPTURE')
     control = globals().get('_QQFARM_WGC_CONTROL')
+    kernel_guard_fn = globals().get('_qqfarm_kernel_pool_guard')
+    if callable(kernel_guard_fn):
+        try:
+            if bool(kernel_guard_fn()):
+                if capture is not None:
+                    stop_fn = globals().get('_qqfarm_stop_wgc_capture')
+                    if callable(stop_fn):
+                        stop_fn('kernel-pool-guard')
+                log_fn = globals().get('_throttled_write')
+                if callable(log_fn):
+                    log_fn(
+                        'v470-kernel-pool-block',
+                        'v470 WGC start blocked by nonpaged-pool guard',
+                        30.0,
+                    )
+                return False
+        except BaseException:
+            pass
     farm_hwnd = 0
     try:
-        find_window_fn = globals().get('_share_find_farm_window_hwnd')
+        find_window_fn = globals().get('_qqfarm_find_farm_capture_hwnd')
+        if not callable(find_window_fn):
+            find_window_fn = globals().get('_share_find_farm_window_hwnd')
         if callable(find_window_fn):
             farm_hwnd = int(find_window_fn() or 0)
     except BaseException:
@@ -24036,14 +25214,83 @@ def _qqfarm_start_wgc_capture():
             try:
                 finished_fn = getattr(control, 'is_finished', None)
                 if callable(finished_fn) and bool(finished_fn()):
+                    # A finished controller can still leave a late native
+                    # callback behind.  Invalidate the session before the
+                    # next capture decision and clear every frame/cache field
+                    # that could otherwise be reused as business input.
+                    stop_fn = globals().get('_qqfarm_stop_wgc_capture')
+                    if callable(stop_fn):
+                        try:
+                            stop_fn('finished-controller')
+                        except BaseException:
+                            pass
+                    globals()['_QQFARM_WGC_GENERATION'] = int(
+                        globals().get('_QQFARM_WGC_GENERATION', 0) or 0
+                    ) + 1
                     globals()['_QQFARM_WGC_CAPTURE'] = None
                     globals()['_QQFARM_WGC_CONTROL'] = None
                     globals()['_QQFARM_WGC_BLANK_TS'] = 0.0
+                    globals()['_QQFARM_WGC_BLANK_COUNT'] = 0
                     globals()['_QQFARM_WGC_BOUND_HWND'] = 0
+                    globals()['_QQFARM_WGC_FRAME'] = None
+                    globals()['_QQFARM_WGC_FRAME_TS'] = 0.0
+                    globals()['_QQFARM_WGC_RAW_SIZE'] = None
+                    globals()['_QQFARM_WGC_FRAME_ACCEPT_TS'] = 0.0
+                    globals()['_QQFARM_LAST_WGC_NORMALIZED_FRAME'] = None
+                    globals()['_QQFARM_LAST_WGC_NORMALIZED_TS'] = 0.0
+                    globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = 0.0
+                    globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID'] = 0
+                    globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
+                    globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+                    globals()['_QQFARM_LAST_GOOD_CAPTURE_GENERATION'] = 0
+                    globals()['_QQFARM_LAST_GOOD_CAPTURE_HWND'] = 0
+                    globals()['_QQFARM_WGC_STATE'] = 'idle'
+                    globals()['_QQFARM_WGC_SESSION_READY'] = False
+                    globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
                 else:
+                    if farm_hwnd <= 0:
+                        # The previously bound QQ window disappeared during a
+                        # close/recreate transition.  Retaining that live
+                        # capture would allow late callbacks or its last frame
+                        # to leak into the next patrol.  Stop it before waiting
+                        # for the replacement HWND.
+                        stop_fn = globals().get('_qqfarm_stop_wgc_capture')
+                        if callable(stop_fn):
+                            try:
+                                stop_fn('window-disappeared')
+                            except BaseException:
+                                pass
+                        globals()['_QQFARM_WGC_STATE'] = 'pending-window'
+                        globals()['_QQFARM_WGC_SESSION_READY'] = False
+                        globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
+                        return False
+                    globals()['_QQFARM_WGC_STATE'] = 'ready' if bool(
+                        globals().get('_QQFARM_WGC_SESSION_READY', False)
+                    ) else 'starting'
                     return True
             except BaseException:
+                if farm_hwnd <= 0:
+                    globals()['_QQFARM_WGC_STATE'] = 'pending-window'
+                    globals()['_QQFARM_WGC_SESSION_READY'] = False
+                    globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
+                    return False
+                globals()['_QQFARM_WGC_STATE'] = 'starting'
                 return True
+    if farm_hwnd <= 0:
+        # A title-only selector can bind to the helper window or to a stale QQ
+        # surface during restart.  Wait for the concrete farm HWND instead of
+        # constructing a capture object that can only produce an empty frame.
+        globals()['_QQFARM_WGC_STATE'] = 'pending-window'
+        globals()['_QQFARM_WGC_SESSION_READY'] = False
+        globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
+        log_fn = globals().get('_throttled_write')
+        if callable(log_fn):
+            log_fn(
+                'v475-wgc-wait-window',
+                'v475 WGC start deferred until QQ farm HWND is available',
+                5.0,
+            )
+        return False
     time_module = __import__('time')
     now_value = float(time_module.monotonic())
     last_attempt = float(globals().get(
@@ -24051,6 +25298,20 @@ def _qqfarm_start_wgc_capture():
     ) or 0.0)
     if last_attempt > 0.0 and (now_value - last_attempt) < 1.0:
         return False
+    rebuild_gate_fn = globals().get('_qqfarm_wgc_rebuild_allowed')
+    if callable(rebuild_gate_fn):
+        try:
+            if not bool(rebuild_gate_fn(now=now_value)):
+                log_fn = globals().get('_throttled_write')
+                if callable(log_fn):
+                    log_fn(
+                        'v470-wgc-rebuild-cooldown',
+                        'v470 WGC start deferred by rebuild cooldown',
+                        10.0,
+                    )
+                return False
+        except BaseException:
+            pass
     globals()['_QQFARM_WGC_START_ATTEMPT_TS'] = now_value
     try:
         rename_fn = globals().get('_qqfarm_deconflict_assistant_window_titles')
@@ -24074,6 +25335,41 @@ def _qqfarm_start_wgc_capture():
         close_callback = globals().get('_qqfarm_wgc_closed')
         if not callable(frame_callback) or not callable(close_callback):
             return False
+        generation = int(globals().get(
+            '_QQFARM_WGC_GENERATION', 0
+        ) or 0) + 1
+        globals()['_QQFARM_WGC_GENERATION'] = generation
+        globals()['_QQFARM_WGC_STATE'] = 'starting'
+        globals()['_QQFARM_WGC_SESSION_READY'] = False
+        globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_GENERATION'] = 0
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_HWND'] = 0
+
+        def _guarded_frame_callback(
+                *args, __generation=generation,
+                __callback=frame_callback, **kwargs):
+            current_fn = globals().get('_qqfarm_wgc_callback_is_current')
+            if callable(current_fn):
+                try:
+                    if not bool(current_fn(__generation)):
+                        return None
+                except BaseException:
+                    return None
+            return __callback(*args, **kwargs)
+
+        def _guarded_close_callback(
+                *args, __generation=generation,
+                __callback=close_callback, **kwargs):
+            current_fn = globals().get('_qqfarm_wgc_callback_is_current')
+            if callable(current_fn):
+                try:
+                    if not bool(current_fn(__generation)):
+                        return None
+                except BaseException:
+                    return None
+            return __callback(*args, **kwargs)
         capture_options = {
             'cursor_capture': False,
             'draw_border': False,
@@ -24081,45 +25377,85 @@ def _qqfarm_start_wgc_capture():
             # the 0.75s active patrol settle while reducing continuous QQ work.
             'minimum_update_interval': 333,
         }
-        if farm_hwnd <= 0:
-            try:
-                find_window_fn = globals().get('_share_find_farm_window_hwnd')
-                if callable(find_window_fn):
-                    farm_hwnd = int(find_window_fn() or 0)
-            except BaseException:
-                farm_hwnd = 0
         supports_window_hwnd = False
+        capture_signature_known = False
         if farm_hwnd > 0:
             try:
                 parameters = __import__('inspect').signature(
                     capture_type
                 ).parameters
+                capture_signature_known = True
                 supports_window_hwnd = 'window_hwnd' in parameters
             except BaseException:
                 try:
                     text_signature = str(getattr(
                         capture_type, '__text_signature__', ''
                     ) or '')
-                    supports_window_hwnd = 'window_hwnd' in text_signature
+                    if text_signature:
+                        capture_signature_known = True
+                        supports_window_hwnd = (
+                            'window_hwnd' in text_signature
+                        )
                 except BaseException:
+                    capture_signature_known = False
                     supports_window_hwnd = False
-        if farm_hwnd > 0 and supports_window_hwnd:
+        # A few native builds accept the HWND selector but expose no usable
+        # Python signature.  Once a concrete farm HWND is known, prefer that
+        # selector in the opaque-signature case as well; only a constructor
+        # that explicitly advertises no HWND support should use title lookup.
+        use_hwnd_selector = bool(
+            farm_hwnd > 0 and (
+                supports_window_hwnd or not capture_signature_known
+            )
+        )
+        if use_hwnd_selector:
             capture_options['window_hwnd'] = farm_hwnd
             capture_selector = 'hwnd=' + str(farm_hwnd)
         else:
             capture_options['window_name'] = 'QQ\u7ecf\u5178\u519c\u573a'
             capture_selector = 'title=QQ-farm'
-        capture = capture_type(
-            frame_callback,
-            close_callback,
-            **capture_options
-        )
+        try:
+            capture = capture_type(
+                _guarded_frame_callback,
+                _guarded_close_callback,
+                **capture_options
+            )
+        except TypeError as selector_error:
+            # Opaque C-extension builds may accept neither introspection nor
+            # the newer HWND keyword.  Retry by title only in that narrow
+            # compatibility case; a known-signature constructor error still
+            # propagates instead of silently changing selectors.
+            error_text = str(selector_error or '').lower()
+            selector_keyword_error = bool(
+                'window_hwnd' in error_text or
+                'unexpected keyword' in error_text or
+                'keyword argument' in error_text
+            )
+            if not use_hwnd_selector or capture_signature_known or not selector_keyword_error:
+                raise
+            fallback_options = dict(capture_options)
+            fallback_options.pop('window_hwnd', None)
+            fallback_options['window_name'] = 'QQ\u7ecf\u5178\u519c\u573a'
+            capture = capture_type(
+                _guarded_frame_callback,
+                _guarded_close_callback,
+                **fallback_options
+            )
+            capture_selector = 'title=QQ-farm-compat'
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v477-wgc-hwnd-compat-fallback',
+                    'v477 WGC HWND selector unsupported by opaque native build; '
+                    'fell back to title selector',
+                    30.0,
+                )
         globals()['_QQFARM_WGC_CAPTURE'] = capture
         control = capture.start_free_threaded()
         globals()['_QQFARM_WGC_CONTROL'] = control
         globals()['_QQFARM_WGC_STARTED_TS'] = now_value
         globals()['_QQFARM_WGC_BOUND_HWND'] = int(
-            farm_hwnd if supports_window_hwnd else 0
+            farm_hwnd
         )
         globals()['_QQFARM_WGC_BAD_GEOMETRY_COUNT'] = 0
         log_fn = globals().get('_throttled_write')
@@ -24131,8 +25467,28 @@ def _qqfarm_start_wgc_capture():
             )
         return True
     except BaseException as error:
-        globals()['_QQFARM_WGC_CAPTURE'] = None
-        globals()['_QQFARM_WGC_CONTROL'] = None
+        failed_control = globals().get('_QQFARM_WGC_CONTROL')
+        failed_capture = globals().get('_QQFARM_WGC_CAPTURE')
+        globals()['_QQFARM_WGC_GENERATION'] = int(
+            globals().get('_QQFARM_WGC_GENERATION', 0) or 0
+        ) + 1
+        try:
+            stop_fn = getattr(failed_control, 'stop', None)
+            if callable(stop_fn):
+                stop_fn()
+        except BaseException:
+            pass
+        finally:
+            if globals().get('_QQFARM_WGC_CONTROL') is failed_control:
+                globals()['_QQFARM_WGC_CONTROL'] = None
+            if globals().get('_QQFARM_WGC_CAPTURE') is failed_capture:
+                globals()['_QQFARM_WGC_CAPTURE'] = None
+        note_fn = globals().get('_qqfarm_wgc_note_rebuild')
+        if callable(note_fn):
+            try:
+                note_fn('start-error', now=now_value)
+            except BaseException:
+                pass
         try:
             log_fn = globals().get('_throttled_write')
             if callable(log_fn):
@@ -24153,6 +25509,12 @@ def _qqfarm_remember_good_capture_frame(frame):
     globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = float(
         __import__('time').monotonic()
     )
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_GENERATION'] = int(
+        globals().get('_QQFARM_WGC_GENERATION', 0) or 0
+    )
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_HWND'] = int(
+        globals().get('_QQFARM_WGC_BOUND_HWND', 0) or 0
+    )
     return frame
 
 
@@ -24162,6 +25524,42 @@ def _qqfarm_recent_good_capture_frame(max_age=8.0):
         '_QQFARM_LAST_GOOD_CAPTURE_TS', 0.0
     ) or 0.0)
     if frame is None or timestamp <= 0.0:
+        return None
+    # A hidden/restarted QQ surface is a new capture session.  Until that
+    # session has produced a fresh valid frame, an old frame is observation
+    # residue rather than business input.
+    state = str(globals().get('_QQFARM_WGC_STATE', '') or '').strip().lower()
+    session_ready = bool(globals().get('_QQFARM_WGC_SESSION_READY', False))
+    first_valid_ts = float(globals().get(
+        '_QQFARM_WGC_FIRST_VALID_FRAME_TS', 0.0
+    ) or 0.0)
+    if state in ('pending-window', 'starting', 'pending', 'blank') and (
+            not session_ready or first_valid_ts <= 0.0):
+        return None
+    saved_generation = int(globals().get(
+        '_QQFARM_LAST_GOOD_CAPTURE_GENERATION', 0
+    ) or 0)
+    current_generation = int(globals().get(
+        '_QQFARM_WGC_GENERATION', 0
+    ) or 0)
+    if saved_generation > 0 and current_generation > 0 and (
+            saved_generation != current_generation):
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_GENERATION'] = 0
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_HWND'] = 0
+        return None
+    saved_hwnd = int(globals().get(
+        '_QQFARM_LAST_GOOD_CAPTURE_HWND', 0
+    ) or 0)
+    current_hwnd = int(globals().get(
+        '_QQFARM_WGC_BOUND_HWND', 0
+    ) or 0)
+    if saved_hwnd > 0 and current_hwnd > 0 and saved_hwnd != current_hwnd:
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_GENERATION'] = 0
+        globals()['_QQFARM_LAST_GOOD_CAPTURE_HWND'] = 0
         return None
     if (float(__import__('time').monotonic()) - timestamp) > float(max_age):
         return None
@@ -24212,9 +25610,21 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
         frame = globals().get('_QQFARM_WGC_FRAME')
         timestamp = float(globals().get('_QQFARM_WGC_FRAME_TS', 0.0) or 0.0)
         if frame is None or timestamp <= 0.0:
+            if str(globals().get('_QQFARM_WGC_STATE', '') or '').strip().lower() not in (
+                    'pending-window', 'blank'):
+                globals()['_QQFARM_WGC_STATE'] = 'starting'
+            globals()['_QQFARM_WGC_SESSION_READY'] = False
+            globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
             return None
         now_value = float(__import__('time').monotonic())
         if (now_value - timestamp) > float(max_age):
+            globals()['_QQFARM_WGC_STATE'] = 'pending'
+            globals()['_QQFARM_WGC_SESSION_READY'] = False
+            globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
+            globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
+            globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+            globals()['_QQFARM_LAST_GOOD_CAPTURE_GENERATION'] = 0
+            globals()['_QQFARM_LAST_GOOD_CAPTURE_HWND'] = 0
             return None
         np_module = globals().get('np') or __import__('numpy')
         image = np_module.asarray(frame)
@@ -24232,12 +25642,18 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
                 stop_fn = globals().get('_qqfarm_stop_wgc_capture')
                 if callable(stop_fn):
                     stop_fn('wrong-window-geometry')
+            globals()['_QQFARM_WGC_STATE'] = 'pending'
+            globals()['_QQFARM_WGC_SESSION_READY'] = False
+            globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
             return None
         globals()['_QQFARM_WGC_BAD_GEOMETRY_COUNT'] = 0
         surface_fn = globals().get(
             '_qqfarm_wgc_frame_is_rendered_game_surface'
         )
         if callable(surface_fn) and not bool(surface_fn(image)):
+            globals()['_QQFARM_WGC_STATE'] = 'blank'
+            globals()['_QQFARM_WGC_SESSION_READY'] = False
+            globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
             blank_count = int(globals().get(
                 '_QQFARM_WGC_BLANK_COUNT', 0
             ) or 0) + 1
@@ -24245,6 +25661,8 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
             globals()['_QQFARM_WGC_BLANK_TS'] = now_value
             globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
             globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+            globals()['_QQFARM_LAST_GOOD_CAPTURE_GENERATION'] = 0
+            globals()['_QQFARM_LAST_GOOD_CAPTURE_HWND'] = 0
             globals()['_QQFARM_LAST_WGC_NORMALIZED_FRAME'] = None
             globals()['_QQFARM_LAST_WGC_NORMALIZED_TS'] = 0.0
             globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = 0.0
@@ -24278,8 +25696,105 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
             except BaseException:
                 pass
             return None
+        # A restore operation deliberately invalidates the frame that was
+        # visible before the hide/show transition. WGC can legally hand that
+        # same source buffer back while the replacement session is warming up;
+        # returning it would send stale farm state to the business recognizer.
+        # A native callback may reuse the numpy object, so an advanced source
+        # timestamp is also accepted as fresh evidence.
+        if bool(globals().get(
+                '_QQFARM_HIDDEN_RESTORE_WAITING_FOR_FRESH_FRAME', False)):
+            try:
+                base_id = int(globals().get(
+                    '_QQFARM_HIDDEN_RESTORE_BASE_FRAME_ID', 0
+                ) or 0)
+            except BaseException:
+                base_id = 0
+            try:
+                base_ts = float(globals().get(
+                    '_QQFARM_HIDDEN_RESTORE_BASE_FRAME_TS', 0.0
+                ) or 0.0)
+            except BaseException:
+                base_ts = 0.0
+            source_id = int(id(frame))
+            source_is_new = bool(
+                (base_id <= 0 or source_id != base_id) or
+                (timestamp > base_ts + 1e-6)
+            )
+            lease_field_present = (
+                '_QQFARM_HIDDEN_RESTORE_LEASE_UNTIL' in globals()
+            )
+            try:
+                lease_until = float(globals().get(
+                    '_QQFARM_HIDDEN_RESTORE_LEASE_UNTIL', 0.0
+                ) or 0.0)
+            except BaseException:
+                lease_until = 0.0
+            if not lease_field_present:
+                try:
+                    lease_seconds = float(globals().get(
+                        '_QQFARM_HIDDEN_RESTORE_FRESH_FRAME_LEASE_SECONDS', 5.0
+                    ) or 5.0)
+                except BaseException:
+                    lease_seconds = 5.0
+                lease_seconds = max(1.0, min(15.0, lease_seconds))
+                lease_until = now_value + lease_seconds
+                globals()['_QQFARM_HIDDEN_RESTORE_LEASE_UNTIL'] = lease_until
+            if source_is_new:
+                globals()['_QQFARM_HIDDEN_RESTORE_WAITING_FOR_FRESH_FRAME'] = False
+                globals()['_QQFARM_HIDDEN_RESTORE_LEASE_UNTIL'] = 0.0
+                globals()['_QQFARM_HIDDEN_RESTORE_LEASE_HWND'] = 0
+                globals()['_QQFARM_HIDDEN_RESTORE_BASE_FRAME_ID'] = 0
+                globals()['_QQFARM_HIDDEN_RESTORE_BASE_FRAME_TS'] = 0.0
+                try:
+                    log_fn = globals().get('_throttled_write')
+                    if callable(log_fn):
+                        log_fn(
+                            'v477-hidden-fresh-frame',
+                            'v477 hidden restore accepted fresh WGC source frame',
+                            2.0,
+                        )
+                except BaseException:
+                    pass
+            elif lease_until > now_value:
+                globals()['_QQFARM_WGC_STATE'] = 'pending-fresh-frame'
+                globals()['_QQFARM_WGC_SESSION_READY'] = False
+                globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
+                return None
+            else:
+                # The native source did not refresh within the bounded lease.
+                # Drop the exact stale buffer and let the normal WGC/PrintWindow
+                # recovery path obtain a new surface on the next attempt.
+                globals()['_QQFARM_HIDDEN_RESTORE_WAITING_FOR_FRESH_FRAME'] = False
+                globals()['_QQFARM_HIDDEN_RESTORE_LEASE_UNTIL'] = 0.0
+                globals()['_QQFARM_HIDDEN_RESTORE_LEASE_HWND'] = 0
+                globals()['_QQFARM_HIDDEN_RESTORE_BASE_FRAME_ID'] = 0
+                globals()['_QQFARM_HIDDEN_RESTORE_BASE_FRAME_TS'] = 0.0
+                globals()['_QQFARM_WGC_FRAME'] = None
+                globals()['_QQFARM_WGC_FRAME_TS'] = 0.0
+                globals()['_QQFARM_LAST_WGC_NORMALIZED_FRAME'] = None
+                globals()['_QQFARM_LAST_WGC_NORMALIZED_TS'] = 0.0
+                globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = 0.0
+                globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID'] = 0
+                globals()['_QQFARM_WGC_STATE'] = 'pending'
+                globals()['_QQFARM_WGC_SESSION_READY'] = False
+                globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
+                try:
+                    log_fn = globals().get('_throttled_write')
+                    if callable(log_fn):
+                        log_fn(
+                            'v477-hidden-fresh-frame-timeout',
+                            'v477 hidden restore fresh-frame lease expired; stale WGC frame dropped',
+                            5.0,
+                        )
+                except BaseException:
+                    pass
+                return None
         globals()['_QQFARM_WGC_BLANK_TS'] = 0.0
         globals()['_QQFARM_WGC_BLANK_COUNT'] = 0
+        globals()['_QQFARM_WGC_STATE'] = 'ready'
+        globals()['_QQFARM_WGC_SESSION_READY'] = True
+        globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = now_value
         source_id = int(id(frame))
         cached_frame = globals().get('_QQFARM_LAST_WGC_NORMALIZED_FRAME')
         cached_source_ts = float(globals().get(
@@ -24318,7 +25833,16 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
 
 
 def _qqfarm_farm_window_is_visible():
-    """Return true only while the current QQ Farm window is shown and restored."""
+    """Return true only while the current QQ Farm surface is usable.
+
+    ``IsWindowVisible`` describes the window object, not the pixels available
+    to the capture backend.  Transparent layered windows and DWM-cloaked
+    surfaces can therefore report visible while yielding a blank frame.  The
+    v2.3.3-compatible gate keeps the existing title/outer-rect lookup, then
+    checks the logical client surface, layered alpha, and DWM cloak state.
+    Missing optional Win32 APIs remain a compatibility fallback rather than a
+    reason to reject an otherwise valid window.
+    """
     try:
         find_fn = globals().get('_share_find_farm_window_hwnd')
         hwnd = int(find_fn() or 0) if callable(find_fn) else 0
@@ -24331,11 +25855,81 @@ def _qqfarm_farm_window_is_visible():
             if bool(win32gui.IsIconic(hwnd)):
                 return False
             rect = win32gui.GetWindowRect(hwnd)
-            return bool(
+            outer_ok = bool(
                 rect and len(rect) >= 4 and
                 int(rect[2] - rect[0]) >= 300 and
                 int(rect[3] - rect[1]) >= 400
             )
+            if not outer_ok:
+                return False
+
+            # GetWindowRect can remain large while the client surface has
+            # collapsed during a transparent/minimized transition.  Use the
+            # logical client size here; DPI normalization is handled by the
+            # capture path after this gate.
+            client_fn = getattr(win32gui, 'GetClientRect', None)
+            if callable(client_fn):
+                client = client_fn(hwnd)
+                client_ok = bool(
+                    client and len(client) >= 4 and
+                    int(client[2] - client[0]) >= 300 and
+                    int(client[3] - client[1]) >= 400
+                )
+                if not client_ok:
+                    return False
+
+            # Optional low-level checks mirror the native v2.3.3 capture
+            # module.  They are deliberately best-effort on older Windows or
+            # stripped test/runtime surfaces.
+            try:
+                ctypes_module = __import__('ctypes')
+                windll = getattr(ctypes_module, 'windll', None)
+                user32 = getattr(windll, 'user32', None)
+                dwmapi = getattr(windll, 'dwmapi', None)
+
+                if dwmapi is not None:
+                    dwm_fn = getattr(dwmapi, 'DwmGetWindowAttribute', None)
+                    if callable(dwm_fn):
+                        cloaked = ctypes_module.c_ulong(0)
+                        result = dwm_fn(
+                            hwnd, 14, ctypes_module.byref(cloaked),
+                            ctypes_module.sizeof(cloaked),
+                        )
+                        if int(result) == 0 and int(cloaked.value) != 0:
+                            return False
+
+                if user32 is not None:
+                    get_style = getattr(user32, 'GetWindowLongPtrW', None)
+                    if not callable(get_style):
+                        get_style = getattr(user32, 'GetWindowLongW', None)
+                    layered = False
+                    if callable(get_style):
+                        layered = bool(int(get_style(hwnd, -20) or 0) & 0x00080000)
+                    alpha_fn = getattr(
+                        user32, 'GetLayeredWindowAttributes', None
+                    )
+                    if layered and callable(alpha_fn):
+                        color_key = ctypes_module.c_ulong(0)
+                        alpha = ctypes_module.c_ubyte(255)
+                        flags = ctypes_module.c_ulong(0)
+                        result = alpha_fn(
+                            hwnd,
+                            ctypes_module.byref(color_key),
+                            ctypes_module.byref(alpha),
+                            ctypes_module.byref(flags),
+                        )
+                        # LWA_ALPHA is the only flag that makes the alpha
+                        # byte authoritative.  A color-keyed layered window
+                        # may legitimately report alpha=0.
+                        if (
+                            bool(result) and
+                            (int(flags.value) & 0x00000002) and
+                            int(alpha.value) == 0
+                        ):
+                            return False
+            except BaseException:
+                pass
+            return True
         except BaseException:
             rect_fn = globals().get('_share_get_rect')
             rect = rect_fn(hwnd) if callable(rect_fn) else None
@@ -24479,6 +26073,237 @@ def _qqfarm_native_capture_frame_is_business_safe(frame):
     return False
 
 
+def _qqfarm_compute_client_crop_box(
+        frame_size, physical_rect=None, window_rect=None,
+        client_rect=None, client_screen=None):
+    """Map a DPI-virtualized client surface into a physical capture frame.
+
+    The native v2.3.3 capture path distinguishes the physical DWM surface from
+    the logical client rectangle before matching templates.  Keep that bridge
+    deterministic and conservative: when the Win32 geometry is incomplete or
+    contradictory, return the complete frame and let the caller resize it
+    without inventing an offset.
+    """
+    try:
+        frame_width, frame_height = [int(value) for value in tuple(frame_size)[:2]]
+        if frame_width < 120 or frame_height < 120:
+            return None
+        full = (0, 0, frame_width, frame_height)
+
+        def _rect(value):
+            if value is None or len(value) < 4:
+                return None
+            left, top, right, bottom = [int(item) for item in value[:4]]
+            if right <= left or bottom <= top:
+                return None
+            return (left, top, right, bottom)
+
+        physical = _rect(physical_rect)
+        window = _rect(window_rect)
+        client = _rect(client_rect)
+        screen = tuple(int(item) for item in tuple(client_screen or ())[:2])
+        if physical is None or window is None or client is None or len(screen) < 2:
+            return full
+
+        physical_width = int(physical[2] - physical[0])
+        physical_height = int(physical[3] - physical[1])
+        window_width = int(window[2] - window[0])
+        window_height = int(window[3] - window[1])
+        client_width = int(client[2] - client[0])
+        client_height = int(client[3] - client[1])
+        if min(physical_width, physical_height, window_width, window_height,
+               client_width, client_height) <= 0:
+            return full
+
+        # The frame is sampled from the physical DWM bounds, while the Win32
+        # rectangles are in the process's logical coordinate space.  Deriving
+        # the scale from the same window avoids assuming 100/125/150% globally.
+        scale_x = float(frame_width) / float(window_width)
+        scale_y = float(frame_height) / float(window_height)
+        if not (0.50 <= scale_x <= 4.0 and 0.50 <= scale_y <= 4.0):
+            return full
+        if abs(scale_x - scale_y) > max(0.08, 0.08 * max(scale_x, scale_y)):
+            return full
+
+        offset_x = int(screen[0]) - int(window[0])
+        offset_y = int(screen[1]) - int(window[1])
+        # ClientToScreen and GetWindowRect should use the same coordinate
+        # space.  Reject a mixed-DPI result instead of applying a giant crop.
+        if (
+                offset_x < -max(32, window_width // 2) or
+                offset_y < -max(32, window_height // 2) or
+                offset_x > window_width + max(32, window_width // 2) or
+                offset_y > window_height + max(32, window_height // 2)):
+            return full
+
+        left = int(round(float(offset_x) * scale_x))
+        top = int(round(float(offset_y) * scale_y))
+        right = left + int(round(float(client_width) * scale_x))
+        bottom = top + int(round(float(client_height) * scale_y))
+        left = max(0, min(frame_width, left))
+        top = max(0, min(frame_height, top))
+        right = max(left, min(frame_width, right))
+        bottom = max(top, min(frame_height, bottom))
+        crop_width = right - left
+        crop_height = bottom - top
+        if crop_width < 120 or crop_height < 120:
+            return full
+        # A farm window's client surface should occupy nearly all of the
+        # captured portrait frame.  This rejects accidental desktop/DWM crops.
+        if (
+                crop_width * 100 < frame_width * 55 or
+                crop_height * 100 < frame_height * 55):
+            return full
+        return (left, top, right, bottom)
+    except BaseException:
+        return None
+
+
+def _qqfarm_normalize_window_owned_frame_for_business(
+        frame, hwnd=None, physical_rect=None):
+    """Normalize a window-owned physical frame before template/click logic.
+
+    WGC already supplies a canonical frame through its own path.  This helper
+    is specifically for PrintWindow recovery, where a 150% display can return
+    a 642x1200 physical array for the same 428x800 logical QQ surface.  It
+    never falls back to a desktop screenshot; missing geometry only means
+    resize the complete window-owned frame.
+    """
+    try:
+        np_module = globals().get('np') or __import__('numpy')
+        cv_module = globals().get('cv2') or __import__('cv2')
+        image = np_module.asarray(frame)
+        shape = getattr(image, 'shape', ())
+        if len(shape) < 3 or int(shape[0]) < 120 or int(shape[1]) < 120:
+            return None
+        if int(shape[2]) < 3:
+            return None
+        image = image[:, :, :3]
+        frame_height = int(image.shape[0])
+        frame_width = int(image.shape[1])
+        if frame_width == 428 and frame_height == 800:
+            normalized = np_module.ascontiguousarray(image)
+            globals()['_QQFARM_LAST_PHYSICAL_NORMALIZED_FRAME_ID'] = int(
+                id(normalized)
+            )
+            return normalized
+        ratio = float(frame_width) / float(max(1, frame_height))
+        if ratio < 0.45 or ratio > 0.62:
+            return None
+
+        try:
+            window = int(hwnd or globals().get(
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND', 0
+            ) or globals().get('_QQFARM_WGC_BOUND_HWND', 0) or 0)
+        except BaseException:
+            window = 0
+        if physical_rect is None:
+            physical_rect = globals().get(
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_RECT'
+            )
+
+        window_rect = None
+        client_rect = None
+        client_screen = None
+        if window > 0:
+            try:
+                import ctypes
+                from ctypes import wintypes
+
+                class RECT(ctypes.Structure):
+                    _fields_ = [
+                        ('left', ctypes.c_long), ('top', ctypes.c_long),
+                        ('right', ctypes.c_long), ('bottom', ctypes.c_long),
+                    ]
+
+                class POINT(ctypes.Structure):
+                    _fields_ = [
+                        ('x', ctypes.c_long), ('y', ctypes.c_long),
+                    ]
+
+                user32 = ctypes.windll.user32
+                wr = RECT()
+                cr = RECT()
+                point = POINT(0, 0)
+                if bool(user32.GetWindowRect(
+                        wintypes.HWND(window), ctypes.byref(wr))):
+                    window_rect = (wr.left, wr.top, wr.right, wr.bottom)
+                if bool(user32.GetClientRect(
+                        wintypes.HWND(window), ctypes.byref(cr))):
+                    client_rect = (cr.left, cr.top, cr.right, cr.bottom)
+                if bool(user32.ClientToScreen(
+                        wintypes.HWND(window), ctypes.byref(point))):
+                    client_screen = (point.x, point.y)
+            except BaseException:
+                window_rect = None
+                client_rect = None
+                client_screen = None
+
+        crop_fn = globals().get('_qqfarm_compute_client_crop_box')
+        crop_box = (
+            crop_fn(
+                (frame_width, frame_height), physical_rect,
+                window_rect, client_rect, client_screen,
+            )
+            if callable(crop_fn) else (0, 0, frame_width, frame_height)
+        )
+        if not crop_box or len(crop_box) < 4:
+            return None
+        left, top, right, bottom = [int(value) for value in crop_box[:4]]
+        if right <= left or bottom <= top:
+            return None
+        cropped = image[top:bottom, left:right]
+        if getattr(cropped, 'size', 0) <= 0:
+            return None
+        normalized = cv_module.resize(
+            cropped, (428, 800), interpolation=cv_module.INTER_AREA
+        )
+        normalized = np_module.ascontiguousarray(normalized[:, :, :3]).copy()
+        globals()['_QQFARM_LAST_PHYSICAL_NORMALIZED_FRAME_ID'] = int(
+            id(normalized)
+        )
+        if (frame_width, frame_height) != (428, 800) or tuple(crop_box) != (
+                0, 0, frame_width, frame_height):
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v478-window-owned-frame-normalized',
+                    'v478 window-owned frame normalized from ' +
+                    str(frame_width) + 'x' + str(frame_height) +
+                    ' crop=' + repr(tuple(crop_box)) + ' to 428x800',
+                    10.0,
+                )
+        return normalized
+    except BaseException:
+        return None
+
+
+def _qqfarm_prepare_visible_frame_for_business(frame):
+    """Convert only the current PrintWindow frame into canonical coordinates."""
+    if frame is None:
+        return None
+    try:
+        physical_id = int(globals().get(
+            '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID', 0
+        ) or 0)
+        if physical_id <= 0 or int(id(frame)) != physical_id:
+            return frame
+    except BaseException:
+        return frame
+    normalize_fn = globals().get(
+        '_qqfarm_normalize_window_owned_frame_for_business'
+    )
+    if not callable(normalize_fn):
+        return None
+    try:
+        normalized = normalize_fn(frame)
+    except BaseException:
+        normalized = None
+    # Never expose a physical PrintWindow array to business code when the
+    # normalization contract is unavailable or failed.
+    return normalized
+
+
 def _qqfarm_install_visible_capture_priority(context):
     """Patch loaded QQ capture owners so visible pixels bypass slow PrintWindow first."""
     try:
@@ -24521,6 +26346,11 @@ def _qqfarm_install_visible_capture_priority(context):
                             '_QQFARM_NATIVE_CAPTURE_GATE_ACTIVE', False)):
                         visible_fn = globals().get('_qqfarm_capture_visible_farm_frame')
                         visible = visible_fn() if callable(visible_fn) else None
+                        prepare_fn = globals().get(
+                            '_qqfarm_prepare_visible_frame_for_business'
+                        )
+                        if visible is not None and callable(prepare_fn):
+                            visible = prepare_fn(visible)
                         trusted_fn = globals().get(
                             '_qqfarm_visible_capture_frame_is_trusted'
                         )
@@ -24616,6 +26446,11 @@ def _get_frame_from_bot(bot):
         if qq_mode:
             visible_fn = globals().get('_qqfarm_capture_visible_farm_frame')
             visible_frame = visible_fn() if callable(visible_fn) else None
+            prepare_fn = globals().get(
+                '_qqfarm_prepare_visible_frame_for_business'
+            )
+            if visible_frame is not None and callable(prepare_fn):
+                visible_frame = prepare_fn(visible_frame)
             trusted_fn = globals().get(
                 '_qqfarm_visible_capture_frame_is_trusted'
             )
@@ -24981,25 +26816,54 @@ def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False
         # Provenance is per returned frame: size alone never labels an arbitrary
         # portrait image as raw PrintWindow input.
         globals()['_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID'] = 0
+        globals()['_QQFARM_LAST_VISIBLE_CAPTURE_FRAME_ID'] = 0
+        globals()['_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND'] = 0
+        globals()['_QQFARM_LAST_PHYSICAL_PRINTWINDOW_RECT'] = None
+        globals()['_QQFARM_LAST_PHYSICAL_NORMALIZED_FRAME_ID'] = 0
         if not bool(prefer_desktop):
             wgc_fn = globals().get('_qqfarm_capture_wgc_farm_frame')
             wgc_frame = wgc_fn() if callable(wgc_fn) else None
             if wgc_frame is not None:
                 return wgc_frame
         blank_ts = float(globals().get('_QQFARM_WGC_BLANK_TS', 0.0) or 0.0)
+        blank_latched_hidden = False
         if blank_ts > 0.0 and not bool(prefer_desktop):
             visible_fn = globals().get('_qqfarm_farm_window_is_visible')
             if not callable(visible_fn) or not bool(visible_fn()):
-                return None
+                # A hidden/minimized QQ window must not fall through to a
+                # desktop crop (which is often the desktop or another app),
+                # but a concrete HWND can still provide a window-owned
+                # PrintWindow frame.  Keep that narrow recovery path alive.
+                capture_probe_fn = globals().get(
+                    '_qqfarm_find_farm_capture_hwnd'
+                )
+                if not callable(capture_probe_fn):
+                    return None
+                blank_latched_hidden = True
         find_fn = globals().get('_share_find_farm_window_hwnd')
+        capture_find_fn = globals().get('_qqfarm_find_farm_capture_hwnd')
         rect_fn = globals().get('_share_get_rect')
         physical_rect_fn = globals().get('_qqfarm_get_physical_window_rect')
-        hwnd = int(find_fn() or 0) if callable(find_fn) else 0
-        fallback_rect = rect_fn(hwnd) if hwnd and callable(rect_fn) else None
+        visible_hwnd = int(find_fn() or 0) if callable(find_fn) else 0
+        capture_hwnd = visible_hwnd
+        if visible_hwnd <= 0 and callable(capture_find_fn):
+            try:
+                capture_hwnd = int(capture_find_fn() or 0)
+            except BaseException:
+                capture_hwnd = 0
+        hwnd = visible_hwnd
+        printwindow_hwnd = int(capture_hwnd or visible_hwnd or 0)
+        capture_only_hwnd = bool(visible_hwnd <= 0 and printwindow_hwnd > 0)
+        rect_hwnd = int(hwnd or printwindow_hwnd or 0)
+        fallback_rect = (
+            rect_fn(rect_hwnd)
+            if rect_hwnd and callable(rect_fn) else None
+        )
         try:
             rect = (
-                physical_rect_fn(hwnd, fallback_rect)
-                if hwnd and callable(physical_rect_fn) else fallback_rect
+                physical_rect_fn(printwindow_hwnd, fallback_rect)
+                if printwindow_hwnd and callable(physical_rect_fn)
+                else fallback_rect
             )
         except BaseException:
             rect = fallback_rect
@@ -25010,15 +26874,18 @@ def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False
         left, top, right, bottom = [int(value) for value in rect[:4]]
         if right <= left or bottom <= top:
             return None
-        # The strict current-frame retry must observe QQ's own rendered surface,
-        # not a desktop-composited copy.  Preserve raw physical dimensions so a
-        # v413 full-board result remains observation-only with no click centers.
-        if bool(prefer_desktop) and hwnd:
+        # Prefer QQ's own window surface whenever a WGC frame is unavailable.
+        # This is also the normal hidden/minimized recovery path: ImageGrab is
+        # a desktop compositor and can return the desktop or an occluding app.
+        # Preserve raw physical dimensions so a v413 full-board result remains
+        # observation-only with no click centers.
+        if printwindow_hwnd:
             printwindow_fn = globals().get('_qqfarm_capture_printwindow_farm_frame')
             printwindow_frame = None
             try:
                 printwindow_frame = (
-                    printwindow_fn(hwnd, rect) if callable(printwindow_fn) else None
+                    printwindow_fn(printwindow_hwnd, rect)
+                    if callable(printwindow_fn) else None
                 )
             except BaseException:
                 printwindow_frame = None
@@ -25054,9 +26921,35 @@ def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False
                         globals()['_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID'] = (
                             int(id(printwindow_frame))
                         )
+                        globals()['_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND'] = (
+                            int(printwindow_hwnd)
+                        )
+                        globals()['_QQFARM_LAST_PHYSICAL_PRINTWINDOW_RECT'] = (
+                            tuple(int(value) for value in rect[:4])
+                        )
+                        globals()['_QQFARM_LAST_VISIBLE_CAPTURE_FRAME_ID'] = (
+                            int(id(printwindow_frame))
+                        )
+                        if bool(globals().get(
+                                '_QQFARM_HIDDEN_RESTORE_WAITING_FOR_FRESH_FRAME',
+                                False)):
+                            # PrintWindow is a fresh window-owned capture, so
+                            # it is valid evidence while WGC is warming up.
+                            globals()['_QQFARM_HIDDEN_RESTORE_WAITING_FOR_FRESH_FRAME'] = False
+                            globals()['_QQFARM_HIDDEN_RESTORE_LEASE_UNTIL'] = 0.0
+                            globals()['_QQFARM_HIDDEN_RESTORE_LEASE_HWND'] = 0
+                            globals()['_QQFARM_HIDDEN_RESTORE_BASE_FRAME_ID'] = 0
+                            globals()['_QQFARM_HIDDEN_RESTORE_BASE_FRAME_TS'] = 0.0
                     except BaseException:
                         pass
                     return printwindow_frame
+        if blank_latched_hidden or capture_only_hwnd:
+            # Never use desktop pixels while the blank-session latch says the
+            # QQ surface is hidden.  A capture-only HWND also means the visible
+            # desktop finder has no trustworthy rectangle, so ImageGrab could
+            # return the desktop or an occluding application.  The caller will
+            # retry after restoration or after a new WGC frame arrives.
+            return None
         image_grab = __import__('PIL.ImageGrab', fromlist=['ImageGrab'])
         image = image_grab.grab(
             bbox=(left, top, right, bottom), all_screens=True
@@ -25118,6 +27011,10 @@ def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False
         remember_fn = globals().get('_qqfarm_remember_good_capture_frame')
         if callable(remember_fn):
             remember_fn(frame)
+        try:
+            globals()['_QQFARM_LAST_VISIBLE_CAPTURE_FRAME_ID'] = int(id(frame))
+        except BaseException:
+            pass
         return frame
     except BaseException as error:
         try:
@@ -36325,8 +38222,21 @@ def _run_native_v225_daily_catchup(context):
             reward_fn = globals().get('_run_share_prompt_recovery')
             if callable(reward_fn):
                 try:
-                    reward_fn(context)
-                    return 'share-reward'
+                    reward_result = reward_fn(context)
+                    if bool(reward_result):
+                        return 'share-reward'
+                    try:
+                        reward_success = bool(success_fn(
+                            'share_reward', target=target
+                        )) if callable(success_fn) else False
+                    except TypeError:
+                        reward_success = bool(success_fn(
+                            'share_reward'
+                        )) if callable(success_fn) else False
+                    except BaseException:
+                        reward_success = False
+                    if reward_success:
+                        return 'share-reward'
                 except BaseException as error:
                     try:
                         _write(
@@ -36352,8 +38262,16 @@ def _run_native_v225_daily_catchup(context):
                 )
             except BaseException:
                 pass
+            share_result = False
             try:
-                share_fn(context)
+                # The recovery helper returns True only after a new share
+                # action (or its independent reward action) has been
+                # verified.  A False result is also the normal outcome when
+                # the hard completion latch consumes a stale callback.  Do
+                # not let that no-op claim the whole native farm cycle;
+                # otherwise run_cycle returns before self/friend dispatch and
+                # the patrol appears to emit only start/end log lines.
+                share_result = bool(share_fn(context))
             except BaseException as error:
                 try:
                     _write(
@@ -36362,7 +38280,7 @@ def _run_native_v225_daily_catchup(context):
                     )
                 except BaseException:
                     pass
-            return 'share'
+            return 'share' if share_result else ''
         return ''
     finally:
         try:
@@ -36533,8 +38451,72 @@ def _wrap_native_v225_daily_catchup_run_cycle(fn, name=''):
 
     def _wrapped(*args, **kwargs):
         context = args[0] if args else kwargs.get('self')
+        try:
+            rescue_state = globals().get('_QQFARM_PATROL_RESCUE_GLOBAL_STATE')
+            if not isinstance(rescue_state, dict):
+                rescue_state = {
+                    'pending': False,
+                    'consumed': False,
+                    'held': False,
+                    'episode': 0,
+                    'last_consumed_ts': 0.0,
+                }
+                globals()['_QQFARM_PATROL_RESCUE_GLOBAL_STATE'] = rescue_state
+            if bool(getattr(context, '_qqfarm_patrol_rescue_pending', False)) or bool(
+                    rescue_state.get('pending', False)):
+                setattr(context, '_qqfarm_patrol_rescue_pending', False)
+                setattr(context, '_qqfarm_patrol_rescue_pending_ts', 0.0)
+                setattr(context, '_qqfarm_patrol_rescue_hold', True)
+                rescue_state['pending'] = False
+                rescue_state['consumed'] = True
+                rescue_state['held'] = True
+                rescue_state['last_consumed_ts'] = float(
+                    __import__('time').monotonic()
+                )
+                try:
+                    cooldown_seconds = float(globals().get(
+                        '_QQFARM_PATROL_RESCUE_COOLDOWN_SECONDS', 30.0
+                    ) or 30.0)
+                    cooldown_seconds = max(5.0, min(120.0, cooldown_seconds))
+                    setattr(
+                        context,
+                        '_qqfarm_patrol_rescue_cooldown_until',
+                        float(__import__('time').monotonic()) + cooldown_seconds,
+                    )
+                except BaseException:
+                    pass
+                log_fn = globals().get('_throttled_write')
+                if callable(log_fn):
+                    log_fn(
+                        'v475-rescue-consumed',
+                        'v475 native cycle consumed queued patrol recovery',
+                        5.0,
+                    )
+        except BaseException:
+            pass
+        try:
+            bypass_daily = bool(getattr(
+                context, '_qqfarm_empty_patrol_rescue_bypass_daily', False
+            ))
+        except BaseException:
+            bypass_daily = False
+        try:
+            restore_fn = globals().get('_restore_runtime_business_switches')
+            restored = int(restore_fn(context) or 0) if callable(restore_fn) else 0
+            if restored:
+                log_fn = globals().get('_throttled_write')
+                message = (
+                    'v474 native run_cycle restored configured business switches=' +
+                    str(restored)
+                )
+                if callable(log_fn):
+                    log_fn('v474-native-cycle-switch-restore', message, 10.0)
+                else:
+                    _write(message)
+        except BaseException:
+            pass
         catchup_fn = globals().get('_run_native_v225_daily_catchup')
-        if _home_ready(context) and callable(catchup_fn):
+        if not bypass_daily and _home_ready(context) and callable(catchup_fn):
             try:
                 if catchup_fn(context):
                     return True
@@ -36543,7 +38525,7 @@ def _wrap_native_v225_daily_catchup_run_cycle(fn, name=''):
                     _write('v450 native-v225 daily pre-cycle error=' + repr(error)[:240])
                 except BaseException:
                     pass
-        if not _home_ready(context):
+        if not bypass_daily and not _home_ready(context):
             any_due_fn = globals().get('_native_v225_daily_any_due')
             home_fn = globals().get('_native_v225_request_home_for_daily')
             try:
@@ -36560,7 +38542,27 @@ def _wrap_native_v225_daily_catchup_run_cycle(fn, name=''):
                     )
                 except BaseException:
                     pass
+        try:
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v474-native-cycle-original-dispatch',
+                    'v474 native run_cycle dispatching original business cycle',
+                    10.0,
+                )
+        except BaseException:
+            pass
         result = fn(*args, **kwargs)
+        try:
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v474-native-cycle-original-result',
+                    'v474 native run_cycle original result=' + repr(result)[:160],
+                    10.0,
+                )
+        except BaseException:
+            pass
         if not _home_ready(context):
             recover_fn = globals().get(
                 '_qqfarm_native_friend_idle_home_recovery'
@@ -36576,7 +38578,7 @@ def _wrap_native_v225_daily_catchup_run_cycle(fn, name=''):
                     )
                 except BaseException:
                     pass
-        if _home_ready(context) and callable(catchup_fn):
+        if not bypass_daily and _home_ready(context) and callable(catchup_fn):
             try:
                 if catchup_fn(context):
                     return True
@@ -36665,10 +38667,16 @@ def _patch_native_v225_daily_catchup_loaded(tag=''):
         module_items = []
     for module_name, module in module_items:
         try:
-            if module is None or not str(module_name or '').startswith('bot.'):
+            if module is None:
+                continue
+            module_text = str(module_name or '')
+            runtime_farmbot = getattr(module, 'FarmBotCV', None)
+            if (
+                    not module_text.startswith('bot.')
+                    and not isinstance(runtime_farmbot, type)):
                 continue
             count = _patch_native_v225_daily_catchup_for_module(
-                module, str(module_name)
+                module, module_text
             )
             if count:
                 changed.append(str(module_name) + ':' + str(count))
@@ -44756,14 +46764,31 @@ def _patch_daily_flow_status_for_module(module, tag=''):
                     # A generic marketplace badge (including a cleared badge)
                     # must not reopen the native click transaction after 3/3.
                     if __flow == 'freebenefits':
-                        blocked_fn = globals().get('_daily_flow_retry_blocked')
+                        cap_fn = globals().get(
+                            '_runtime_freebenefits_retry_cap_reached'
+                        )
                         try:
                             retry_blocked = bool(
-                                callable(blocked_fn)
-                                and blocked_fn('freebenefits')
+                                callable(cap_fn) and cap_fn(context)
                             )
                         except BaseException:
                             retry_blocked = False
+                        if not retry_blocked:
+                            # Some packaged/native load orders expose the daily
+                            # wrapper before the runtime cap helper is visible.
+                            # The durable retry gate is still authoritative and
+                            # must stop both should/run paths at 3/3 instead of
+                            # letting a cleared marketplace badge reopen them.
+                            blocked_fn = globals().get(
+                                '_daily_flow_retry_blocked'
+                            )
+                            try:
+                                retry_blocked = bool(
+                                    callable(blocked_fn) and
+                                    blocked_fn('freebenefits')
+                                )
+                            except BaseException:
+                                retry_blocked = False
                         if retry_blocked:
                             return False if __kind == 'should' else True
                     red_state_fn = globals().get('_daily_flow_entry_red_dot_state')
@@ -46526,6 +48551,15 @@ def _wrap_runtime_diag_method(fn, label):
                 capture_priority_fn(self_obj)
         except BaseException:
             pass
+        if str(label) == 'FarmBotCV.start':
+            try:
+                keeper_fn = globals().get(
+                    '_ensure_runtime_business_switch_keeper'
+                )
+                if callable(keeper_fn):
+                    keeper_fn(self_obj)
+            except BaseException:
+                pass
         if is_run_cycle and not strict_planting_rollout:
             try:
                 summary_fn = globals().get('_daily_flow_log_user_summary')
@@ -47653,7 +49687,11 @@ def _patch_runtime_start_diagnostics_for_module(m, tag=''):
                 if not callable(old):
                     continue
                 route_label = class_name + '.' + method_name
-                if not _qqfarm_legacy_wrapper_allowed(route_label):
+                legacy_allowed_fn = globals().get(
+                    '_qqfarm_legacy_wrapper_allowed'
+                )
+                if callable(legacy_allowed_fn) and not bool(
+                        legacy_allowed_fn(route_label)):
                     continue
                 new, ok = _wrap_runtime_diag_method(old, route_label)
                 if ok:
@@ -54095,7 +56133,13 @@ def _patch_loaded(tag=''):
         # _patch_loaded() also runs from the recurring Qt maintenance timer.
         # GUI, config, targeted-share, daily-flow, and start infrastructure
         # below remain available to the root portable assistant in both modes.
-        if _qqfarm_legacy_farm_friend_wrappers_enabled():
+        legacy_wrapper_enabled_fn = globals().get(
+            '_qqfarm_legacy_farm_friend_wrappers_enabled'
+        )
+        if (
+                bool(legacy_wrapper_enabled_fn())
+                if callable(legacy_wrapper_enabled_fn) else True
+        ):
             try:
                 _friend_radish_diag_dump(tag)
             except BaseException:
@@ -54343,6 +56387,11 @@ def _note_runtime_cycle_branch(message):
             return ''
         if context is not None:
             setattr(context, '_qqfarm_cycle_branch_hint', branch)
+        rescue_state = globals().get('_QQFARM_PATROL_RESCUE_GLOBAL_STATE')
+        if isinstance(rescue_state, dict):
+            rescue_state['pending'] = False
+            rescue_state['consumed'] = False
+            rescue_state['held'] = False
         return branch
     except BaseException:
         return ''
@@ -54703,7 +56752,97 @@ def _install_runtime_log_patch():
             return False
         orig_warning = getattr(Logger, 'warning')
         orig_info = getattr(Logger, 'info')
+        def _farmbot_context_from_stack():
+            try:
+                frame = __import__('inspect').currentframe()
+                for _index in range(14):
+                    frame = getattr(frame, 'f_back', None)
+                    if frame is None:
+                        break
+                    candidate = frame.f_locals.get('self')
+                    if candidate is not None and candidate.__class__.__name__ == 'FarmBotCV':
+                        return candidate
+            except BaseException:
+                pass
+            return None
+        def _cycle_stack_probe(message):
+            try:
+                text = str(message or '')
+                if '开始新一轮巡检' not in text and '寮€濮嬫柊涓€杞' not in text:
+                    return
+                now_value = float(__import__('time').time())
+                last_value = float(globals().get(
+                    '_QQFARM_LAST_EMPTY_CYCLE_STACK_PROBE_TS', 0.0
+                ) or 0.0)
+                if last_value > 0.0 and now_value - last_value < 30.0:
+                    return
+                globals()['_QQFARM_LAST_EMPTY_CYCLE_STACK_PROBE_TS'] = now_value
+                inspect_module = __import__('inspect')
+                frame = inspect_module.currentframe()
+                rows = []
+                for _index in range(12):
+                    frame = getattr(frame, 'f_back', None)
+                    if frame is None:
+                        break
+                    local_self = frame.f_locals.get('self')
+                    row = (
+                        str(frame.f_globals.get('__name__', '')) + '.' +
+                        str(getattr(frame.f_code, 'co_name', ''))
+                    )
+                    if local_self is not None:
+                        row += (
+                            '[' + local_self.__class__.__name__ + ' ' +
+                            _runtime_business_switch_snapshot(local_self) + ']'
+                        )
+                        try:
+                            method_details = []
+                            for method_name in (
+                                    'run_cycle', 'process_self_farm',
+                                    'process_friend_farm', 'handle_home_planting'):
+                                method = getattr(local_self, method_name, None)
+                                if callable(method):
+                                    try:
+                                        signature = str(inspect_module.signature(method))
+                                    except BaseException:
+                                        signature = '(signature-unavailable)'
+                                    method_details.append(method_name + signature)
+                            if method_details:
+                                row += ' methods=' + repr(method_details)
+                        except BaseException:
+                            pass
+                    try:
+                        selected_locals = {}
+                        native_start_frame = bool(
+                            str(frame.f_globals.get('__name__', '')).startswith('utils.')
+                            and str(getattr(frame.f_code, 'co_name', '')) == 'start'
+                        )
+                        for local_name, local_value in list(frame.f_locals.items()):
+                            low_name = str(local_name).lower()
+                            if not native_start_frame and not any(token in low_name for token in (
+                                    'enable', 'process', 'self', 'friend', 'cycle',
+                                    'round', 'daily', 'interval', 'capture', 'frame')):
+                                continue
+                            if isinstance(local_value, (bool, int, float, str, type(None))):
+                                selected_locals[str(local_name)] = local_value
+                        if selected_locals:
+                            row += ' locals=' + repr(selected_locals)[:2200]
+                    except BaseException:
+                        pass
+                    rows.append(row[:1800])
+                _write('v474 patrol log stack=' + ' <- '.join(rows)[:6000])
+            except BaseException as error:
+                try:
+                    _write('v474 patrol log stack error=' + repr(error)[:220])
+                except BaseException:
+                    pass
         def _patched_warning(self, msg, *args, **kwargs):
+            try:
+                rescue_fn = globals().get('_runtime_patrol_rescue_transition')
+                context = _farmbot_context_from_stack()
+                if callable(rescue_fn) and context is not None:
+                    rescue_fn(context, msg)
+            except BaseException:
+                pass
             try:
                 _note_runtime_cycle_branch(msg)
             except BaseException:
@@ -54731,6 +56870,14 @@ def _install_runtime_log_patch():
                 return orig_info(self, new_msg, **kwargs)
             return orig_warning(self, display_msg, *args, **kwargs)
         def _patched_info(self, msg, *args, **kwargs):
+            try:
+                rescue_fn = globals().get('_runtime_patrol_rescue_transition')
+                context = _farmbot_context_from_stack()
+                if callable(rescue_fn) and context is not None:
+                    rescue_fn(context, msg)
+            except BaseException:
+                pass
+            _cycle_stack_probe(msg)
             try:
                 _note_runtime_cycle_branch(msg)
             except BaseException:

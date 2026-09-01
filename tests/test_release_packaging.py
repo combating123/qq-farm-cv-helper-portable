@@ -80,11 +80,13 @@ class ReleasePackagingTests(unittest.TestCase):
             (source / "hook.py.backup-20260810").write_text("old", encoding="utf-8")
             for dirname in (
                 "UserData", "logs", "backups", "artifacts", "diagnostics",
-                "maintenance-backup", "legacy-runtime",
+                "maintenance-backup", "legacy-runtime", ".analysis", ".codex", ".git",
             ):
                 folder = source / dirname
                 folder.mkdir()
                 (folder / "private.txt").write_text("private", encoding="utf-8")
+            (source / ".latest_v477_backup_path").write_text("private", encoding="utf-8")
+            (source / "diagnose_windows.json").write_text("private", encoding="utf-8")
 
             completed = subprocess.run(
                 [
@@ -107,8 +109,11 @@ class ReleasePackagingTests(unittest.TestCase):
                 forbidden = (
                     "UserData/", "logs/", "backups/", "artifacts/",
                     "diagnostics/", "maintenance-backup/", "legacy-runtime/",
+                    ".analysis/", ".codex/", ".git/",
                 )
                 self.assertFalse(any(name.startswith(forbidden) for name in names))
+                self.assertNotIn(".latest_v477_backup_path", names)
+                self.assertNotIn("diagnose_windows.json", names)
                 self.assertNotIn("desktop-current.png", names)
                 self.assertNotIn("_analysis_board_crop.png", names)
                 self.assertNotIn("old-launch.lnk", names)

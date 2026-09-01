@@ -45,6 +45,8 @@ $MigrationMarker = Join-Path $PortableProfileRoot 'migration-v1.complete'
 $LogDir = Join-Path $AppDir 'logs'
 $HookLogDir = Join-Path $AppDir 'logs'
 $Exe = Join-Path $AppDir 'QQFarmCVHelper.exe'
+$KernelGuardPath = Join-Path $LogDir 'kernel_pool_guard.flag'
+$KernelWatchdogScript = Join-Path $AppDir 'resource_watchdog.ps1'
 $ExcludedDirs = @('logs','models','screenshots','captures','cache','__pycache__','crash')
 
 function Show-LauncherMessage([string]$Text, [int]$Icon = 64) {
@@ -286,6 +288,78 @@ function Write-WatchdogLog([string]$Message) {
     } catch {}
 }
 
+function Start-KernelPoolWatchdog([int]$TargetPid) {
+    try {
+        if (!(Test-Path -LiteralPath $KernelWatchdogScript -PathType Leaf)) {
+            Write-WatchdogLog 'resource_watchdog_missing action=skip'
+            return $null
+        }
+        return Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -PassThru -ArgumentList @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $KernelWatchdogScript,
+            '-TargetPid', [string]$TargetPid,
+            '-GuardPath', $KernelGuardPath,
+            '-LogPath', (Join-Path $LogDir 'resource_watchdog.log'),
+            '-WarnMB', '2048', '-TripMB', '3072', '-IntervalSeconds', '10'
+        )
+    } catch {
+        Write-WatchdogLog ('resource_watchdog_start_error=' + $_.Exception.Message)
+        return $null
+    }
+}
+
+function Stop-KernelPoolWatchdog([System.Diagnostics.Process]$Watchdog) {
+    if ($null -eq $Watchdog) { return }
+    try {
+        $Watchdog.Refresh()
+        if (!$Watchdog.HasExited) {
+            Stop-Process -Id $Watchdog.Id -Force -ErrorAction SilentlyContinue
+        }
+    } catch {}
+}
+
+
+function Wait-AssistantBootstrapReady {
+    param(
+        [System.Diagnostics.Process]$Process,
+        [string]$HookLogPath,
+        [long]$StartingLength,
+        [int]$TimeoutMilliseconds = 8000
+    )
+
+    $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMilliseconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        try {
+            $Process.Refresh()
+            if ($Process.HasExited) { return $false }
+        } catch {
+            return $false
+        }
+
+        try {
+            if (Test-Path -LiteralPath $HookLogPath -PathType Leaf) {
+                $stream = [IO.File]::Open($HookLogPath, 'Open', 'Read', 'ReadWrite')
+                try {
+                    if ($stream.Length -gt $StartingLength) {
+                        [void]$stream.Seek($StartingLength, 'Begin')
+                        $reader = New-Object IO.StreamReader($stream, [Text.Encoding]::UTF8)
+                        try { $newText = $reader.ReadToEnd() } finally { $reader.Dispose() }
+                        if ($newText -match 'runtime logging info/warning patch installed') {
+                            return $true
+                        }
+                    }
+                } finally {
+                    $stream.Dispose()
+                }
+            }
+        } catch {}
+        Start-Sleep -Milliseconds 100
+    }
+    return $false
+}
+
+
+if ($NoLaunch) { exit 0 }
+
 New-Item -ItemType Directory -Force -Path `
     $LogDir, $HookLogDir, $PortableProfileRoot, $PortableLocalAppData, $PortableAppData, $PortableTemp, $LegacyProfile, $CurrentProfile | Out-Null
 [void](Initialize-PortableProfile `
@@ -312,6 +386,7 @@ $env:QQFARM_STRICT_PLANTING_ROLLOUT = '1'
 $env:QQFARM_DAILY_FLOW_STATUS_PATH = Join-Path $CurrentProfile 'daily_flow_status.json'
 $env:QQFARM_DAILY_COUNTERS_PATH = Join-Path $CurrentProfile 'daily_counters.json'
 $env:QQFARM_PROXY_LOG_PATH = Join-Path $LogDir 'proxy_dll_load.log'
+$env:QQFARM_KERNEL_GUARD_PATH = $KernelGuardPath
 $env:QQFARM_MAX_NATIVE_THREADS = '2'
 $env:QQFARM_CPU_AFFINITY_CORES = '4'
 # Cap native CV/OCR worker pools before the elevated executable starts.
@@ -323,8 +398,23 @@ $env:OPENCV_FOR_THREADS_NUM = '2'
 $env:ORT_INTRA_OP_NUM_THREADS = '2'
 $env:ORT_INTER_OP_NUM_THREADS = '1'
 $env:OMP_WAIT_POLICY = 'PASSIVE'
+# Native WGC/DWM resources are guarded independently of user-mode RSS.  The
+# helper samples total nonpaged pool every 10 seconds and stops opening new WGC
+# sessions before the historical runaway range is reached.
+$env:QQFARM_NONPAGED_WARN_MB = '2048'
+$env:QQFARM_NONPAGED_TRIP_MB = '3072'
+$env:QQFARM_WGC_REBUILD_WINDOW_SECONDS = '300'
+$env:QQFARM_WGC_REBUILD_MAX_PER_WINDOW = '3'
+$env:QQFARM_WGC_REBUILD_COOLDOWN_SECONDS = '30'
+$env:QQFARM_WGC_REBUILD_BURST_COOLDOWN_SECONDS = '300'
 if (!(Test-Path -LiteralPath $Exe -PathType Leaf)) { throw "Missing main program: $Exe" }
-if ($NoLaunch) { exit 0 }
+if (Test-Path -LiteralPath $KernelGuardPath -PathType Leaf) {
+    Remove-Item -LiteralPath $KernelGuardPath -Force -ErrorAction SilentlyContinue
+}
+$StartupClockBridgePath = Join-Path $AppDir 'startup_clock_bridge.ps1'
+if (Test-Path -LiteralPath $StartupClockBridgePath -PathType Leaf) {
+    . $StartupClockBridgePath
+}
 
 # Double-clicking the shortcut while the assistant is loading used to kill the
 # still-initialising window.  The normal entry now preserves it; only an
@@ -357,14 +447,42 @@ $lastExitCode = 0
 
 while ($true) {
     $startedAt = Get-Date
-    $assistantProcess = Start-Process -FilePath $Exe -WorkingDirectory $AppDir -PassThru
+    $hookLogPath = Join-Path $HookLogDir 'hook_runtime_log.txt'
+    $hookLogStartingLength = 0
+    try {
+        if (Test-Path -LiteralPath $hookLogPath -PathType Leaf) {
+            $hookLogStartingLength = (Get-Item -LiteralPath $hookLogPath).Length
+        }
+    } catch {}
+    $assistantProcess = $null
+    $kernelWatchdog = $null
+    $clockContext = $null
+    $bootstrapReady = $false
+    try {
+        if ((Get-Command Test-StartupClockBridgeRequired -ErrorAction SilentlyContinue) -and
+                (Test-StartupClockBridgeRequired -Now (Get-Date) -SupportedDate ([datetime]'2026-08-20'))) {
+            Write-WatchdogLog 'startup_clock_bridge action=enter supportedDate=2026-08-20'
+            $clockContext = Enter-StartupClockBridge -SupportedDate ([datetime]'2026-08-20')
+        }
+        $assistantProcess = Start-Process -FilePath $Exe -WorkingDirectory $AppDir -PassThru
+        $kernelWatchdog = Start-KernelPoolWatchdog -TargetPid $assistantProcess.Id
+        $bootstrapReady = Wait-AssistantBootstrapReady -Process $assistantProcess `
+            -HookLogPath $hookLogPath -StartingLength $hookLogStartingLength
+    } finally {
+        if ($null -ne $clockContext) {
+            Exit-StartupClockBridge -Context $clockContext
+            Write-WatchdogLog ('startup_clock_bridge action=restore bootstrapReady=' + $bootstrapReady)
+        }
+    }
     [void](Set-AssistantProcessLimits $assistantProcess)
     Write-WatchdogLog (
         'started pid=' + $assistantProcess.Id +
-        ' consecutiveCrashCount=' + $consecutiveCrashCount
+        ' consecutiveCrashCount=' + $consecutiveCrashCount +
+        ' clockMode=process-local'
     )
 
     $assistantProcess.WaitForExit()
+    Stop-KernelPoolWatchdog -Watchdog $kernelWatchdog
     try { $assistantProcess.Refresh() } catch {}
     $lastExitCode = [int]$assistantProcess.ExitCode
     $runtimeSeconds = [int]((Get-Date) - $startedAt).TotalSeconds

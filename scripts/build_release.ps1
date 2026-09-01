@@ -5,6 +5,22 @@
 )
 $ErrorActionPreference = 'Stop'
 
+function Get-Sha256Hex([string]$Path) {
+    $algorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [System.IO.File]::OpenRead($Path)
+        try {
+            return ([System.BitConverter]::ToString(
+                $algorithm.ComputeHash($stream)
+            )).Replace('-', '').ToUpperInvariant()
+        } finally {
+            $stream.Dispose()
+        }
+    } finally {
+        $algorithm.Dispose()
+    }
+}
+
 if (-not $Version) {
     $Version = (Get-Content -LiteralPath (Join-Path $PSScriptRoot '..\VERSION') -Raw -Encoding UTF8).Trim()
 }
@@ -27,7 +43,7 @@ if (Test-Path -LiteralPath $stageFull) {
 }
 New-Item -ItemType Directory -Force -Path $stageFull | Out-Null
 
-$excludedDirs = @('UserData', 'logs', '__pycache__', 'screenshots', 'captures', 'cache', 'crash', 'backups', 'artifacts', 'diagnostics', 'maintenance-backup', 'legacy-runtime', 'deployment-backups', 'migration-archive')
+$excludedDirs = @('UserData', 'logs', '__pycache__', 'screenshots', 'captures', 'cache', 'crash', 'backups', 'artifacts', 'diagnostics', 'maintenance-backup', 'legacy-runtime', 'deployment-backups', 'migration-archive', '.analysis', '.codex', '.git')
 $sourcePrefixLength = $source.TrimEnd('\').Length + 1
 Get-ChildItem -LiteralPath $source -Recurse -File -Force | ForEach-Object {
     $relative = $_.FullName.Substring($sourcePrefixLength)
@@ -39,6 +55,8 @@ Get-ChildItem -LiteralPath $source -Recurse -File -Force | ForEach-Object {
         $_.Name -like '_analysis*.png' -or
         $_.Name -like 'live-*.png' -or
         $_.Name -like 'annotated-*.png' -or
+        $_.Name -like '.latest_*' -or
+        $_.Name -like 'diagnose_*.json' -or
         $_.Name -eq 'StartFarmAssistant-Clean.ps1'
     )) { return }
     $target = Join-Path $stageFull $relative
@@ -90,7 +108,7 @@ $projectInfo = @(
 
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 Compress-Archive -Path (Join-Path $stageFull '*') -DestinationPath $zip -CompressionLevel Optimal
-$hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash
+$hash = Get-Sha256Hex -Path $zip
 [IO.File]::WriteAllText($hashFile, ($hash + '  ' + [IO.Path]::GetFileName($zip) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
 Remove-Item -LiteralPath $stageFull -Recurse -Force
 [pscustomobject]@{ Version = $Version; Zip = $zip; Sha256 = $hash; Bytes = (Get-Item -LiteralPath $zip).Length }

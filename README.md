@@ -4,7 +4,7 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.56-32C98A?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.57-32C98A?style=flat-square)](#版本与更新)
   [![Status](https://img.shields.io/badge/状态-稳定版本-17345F?style=flat-square)](#快速开始)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
@@ -248,13 +248,15 @@ CV农场助手/
 
 ## 版本与更新
 
-当前发布版本为 **v1.4.56（2026-08-20）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
+当前发布版本为 **v1.4.57（2026-09-01）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
 
 | 版本 | 面向使用者的主要更新 |
 | --- | --- |
+| **v1.4.57** | 修复隐藏/恢复后的 DPI 与 WGC/PrintWindow 捕获、连续空巡检、免费福利 3/3 重试和不完整 2×2 普通种子回退问题；保留 GUI、配置与 UserData |
 | **v1.4.56** | 提升隐藏小程序后台恢复、护主犬识别强度适配和自动出售入口兼容性；保留现有 GUI、用户设置与 UserData |
-| **v1.4.55** | ????????????????????????????????????????????????? |
-| **v1.4.54** | ??????????????????????????????????????????????? |
+| **v1.4.55** | 恢复每日刷萝卜经验模式，原生检查入口缺失时按已保存的种植设置继续判断 |
+| **v1.4.54** | 修复停止运行完成回调被拦截导致按钮长期灰色、无法再次启动的问题 |
+| **v1.4.53** | 修复好友任务完成后停留在好友农场并持续空巡检，增加有界返回自家确认 |
 | **v1.4.52** | 修复部分窗口缩放下好友农场被误判，导致长时间只有巡检日志但画面没有动作的问题 |
 | **v1.4.51** | 修复四宫格种子确认按钮可用却没有完成播种，以及确认层未关闭时重复打开背包的问题 |
 | **v1.4.50** | 修复好友底部入口点击后页面未切换却反复处理同一好友的问题，增加真实页面切换确认与有界收敛 |
