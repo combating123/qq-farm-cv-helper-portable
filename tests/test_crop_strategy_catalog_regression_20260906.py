@@ -209,6 +209,62 @@ class CropStrategyCatalogRegressionTests(unittest.TestCase):
         ))
         self.assertEqual(["晚香玉"], calls)
 
+    def test_native_level_catalog_result_is_corrected_before_strategy_log(self):
+        namespace = load_functions(
+            "_qqfarm_v233_authoritative_crop_for_level",
+            "_qqfarm_crop_card_matches_target",
+            "_qqfarm_correct_native_crop_catalog_result",
+        )
+        namespace["_write"] = lambda _message: None
+
+        corrected = namespace["_qqfarm_correct_native_crop_catalog_result"](
+            "菠萝蜜",
+            134,
+            strategy="auto_detect_level",
+            name="fixture.get_best_crop_for_level",
+        )
+
+        self.assertEqual("晚香玉", corrected)
+
+    def test_native_level_catalog_result_preserves_explicit_crop_strategy(self):
+        namespace = load_functions(
+            "_qqfarm_v233_authoritative_crop_for_level",
+            "_qqfarm_crop_card_matches_target",
+            "_qqfarm_correct_native_crop_catalog_result",
+        )
+
+        corrected = namespace["_qqfarm_correct_native_crop_catalog_result"](
+            "菠萝蜜",
+            134,
+            strategy="fixed_crop",
+            name="fixture.get_best_crop_for_level",
+        )
+
+        self.assertEqual("菠萝蜜", corrected)
+
+    def test_native_level_catalog_wrapper_preserves_result_shape(self):
+        namespace = load_functions(
+            "_qqfarm_v233_authoritative_crop_for_level",
+            "_qqfarm_crop_card_matches_target",
+            "_qqfarm_correct_native_crop_catalog_result",
+            "_wrap_native_crop_catalog_result_func",
+        )
+        namespace["_write"] = lambda _message: None
+
+        def native(level, strategy="auto_detect_level"):
+            return ("菠萝蜜", 0.0803, level)
+
+        wrapped, changed = namespace["_wrap_native_crop_catalog_result_func"](
+            native,
+            "fixture.get_best_crop_for_level",
+        )
+
+        self.assertTrue(changed)
+        self.assertEqual(
+            ("晚香玉", 0.0803, 134),
+            wrapped(134, strategy="auto_detect_level"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

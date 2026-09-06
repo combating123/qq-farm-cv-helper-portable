@@ -15544,6 +15544,154 @@ def _qqfarm_correct_crop_name_for_level(bot, crop_name, name=''):
     return current_crop
 
 
+def _qqfarm_correct_native_crop_catalog_result(
+    result, level, strategy='', name=''
+):
+    """Correct a stale native catalog result before strategy logging."""
+    expected_crop = _qqfarm_v233_authoritative_crop_for_level(level)
+    if not expected_crop:
+        return result
+    strategy_text = str(strategy or '').strip().casefold()
+    explicit_strategy = any(
+        token in strategy_text
+        for token in ('指定', '自定义', 'fixed', 'preferred', 'designated')
+    )
+    if explicit_strategy:
+        return result
+
+    def replace_name(value):
+        if not isinstance(value, str):
+            return value, False
+        current = value.strip()
+        if not current or current in ('白萝卜', '萝卜'):
+            return value, False
+        if _qqfarm_crop_card_matches_target(current, expected_crop):
+            return value, False
+        return expected_crop, True
+
+    changed = False
+    corrected = result
+    if isinstance(result, str):
+        corrected, changed = replace_name(result)
+    elif isinstance(result, tuple) and result:
+        first, changed = replace_name(result[0])
+        if changed:
+            corrected = (first,) + result[1:]
+    elif isinstance(result, list) and result:
+        first, changed = replace_name(result[0])
+        if changed:
+            corrected = [first] + result[1:]
+    elif isinstance(result, dict):
+        corrected = dict(result)
+        for key in ('crop_name', 'name', 'crop', 'target_crop'):
+            if key not in corrected:
+                continue
+            value, item_changed = replace_name(corrected.get(key))
+            if item_changed:
+                corrected[key] = value
+                changed = True
+                break
+    if changed:
+        try:
+            _write(
+                'v233 native crop catalog correction: level=' + str(level) +
+                ' -> ' + expected_crop + ' strategy=' + str(strategy) +
+                ' name=' + str(name)
+            )
+        except BaseException:
+            pass
+    return corrected
+
+
+def _wrap_native_crop_catalog_result_func(fn, name=''):
+    """Correct the native level-crop selector before its caller logs the crop."""
+    if not callable(fn):
+        return fn, False
+    if getattr(fn, '__qqfarm_native_crop_catalog_result_wrapped__', False):
+        return fn, False
+
+    def _wrapped(*args, **kwargs):
+        try:
+            bound_owner = getattr(fn, '__self__', None)
+        except BaseException:
+            bound_owner = None
+        positional = list(args or ())
+        call_kwargs = dict(kwargs or {})
+        level = 0
+        for key in (
+            'level', 'player_level', 'current_level', 'user_level',
+            'level_value',
+        ):
+            if key in call_kwargs:
+                try:
+                    level = int(float(str(call_kwargs.get(key)).strip()))
+                except BaseException:
+                    level = 0
+                if 1 <= level <= 999:
+                    break
+        if not (1 <= level <= 999):
+            # Scan all positional values.  A top-level selector receives the
+            # level at position 0, while a class method receives ``self`` at
+            # position 0 and the level later; non-numeric owners are skipped.
+            for value in positional:
+                try:
+                    candidate = int(float(str(value).strip()))
+                except BaseException:
+                    continue
+                if 1 <= candidate <= 999:
+                    level = candidate
+                    break
+        if not (1 <= level <= 999) and bound_owner is not None:
+            try:
+                level_fn = globals().get('_qqfarm_crop_strategy_level')
+                if callable(level_fn):
+                    level = int(level_fn(bound_owner) or 0)
+            except BaseException:
+                level = 0
+
+        strategy = ''
+        for key in (
+            'strategy', 'crop_strategy', 'strategy_name', 'mode',
+            'planting_strategy',
+        ):
+            if key in call_kwargs and call_kwargs.get(key) not in (None, ''):
+                strategy = str(call_kwargs.get(key))
+                break
+        if not strategy:
+            for value in positional:
+                if not isinstance(value, str):
+                    continue
+                text = value.strip().casefold()
+                if any(token in text for token in (
+                    'auto', 'level', '指定', '自定义', 'fixed',
+                    'preferred', 'designated', '等级', '策略',
+                )):
+                    strategy = value
+                    break
+
+        result = fn(*args, **kwargs)
+        if not (1 <= level <= 999):
+            return result
+        try:
+            correct_fn = globals().get(
+                '_qqfarm_correct_native_crop_catalog_result'
+            )
+            if callable(correct_fn):
+                return correct_fn(result, level, strategy, name=name)
+        except BaseException:
+            pass
+        return result
+
+    try:
+        _wrapped.__name__ = getattr(fn, '__name__', 'native_crop_catalog')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__qqfarm_native_crop_catalog_result_wrapped__ = True
+        _wrapped.__qqfarm_native_crop_catalog_result_orig__ = fn
+    except BaseException:
+        pass
+    return _wrapped, True
+
+
 def _qqfarm_load_recent_player_level_snapshot(
     path='', now_ts=None, max_age_seconds=43200.0
 ):
@@ -50001,7 +50149,7 @@ def _wrap_native_v225_crop_catalog_planting_flow(fn, name=''):
 
 
 def _patch_native_v225_crop_catalog_for_module(module, tag=''):
-    """Patch only the native planting-flow owner, not the legacy wrapper set."""
+    """Patch the native crop selector and planting owner, not legacy wrappers."""
     try:
         module_name = str(getattr(module, '__name__', '') or '')
     except BaseException:
@@ -50033,6 +50181,58 @@ def _patch_native_v225_crop_catalog_for_module(module, tag=''):
             if ok:
                 setattr(owner, attr_name, new)
                 changed += 1
+        except BaseException:
+            continue
+    # The native selector runs before _run_planting_flow and is the source of
+    # the stale level-134 crop name seen in production.  Keep this exact-name
+    # scan narrow so explicit crop strategies and unrelated helpers are not
+    # intercepted.
+    selector_names = ('get_best_crop_for_level',)
+    selector_targets = [(module, name) for name in selector_names]
+    try:
+        for cls_name, obj in list(vars(module).items())[:500]:
+            if isinstance(obj, type):
+                selector_targets.extend((obj, name) for name in selector_names)
+    except BaseException:
+        pass
+    for owner, attr_name in selector_targets:
+        try:
+            identity = (id(owner), attr_name)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            if isinstance(owner, type):
+                raw = None
+                descriptor_type = ''
+                for base in getattr(owner, '__mro__', (owner,)):
+                    if attr_name in vars(base):
+                        raw = vars(base)[attr_name]
+                        break
+                if isinstance(raw, staticmethod):
+                    old = raw.__func__
+                    descriptor_type = 'staticmethod'
+                elif isinstance(raw, classmethod):
+                    old = raw.__func__
+                    descriptor_type = 'classmethod'
+                else:
+                    old = raw
+            else:
+                descriptor_type = ''
+                old = getattr(owner, attr_name, None)
+            if not callable(old):
+                continue
+            new, ok = _wrap_native_crop_catalog_result_func(
+                old, module_name + '.' + attr_name
+            )
+            if not ok:
+                continue
+            if descriptor_type == 'staticmethod':
+                setattr(owner, attr_name, staticmethod(new))
+            elif descriptor_type == 'classmethod':
+                setattr(owner, attr_name, classmethod(new))
+            else:
+                setattr(owner, attr_name, new)
+            changed += 1
         except BaseException:
             continue
     if changed:
