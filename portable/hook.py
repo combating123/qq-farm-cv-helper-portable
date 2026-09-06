@@ -50301,25 +50301,54 @@ def _wrap_native_v225_full_board_planting_preflight(fn, name=''):
             except BaseException:
                 ledger = None
 
+        # A single physical 24/0/0 frame must not override a newer empty-land
+        # observation from the same self pass.  In production this happens when
+        # PrintWindow/WGC returns the previous full-board frame just after the
+        # native detector has already reported a real empty plot.  Keep the
+        # planting owner active so it can obtain its normal fresh frame instead
+        # of clearing the pending latch and immediately visiting friends.
+        pending_empty_work = False
+        try:
+            pending_empty_work = bool(
+                getattr(self, '_qqfarm_home_empty_land_pending', False) or
+                int(getattr(self, '_qqfarm_home_empty_land_remaining', 0) or 0) > 0 or
+                getattr(self, '_qqfarm_home_visual_recheck_required', False) or
+                getattr(self, '_qqfarm_post_harvest_pending', False) or
+                getattr(self, '_qqfarm_single_harvest_planting_pending', False)
+            )
+        except BaseException:
+            pending_empty_work = True
+        if (
+                pending_empty_work and
+                _qqfarm_is_native_full_board_observation(ledger)
+        ):
+            try:
+                _write(
+                    'v481 native full-board preflight conflicted with pending '
+                    'empty-land work; delegated to fresh native planting path'
+                )
+            except BaseException:
+                pass
+            return fn(self, *args, **kwargs)
         if _qqfarm_is_native_full_board_observation(ledger):
-            _qqfarm_clear_native_full_board_planting_state(self)
             message = (
-                'v433 native-runtime full board preflight skipped home planting; '
-                'occupied=24 empty=0 unknown=0; native OCR/strategy not entered'
+                'v481 native-runtime full-board observation-only; delegated '
+                'native planting path occupied=24 empty=0 unknown=0'
             )
             try:
                 throttled = globals().get('_throttled_write')
                 if callable(throttled):
-                    throttled('v433-native-full-board-preflight', message, 30.0)
+                    throttled('v481-native-full-board-observation', message, 30.0)
                 else:
                     write_fn = globals().get('_write')
                     if callable(write_fn):
                         write_fn(message)
             except BaseException:
                 pass
-            # Native handlers use a falsey result for "no planting action".
-            # The surrounding self/friend scheduler remains in charge of routing.
-            return False
+            # A single physical frame is observation only. Let the native
+            # planting owner perform its own fresh detection and post-action
+            # verification instead of releasing the self route here.
+            return fn(self, *args, **kwargs)
         return fn(self, *args, **kwargs)
 
     try:
