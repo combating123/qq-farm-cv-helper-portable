@@ -45708,6 +45708,51 @@ def _wrap_vip_business_func(fn, name=''):
         return fn, False
 
 
+def _friend_guard_visual_stability_signature(frame):
+    """Build a compact signature for deciding whether a friend page really moved."""
+    if frame is None:
+        return None
+    try:
+        identity_fn = globals().get('_qqfarm_friend_navigation_identity')
+        if callable(identity_fn):
+            identity = identity_fn(frame)
+            if isinstance(identity, dict):
+                card = identity.get('card')
+                page = identity.get('page')
+                if card is not None or page is not None:
+                    return ('friend-navigation-v1', repr(card), repr(page))
+    except BaseException:
+        pass
+    try:
+        numpy_module = __import__('numpy')
+        hashlib_module = __import__('hashlib')
+        array = numpy_module.asarray(frame)
+        shape = getattr(array, 'shape', None)
+        if not shape or len(shape) < 2:
+            return None
+        height, width = int(shape[0]), int(shape[1])
+        if height < 80 or width < 80:
+            return None
+        # Use the stable content area and exclude the bottom carousel controls.
+        top = max(0, int(height * 0.04))
+        bottom = max(top + 1, int(height * 0.82))
+        left = max(0, int(width * 0.02))
+        right = max(left + 1, int(width * 0.98))
+        crop = array[top:bottom, left:right]
+        if getattr(crop, 'ndim', 0) >= 3:
+            crop = crop[..., :3]
+        row_step = max(1, int(crop.shape[0] // 24))
+        col_step = max(1, int(crop.shape[1] // 32))
+        sample = numpy_module.asarray(crop[::row_step, ::col_step])
+        quantized = (
+            numpy_module.asarray(sample, dtype='uint8') & 0xF0
+        ).tobytes()
+        digest = hashlib_module.sha256(quantized).hexdigest()[:24]
+        return ('friend-visual-v1', height, width, digest)
+    except BaseException:
+        return None
+
+
 def _wrap_friend_guard_continuous_poll_func(fn, name=''):
     """Throttle only new empty friend rounds, not the active friend chain."""
     try:
@@ -45763,7 +45808,174 @@ def _wrap_friend_guard_continuous_poll_func(fn, name=''):
                     }
                 except BaseException:
                     dispatch_before = {}
+            # A compiled friend dispatcher can return success and advance its
+            # cursor while the window capture is still the exact same frame.
+            # Keep a visual baseline around the call so those optimistic
+            # transitions can be rolled back before the next patrol tick.
+            visual_before_signature = None
+            visual_capture_fn = globals().get('_get_frame_from_bot')
+            visual_signature_fn = globals().get(
+                '_friend_guard_visual_stability_signature'
+            )
+            durable_before = None
+            cursor_transaction_before = {}
+            if context is not None:
+                try:
+                    for field_name in (
+                        '_qqfarm_friend_list_visit_cursor',
+                        '_qqfarm_friend_list_pending_cursor',
+                        '_qqfarm_friend_chain_count',
+                        '_qqfarm_friend_chain_last_nav_label',
+                        '_qqfarm_friend_entry_pending',
+                        '_qqfarm_friend_entry_clicked_ts',
+                        '_qqfarm_friend_entry_retry_count',
+                        '_qqfarm_friend_entry_last_retry_ts',
+                        '_qqfarm_friend_next_entry_pending_identity',
+                        '_qqfarm_friend_chain_pending',
+                        '_qqfarm_friend_chain_active',
+                        '_qqfarm_friend_chain_exhausted',
+                        '_qqfarm_friend_chain_allow_home',
+                        '_qqfarm_visual_friend_count',
+                        '_qqfarm_friend_action_last_ts',
+                        '_qqfarm_friend_action_last_label',
+                    ):
+                        if hasattr(context, field_name):
+                            cursor_transaction_before[field_name] = getattr(
+                                context, field_name
+                            )
+                except BaseException:
+                    cursor_transaction_before = {}
+                try:
+                    if callable(visual_capture_fn):
+                        before_visual_frame = visual_capture_fn(context)
+                    else:
+                        before_visual_frame = None
+                    if callable(visual_signature_fn):
+                        visual_before_signature = visual_signature_fn(
+                            before_visual_frame
+                        )
+                except BaseException:
+                    visual_before_signature = None
+                try:
+                    durable_fn = globals().get(
+                        '_qqfarm_native_friend_help_durable_snapshot'
+                    )
+                    if callable(durable_fn):
+                        durable_before = max(0, int(durable_fn(context)))
+                except BaseException:
+                    durable_before = None
             result = fn(*a, **k)
+            visual_after_signature = None
+            durable_after = None
+            try:
+                if context is not None and callable(visual_capture_fn):
+                    after_visual_frame = visual_capture_fn(context)
+                else:
+                    after_visual_frame = None
+                if callable(visual_signature_fn):
+                    visual_after_signature = visual_signature_fn(
+                        after_visual_frame
+                    )
+            except BaseException:
+                visual_after_signature = None
+            try:
+                if context is not None:
+                    durable_fn = globals().get(
+                        '_qqfarm_native_friend_help_durable_snapshot'
+                    )
+                    if callable(durable_fn):
+                        durable_after = max(0, int(durable_fn(context)))
+            except BaseException:
+                durable_after = None
+            try:
+                claimed_cursor_progress = bool(
+                    cursor_transaction_before
+                    and any(
+                        getattr(context, field_name, None) != value
+                        for field_name, value in cursor_transaction_before.items()
+                    )
+                ) if context is not None else False
+                visual_unchanged = bool(
+                    visual_before_signature is not None
+                    and visual_after_signature is not None
+                    and visual_before_signature == visual_after_signature
+                )
+                durable_confirmed = bool(
+                    durable_before is not None
+                    and durable_after is not None
+                    and durable_after > durable_before
+                )
+                claimed_live_transition = bool(
+                    claimed_cursor_progress
+                    or (
+                        context is not None
+                        and (
+                            float(getattr(
+                                context, '_qqfarm_friend_action_last_ts', 0.0
+                            ) or 0.0) >
+                            float(dispatch_before.get('action_ts', 0.0) or 0.0)
+                            or int(getattr(
+                                context, '_qqfarm_friend_chain_count', 0
+                            ) or 0) >
+                            int(dispatch_before.get('nav_count', 0) or 0)
+                            or float(getattr(
+                                context, '_qqfarm_friend_entry_clicked_ts', 0.0
+                            ) or 0.0) >
+                            float(dispatch_before.get(
+                                'entry_clicked_ts', 0.0
+                            ) or 0.0)
+                        )
+                    )
+                )
+                # Missing captures/signatures are not proof of a real
+                # transition.  The native dispatcher is allowed to report a
+                # truthy result, but the patrol must keep the same friend
+                # pending until a fresh frame or durable counter growth is
+                # observed.
+                visual_unconfirmed = bool(
+                    claimed_live_transition
+                    and not durable_confirmed
+                    and (
+                        visual_before_signature is None
+                        or visual_after_signature is None
+                        or visual_unchanged
+                    )
+                )
+                if (
+                    context is not None
+                    and visual_unconfirmed
+                    and cursor_transaction_before
+                ):
+                    for field_name, value in cursor_transaction_before.items():
+                        try:
+                            setattr(context, field_name, value)
+                        except BaseException:
+                            pass
+                    setattr(
+                        context,
+                        '_qqfarm_friend_dispatch_visual_unconfirmed',
+                        True,
+                    )
+                    setattr(
+                        context,
+                        '_qqfarm_friend_dispatch_visual_signature',
+                        visual_before_signature,
+                    )
+                    _write(
+                        'v482 friend dispatch visual unconfirmed; rolled back '
+                        'claimed progress cursor=' + str(cursor_transaction_before.get(
+                            '_qqfarm_friend_list_visit_cursor', 0
+                        ))
+                    )
+                    return False
+                if context is not None:
+                    setattr(
+                        context,
+                        '_qqfarm_friend_dispatch_visual_unconfirmed',
+                        False,
+                    )
+            except BaseException:
+                pass
             # A return value only proves that the compiled dispatcher finished;
             # it does not prove a current friend had an executable action.  Keep
             # this round open solely for a live chain, a just-clicked entry, or
@@ -51061,8 +51273,43 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
         pass
 
     def _wrapped(self, *args, **kwargs):
+        # v481: a native friend pass can report a normal return while the
+        # selected card never changed. Keep cursor-like state transactional so
+        # a stale frame cannot fabricate 3/12, 4/12, ... 12/12.
+        cursor_fields = (
+            '_qqfarm_friend_list_visit_cursor',
+            '_qqfarm_friend_list_pending_cursor',
+            '_qqfarm_friend_chain_count',
+            '_qqfarm_friend_chain_last_nav_label',
+            '_qqfarm_friend_entry_pending',
+            '_qqfarm_friend_entry_clicked_ts',
+            '_qqfarm_friend_entry_retry_count',
+            '_qqfarm_friend_entry_last_retry_ts',
+            '_qqfarm_friend_next_entry_pending_identity',
+            '_qqfarm_visual_friend_count',
+            '_qqfarm_friend_action_last_ts',
+            '_qqfarm_friend_action_last_label',
+        )
+        cursor_before = {}
+        for field_name in cursor_fields:
+            try:
+                if hasattr(self, field_name):
+                    cursor_before[field_name] = getattr(self, field_name)
+            except BaseException:
+                pass
+        previous_no_progress = None
+        try:
+            raw_previous = getattr(
+                self, '_qqfarm_native_friend_help_no_progress_guard', None
+            )
+            if isinstance(raw_previous, dict):
+                previous_no_progress = dict(raw_previous)
+        except BaseException:
+            previous_no_progress = None
         try:
             setattr(self, '_qqfarm_native_v225_friend_help_candidate', None)
+            setattr(self, '_qqfarm_native_friend_help_bridge_last_commit', None)
+            setattr(self, '_qqfarm_native_friend_help_action_pending', True)
         except BaseException:
             pass
 
@@ -51160,6 +51407,49 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
             ) else None
         except BaseException:
             pass
+
+        # Do not invoke native processing again while the same selected friend
+        # is still visible and the previous attempt produced no proof.
+        try:
+            previous_signature = previous_no_progress.get('signature')
+            previous_baseline = max(0, int(
+                previous_no_progress.get('durable_before', 0) or 0
+            )) if previous_no_progress is not None else None
+            same_page_unconfirmed = bool(
+                previous_no_progress is not None
+                and bool(previous_no_progress.get('unconfirmed'))
+                and previous_signature is not None
+                and card_signature is not None
+                and previous_signature == card_signature
+                and durable_before is not None
+                and previous_baseline is not None
+                and int(durable_before) <= previous_baseline
+            )
+        except BaseException:
+            same_page_unconfirmed = False
+        if same_page_unconfirmed:
+            try:
+                for field_name, value in cursor_before.items():
+                    setattr(self, field_name, value)
+                setattr(self, '_qqfarm_native_friend_help_action_pending', False)
+                setattr(self, '_qqfarm_friend_native_action_unverified', True)
+                setattr(self, '_qqfarm_native_friend_help_no_progress_guard', {
+                    **previous_no_progress,
+                    'last_skipped': True,
+                })
+            except BaseException:
+                pass
+            try:
+                write_fn = globals().get('_write')
+                if callable(write_fn):
+                    write_fn(
+                        'v481 friend-help same-page unconfirmed; native call '
+                        'skipped and friend cursor preserved signature=' +
+                        repr(card_signature)[:180]
+                    )
+            except BaseException:
+                pass
+            return False
 
         # The candidate helper records either a full visual proof or a guard-only
         # transaction.  In both cases the recorder sees the pre-native baseline.
@@ -51260,6 +51550,73 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                             'v445 native friend-help deferred reconcile queued=' +
                             str(scheduled)
                         )
+        except BaseException:
+            pass
+
+        # Reconcile this process call at the UI boundary. A native return or
+        # an optimistic log line is not completion proof. If the selected
+        # friend's fresh signature is unchanged and no durable confirmation
+        # occurred, restore the exact pre-call cursor state and remember the
+        # same-page failure for the next bounded patrol round.
+        try:
+            post_frame = (
+                capture_fn(self)
+                if callable(capture_fn)
+                else None
+            )
+            post_signature = (
+                signature_fn(post_frame)
+                if post_frame is not None and callable(signature_fn)
+                else None
+            )
+            bridge_commit = getattr(
+                self, '_qqfarm_native_friend_help_bridge_last_commit', None
+            )
+            confirmed = bool(
+                isinstance(bridge_commit, dict)
+                and bool(bridge_commit.get('confirmed'))
+                and int(bridge_commit.get('count', 0) or 0) >
+                int(durable_before or 0)
+            )
+            page_unchanged = bool(
+                card_signature is not None
+                and post_signature is not None
+                and card_signature == post_signature
+            )
+            if (
+                not confirmed
+                and page_unchanged
+                and isinstance(before_match, dict)
+                and bool(before_match.get('matched'))
+            ):
+                for field_name, value in cursor_before.items():
+                    try:
+                        setattr(self, field_name, value)
+                    except BaseException:
+                        pass
+                setattr(self, '_qqfarm_native_friend_help_no_progress_guard', {
+                    'unconfirmed': True,
+                    'signature': card_signature,
+                    'durable_before': max(0, int(durable_before or 0)),
+                })
+                write_fn = globals().get('_write')
+                if callable(write_fn):
+                    write_fn(
+                        'v481 friend-help no visual progress; keeping current '
+                        'friend cursor=' + str(cursor_before.get(
+                            '_qqfarm_friend_list_visit_cursor', 0
+                        ))
+                    )
+            elif confirmed or (
+                card_signature is not None
+                and post_signature is not None
+                and card_signature != post_signature
+            ):
+                setattr(self, '_qqfarm_native_friend_help_no_progress_guard', None)
+        except BaseException:
+            pass
+        try:
+            setattr(self, '_qqfarm_native_friend_help_action_pending', False)
         except BaseException:
             pass
         return result
@@ -57243,6 +57600,27 @@ def _rewrite_verified_share_failure_log_message(message):
         return message, False
 
 
+def _rewrite_pending_friend_help_log_message(message, context=None):
+    """Keep native optimistic friend-help logs pending until fresh proof."""
+    try:
+        if context is None or not bool(getattr(
+            context, '_qqfarm_native_friend_help_action_pending', False
+        )):
+            return message, False
+        text = str(message or '')
+        if '好友帮忙计数+1：' in text:
+            return '好友帮忙动作已发送，等待新画面确认（原生计数暂不提交）', True
+        if '已在底部入口目标好友页执行一键务农' in text:
+            return '好友帮忙动作已发送，等待新画面确认', True
+        if '已点击底部帮忙入口，准备处理第' in text:
+            return '已发送底部帮忙入口动作，等待新好友画面确认', True
+        if '检测到【一键务农】按钮，准备点击' in text:
+            return '检测到【一键务农】按钮，准备发送动作并等待画面确认', True
+    except BaseException:
+        pass
+    return message, False
+
+
 def _install_runtime_log_patch():
     global _RUNTIME_LOG_PATCHED
     if _RUNTIME_LOG_PATCHED:
@@ -57266,6 +57644,16 @@ def _install_runtime_log_patch():
                     candidate = frame.f_locals.get('self')
                     if candidate is not None and candidate.__class__.__name__ == 'FarmBotCV':
                         return candidate
+            except BaseException:
+                pass
+            # Native logger calls can be several frames deeper than the
+            # bounded stack walk (or can cross a compiled callback boundary).
+            # The active run-cycle owner is the same transaction context and
+            # is a stable fallback for pending-action log rewriting.
+            try:
+                active = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
+                if active is not None and active.__class__.__name__ == 'FarmBotCV':
+                    return active
             except BaseException:
                 pass
             return None
@@ -57363,7 +57751,12 @@ def _install_runtime_log_patch():
                 _note_runtime_planting_outcome(msg)
             except BaseException:
                 pass
-            share_msg, share_hit = _rewrite_verified_share_failure_log_message(msg)
+            friend_msg, friend_hit = _rewrite_pending_friend_help_log_message(
+                msg, context
+            )
+            share_msg, share_hit = _rewrite_verified_share_failure_log_message(
+                friend_msg
+            )
             fertilizer_msg, _fertilizer_hit = _rewrite_fertilizer_execution_log_message(share_msg)
             display_msg, planting_hit = _rewrite_unverified_planting_log_message(fertilizer_msg)
             if planting_hit:
@@ -57398,7 +57791,12 @@ def _install_runtime_log_patch():
                 _note_runtime_planting_outcome(msg)
             except BaseException:
                 pass
-            share_msg, _share_hit = _rewrite_verified_share_failure_log_message(msg)
+            friend_msg, _friend_hit = _rewrite_pending_friend_help_log_message(
+                msg, context
+            )
+            share_msg, _share_hit = _rewrite_verified_share_failure_log_message(
+                friend_msg
+            )
             fertilizer_msg, _fertilizer_hit = _rewrite_fertilizer_execution_log_message(share_msg)
             display_msg, planting_hit = _rewrite_unverified_planting_log_message(fertilizer_msg)
             if planting_hit:
