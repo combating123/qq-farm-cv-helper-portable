@@ -15398,6 +15398,152 @@ def _qqfarm_configured_player_level_floor(default=120):
     return int(_configured_player_level(default))
 
 
+def _qqfarm_v233_authoritative_crop_for_level(level):
+    """Return the crop unlocked at the highest known v2.3.3 level boundary."""
+    try:
+        current_level = int(float(str(level).strip()))
+    except BaseException:
+        return ''
+    if not 1 <= current_level <= 999:
+        return ''
+    catalog = (
+        (134, '晚香玉'),
+        (136, '人参'),
+        (138, '鳄梨'),
+        (140, '似血牡丹'),
+        (142, '文殊兰'),
+        (144, '郁金香'),
+        (146, '薰衣草'),
+        (148, '马蹄莲'),
+        (150, '蝴蝶兰'),
+        (152, '宝华玉兰'),
+        (154, '月季花'),
+        (156, '兰花'),
+        (158, '君子兰'),
+        (160, '六月雪'),
+        (162, '蓝铃花'),
+        (164, '宋梅'),
+    )
+    selected = ''
+    for unlock_level, crop_name in catalog:
+        if current_level >= unlock_level:
+            selected = crop_name
+        else:
+            break
+    return selected
+
+
+def _qqfarm_crop_card_matches_target(card_name, target_name):
+    """Require a complete crop-name match; never accept a short OCR prefix."""
+    try:
+        card = str(card_name or '').strip()
+        target = str(target_name or '').strip()
+    except BaseException:
+        return False
+    if not card or not target:
+        return False
+    for suffix in ('种子', '作物'):
+        if card.endswith(suffix):
+            card = card[:-len(suffix)].strip()
+        if target.endswith(suffix):
+            target = target[:-len(suffix)].strip()
+    return bool(card and target and card == target)
+
+
+def _qqfarm_crop_strategy_level(bot):
+    """Read a recent trusted level for the strategy correction guard."""
+    if bot is None:
+        return 0
+    try:
+        if bool(getattr(bot, '_qqfarm_player_level_dynamic_pending', False)):
+            return 0
+    except BaseException:
+        return 0
+    for attr_name in (
+        '_qqfarm_player_level_trusted_value',
+        '_qqfarm_player_level_cache_value',
+        'planting_player_level',
+        '_last_player_level_detected',
+    ):
+        try:
+            value = int(getattr(bot, attr_name, 0) or 0)
+        except BaseException:
+            continue
+        if 1 <= value <= 999:
+            return value
+    return 0
+
+
+def _qqfarm_auto_level_strategy_enabled(bot):
+    """Detect automatic level strategy without changing the persisted setting."""
+    values = []
+    for attr_name in ('strategy', 'planting_strategy', 'crop_strategy'):
+        try:
+            value = getattr(bot, attr_name, '')
+        except BaseException:
+            value = ''
+        if value:
+            values.append(str(value))
+    if not values:
+        try:
+            cfg_get = globals().get('_cfg_get')
+            sections_fn = globals().get('_active_planting_sections')
+            if callable(cfg_get):
+                sections = (
+                    sections_fn()
+                    if callable(sections_fn) else ('planting',)
+                )
+                values.append(str(cfg_get(sections, 'strategy', '') or ''))
+        except BaseException:
+            pass
+    if not values:
+        return False
+    text = ' '.join(values).casefold()
+    return any(token in text for token in ('auto', 'level', '自动', '等级'))
+
+
+def _qqfarm_correct_crop_name_for_level(bot, crop_name, name=''):
+    """Correct a stale automatic-level crop without touching explicit choices."""
+    current_crop = str(crop_name or '').strip()
+    try:
+        strategy_level_fn = globals().get('_qqfarm_crop_strategy_level')
+        expected_crop_fn = globals().get(
+            '_qqfarm_v233_authoritative_crop_for_level'
+        )
+        strategy_level = (
+            strategy_level_fn(bot) if callable(strategy_level_fn) else 0
+        )
+        expected_crop = (
+            expected_crop_fn(strategy_level)
+            if callable(expected_crop_fn) else ''
+        )
+        auto_level_strategy = bool(_qqfarm_auto_level_strategy_enabled(bot))
+        special_strategy_crop = current_crop in ('白萝卜', '萝卜')
+        crop_match_fn = globals().get('_qqfarm_crop_card_matches_target')
+        crop_matches_expected = bool(
+            crop_match_fn(current_crop, expected_crop)
+            if callable(crop_match_fn) else current_crop == expected_crop
+        )
+        if (
+            expected_crop and
+            auto_level_strategy and
+            not special_strategy_crop and
+            not crop_matches_expected
+        ):
+            try:
+                _write(
+                    'v233 crop catalog correction: level=' +
+                    str(strategy_level) + ' ' + current_crop +
+                    ' -> ' + expected_crop + ' name=' + str(name)
+                )
+            except BaseException:
+                pass
+            return expected_crop
+    except BaseException:
+        pass
+    return current_crop
+
+
 def _qqfarm_load_recent_player_level_snapshot(
     path='', now_ts=None, max_age_seconds=43200.0
 ):
@@ -18539,6 +18685,15 @@ def _wrap_planting_flow_fast(fn, name=''):
                 ).strip()
             except BaseException:
                 crop_name = ''
+            corrected_crop_name = _qqfarm_correct_crop_name_for_level(
+                bot, crop_name, name=name
+            )
+            if corrected_crop_name != crop_name:
+                crop_name = corrected_crop_name
+                if len(call_args) > crop_arg_index:
+                    call_args[crop_arg_index] = crop_name
+                else:
+                    call_kwargs['crop_name'] = crop_name
             is_radish = crop_name == '白萝卜'
             # Set only after this call's bounded backpack preflight receives a
             # fresh, explicit native "no seeds" result.  It gates one native
@@ -49796,6 +49951,120 @@ def _qqfarm_clear_native_full_board_planting_state(context):
         return False
 
 
+def _wrap_native_v225_crop_catalog_planting_flow(fn, name=''):
+    """Apply the crop catalog correction to the native planting owner."""
+    if getattr(fn, '__qqfarm_native_v225_crop_catalog_wrapped__', False):
+        return fn, False
+
+    def _wrapped(*args, **kwargs):
+        try:
+            bound_owner = getattr(fn, '__self__', None)
+        except BaseException:
+            bound_owner = None
+        call_args = list(args or ())
+        call_kwargs = dict(kwargs or {})
+        bot = bound_owner if bound_owner is not None else (
+            call_args[0] if call_args else
+            call_kwargs.get('bot', call_kwargs.get('self'))
+        )
+        offset = 0 if bound_owner is not None else 1
+        crop_index = offset + 1
+        try:
+            crop_name = str(
+                call_args[crop_index]
+                if len(call_args) > crop_index
+                else call_kwargs.get('crop_name', '')
+            ).strip()
+        except BaseException:
+            crop_name = ''
+        try:
+            corrected = _qqfarm_correct_crop_name_for_level(
+                bot, crop_name, name=name
+            )
+            if corrected != crop_name:
+                if len(call_args) > crop_index:
+                    call_args[crop_index] = corrected
+                else:
+                    call_kwargs['crop_name'] = corrected
+        except BaseException:
+            pass
+        return fn(*call_args, **call_kwargs)
+
+    try:
+        _wrapped.__name__ = getattr(fn, '__name__', 'native_planting_flow')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__qqfarm_native_v225_crop_catalog_wrapped__ = True
+        _wrapped.__qqfarm_native_v225_crop_catalog_orig__ = fn
+    except BaseException:
+        pass
+    return _wrapped, True
+
+
+def _patch_native_v225_crop_catalog_for_module(module, tag=''):
+    """Patch only the native planting-flow owner, not the legacy wrapper set."""
+    try:
+        module_name = str(getattr(module, '__name__', '') or '')
+    except BaseException:
+        module_name = ''
+    if not module_name.startswith('bot.'):
+        return 0
+    changed = 0
+    targets = []
+    try:
+        cls = getattr(module, 'FarmBotCV', None)
+        if isinstance(cls, type):
+            targets.append((cls, '_run_planting_flow'))
+    except BaseException:
+        pass
+    targets.append((module, '_run_planting_flow'))
+    seen = set()
+    for owner, attr_name in targets:
+        try:
+            identity = (id(owner), attr_name)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            old = getattr(owner, attr_name, None)
+            if not callable(old):
+                continue
+            new, ok = _wrap_native_v225_crop_catalog_planting_flow(
+                old, module_name + '.' + attr_name
+            )
+            if ok:
+                setattr(owner, attr_name, new)
+                changed += 1
+        except BaseException:
+            continue
+    if changed:
+        try:
+            _write(
+                'v233 native crop catalog planting correction installed tag=' +
+                str(tag) + ' module=' + module_name + ' count=' + str(changed)
+            )
+        except BaseException:
+            pass
+    return changed
+
+
+def _patch_native_v225_crop_catalog_loaded(tag=''):
+    """Scan native bot modules for the one planting-flow entry point."""
+    changed = []
+    try:
+        module_items = list((globals().get('sys') or __import__('sys')).modules.items())
+    except BaseException:
+        module_items = []
+    for module_name, module in module_items:
+        try:
+            if module is None or not str(module_name or '').startswith('bot.'):
+                continue
+            count = _patch_native_v225_crop_catalog_for_module(module, tag)
+            if count:
+                changed.append(str(module_name) + ':' + str(count))
+        except BaseException:
+            continue
+    return changed
+
+
 def _wrap_native_v225_full_board_planting_preflight(fn, name=''):
     """Prevent native-runtime planting from entering OCR on a proven full board."""
     if getattr(fn, '__qqfarm_native_v225_full_board_preflight_wrapped__', False):
@@ -56228,6 +56497,12 @@ def _patch_loaded(tag=''):
             # This is a one-purpose native observation guard, not a restoration
             # of the legacy farm/friend wrapper cluster above.
             _patch_native_v225_full_board_preflight_loaded(tag)
+        except BaseException:
+            pass
+        try:
+            # Keep crop-catalog correction active when native-v225 owns planting;
+            # it must not depend on the legacy business-wrapper gate.
+            _patch_native_v225_crop_catalog_loaded(tag)
         except BaseException:
             pass
         try:

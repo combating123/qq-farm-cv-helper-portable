@@ -43,7 +43,7 @@ if (Test-Path -LiteralPath $stageFull) {
 }
 New-Item -ItemType Directory -Force -Path $stageFull | Out-Null
 
-$excludedDirs = @('UserData', 'logs', '__pycache__', 'screenshots', 'captures', 'cache', 'crash', 'backups', 'artifacts', 'diagnostics', 'maintenance-backup', 'legacy-runtime', 'deployment-backups', 'migration-archive', '.analysis', '.codex', '.git')
+$excludedDirs = @('UserData', 'logs', '__pycache__', 'screenshots', 'captures', 'cache', 'crash', 'backups', 'artifacts', 'diagnostics', 'maintenance-backup', 'legacy-runtime', 'deployment-backups', 'migration-archive', '.analysis', '.codex', '.git', '$out')
 $sourcePrefixLength = $source.TrimEnd('\').Length + 1
 Get-ChildItem -LiteralPath $source -Recurse -File -Force | ForEach-Object {
     $relative = $_.FullName.Substring($sourcePrefixLength)

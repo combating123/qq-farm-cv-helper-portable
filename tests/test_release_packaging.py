@@ -81,6 +81,7 @@ class ReleasePackagingTests(unittest.TestCase):
             for dirname in (
                 "UserData", "logs", "backups", "artifacts", "diagnostics",
                 "maintenance-backup", "legacy-runtime", ".analysis", ".codex", ".git",
+                "$out",
             ):
                 folder = source / dirname
                 folder.mkdir()
@@ -109,7 +110,7 @@ class ReleasePackagingTests(unittest.TestCase):
                 forbidden = (
                     "UserData/", "logs/", "backups/", "artifacts/",
                     "diagnostics/", "maintenance-backup/", "legacy-runtime/",
-                    ".analysis/", ".codex/", ".git/",
+                    ".analysis/", ".codex/", ".git/", "$out/",
                 )
                 self.assertFalse(any(name.startswith(forbidden) for name in names))
                 self.assertNotIn(".latest_v477_backup_path", names)
