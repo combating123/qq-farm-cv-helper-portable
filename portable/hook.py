@@ -23250,6 +23250,254 @@ def _fake_instance_bound_process_name(*a, **k):
         return 'wechatappex.exe'
 
 
+def _wechat_focus_coerce_hwnd(value):
+    """Convert the small set of HWND representations used by the runtimes."""
+    try:
+        if value is None or isinstance(value, bool):
+            return 0
+        raw = getattr(value, 'value', value)
+        if raw is None or isinstance(raw, bool):
+            return 0
+        if isinstance(raw, str):
+            text = raw.strip()
+            if not text:
+                return 0
+            try:
+                raw = int(text, 0)
+            except BaseException:
+                raw = int(float(text))
+        result = int(raw)
+        return result if result > 0 else 0
+    except BaseException:
+        return 0
+
+
+def _wechat_focus_owner_from_args(args, kwargs):
+    """Find the runtime object without stringifying or walking arbitrary caches."""
+    for value in tuple(args or ()) + tuple((kwargs or {}).values()):
+        if value is None or isinstance(value, (bool, int, float, str, bytes)):
+            continue
+        if isinstance(value, (dict, list, tuple, set)):
+            continue
+        return value
+    return None
+
+
+def _wechat_focus_hwnd_from_owner(owner, prefer_applied=False):
+    """Read a concrete HWND from known capture/runtime fields only."""
+    if owner is None:
+        return 0
+    direct_names = (
+        'bound_hwnd', '_bound_hwnd', 'window_hwnd', '_window_hwnd',
+        'capture_hwnd', '_capture_hwnd', 'hwnd', '_hwnd',
+    )
+    if prefer_applied:
+        direct_names += (
+            '_wechat_focus_guard_applied_hwnd',
+            '_wechat_focus_guard_attempted_hwnd',
+        )
+    nested_names = (
+        'screen_capture', 'capture', 'window_capture', 'capture_backend',
+        'window_manager', 'runtime', 'bot', 'context', 'state',
+    )
+    seen = set()
+
+    def read(value, depth=0):
+        if value is None or depth > 2:
+            return 0
+        marker = id(value)
+        if marker in seen:
+            return 0
+        seen.add(marker)
+        if isinstance(value, dict):
+            for name in direct_names:
+                result = _wechat_focus_coerce_hwnd(value.get(name))
+                if result:
+                    return result
+            for name in nested_names:
+                result = read(value.get(name), depth + 1)
+                if result:
+                    return result
+            return 0
+        for name in direct_names:
+            try:
+                result = _wechat_focus_coerce_hwnd(getattr(value, name, None))
+            except BaseException:
+                result = 0
+            if result:
+                return result
+        for name in nested_names:
+            try:
+                result = read(getattr(value, name, None), depth + 1)
+            except BaseException:
+                result = 0
+            if result:
+                return result
+        return 0
+
+    return read(owner)
+
+
+def _wechat_focus_set_owner_hwnd(owner, hwnd):
+    """Publish a discovered handle to the native capture object before apply."""
+    handle = _wechat_focus_coerce_hwnd(hwnd)
+    if owner is None or not handle:
+        return False
+    targets = [owner]
+    for name in (
+            'screen_capture', 'capture', 'window_capture', 'capture_backend',
+            'window_manager', 'runtime', 'bot', 'context', 'state'):
+        try:
+            child = getattr(owner, name, None)
+        except BaseException:
+            child = None
+        if child is not None:
+            targets.append(child)
+    changed = False
+    for target in targets:
+        if isinstance(target, dict):
+            for name in ('bound_hwnd', '_bound_hwnd', 'window_hwnd'):
+                if name in target or name == 'bound_hwnd':
+                    try:
+                        if _wechat_focus_coerce_hwnd(target.get(name)) != handle:
+                            target[name] = handle
+                            changed = True
+                    except BaseException:
+                        pass
+                    break
+            continue
+        for name in ('bound_hwnd', '_bound_hwnd', 'window_hwnd'):
+            try:
+                current = _wechat_focus_coerce_hwnd(getattr(target, name, None))
+                if current != handle:
+                    setattr(target, name, handle)
+                    changed = True
+                break
+            except BaseException:
+                continue
+    return changed
+
+
+def _wechat_focus_reason_from_call(fn, args, kwargs):
+    try:
+        if 'reason' in (kwargs or {}):
+            return str(kwargs.get('reason') or '开始运行/窗口已存在')
+        parameters = list(__import__('inspect').signature(fn).parameters)
+        for index, name in enumerate(parameters):
+            if str(name).lower() != 'reason':
+                continue
+            if index < len(args):
+                return str(args[index] or '开始运行/窗口已存在')
+    except BaseException:
+        pass
+    return '开始运行/窗口已存在'
+
+
+def _wechat_focus_prepare_call(fn, args, kwargs):
+    """Resolve and, when the native signature exposes it, inject the HWND."""
+    positional = list(args or ())
+    keyword = dict(kwargs or {})
+    owner = _wechat_focus_owner_from_args(positional, keyword)
+    parameters = []
+    hwnd_index = None
+    hwnd_name = None
+    try:
+        parameters = list(__import__('inspect').signature(fn).parameters)
+    except BaseException:
+        parameters = []
+    handle_names = {
+        'hwnd', 'bound_hwnd', 'window_hwnd', 'capture_hwnd',
+        'target_hwnd', 'current_hwnd', 'handle', 'window_handle',
+    }
+    for index, name in enumerate(parameters):
+        lower = str(name).lower()
+        if lower in handle_names or lower.endswith('_hwnd'):
+            hwnd_index = index
+            hwnd_name = name
+            break
+    handle = 0
+    for name in ('hwnd', 'bound_hwnd', 'window_hwnd', 'capture_hwnd', 'target_hwnd'):
+        if name in keyword:
+            handle = _wechat_focus_coerce_hwnd(keyword.get(name))
+            hwnd_name = name
+            break
+    if not handle and hwnd_index is not None and hwnd_index < len(positional):
+        handle = _wechat_focus_coerce_hwnd(positional[hwnd_index])
+    if not handle:
+        handle = _wechat_focus_hwnd_from_owner(owner)
+    if not handle:
+        try:
+            finder = globals().get('_find_wechat_hwnd')
+            handle = _wechat_focus_coerce_hwnd(finder()) if callable(finder) else 0
+        except BaseException:
+            handle = 0
+    if handle:
+        _wechat_focus_set_owner_hwnd(owner, handle)
+        if hwnd_name and hwnd_name in keyword:
+            keyword[hwnd_name] = handle
+        elif hwnd_index is not None:
+            if hwnd_index < len(positional):
+                positional[hwnd_index] = handle
+            elif hwnd_name:
+                keyword[hwnd_name] = handle
+    return tuple(positional), keyword, owner, handle
+
+
+def _wechat_focus_emit_enabled(hwnd, reason):
+    handle = _wechat_focus_coerce_hwnd(hwnd)
+    if not handle:
+        return False
+    try:
+        logger = globals().get('_runtime_info_once')
+        if callable(logger):
+            logger(
+                'wechat-focus-enabled-%X' % handle,
+                '微信抢鼠标处理已启用：hwnd=0x%08X（%s）' % (
+                    handle, str(reason or '开始运行/窗口已存在')
+                ),
+            )
+    except BaseException:
+        pass
+    return True
+
+
+def _wechat_focus_emit_applied(hwnd, reason):
+    handle = _wechat_focus_coerce_hwnd(hwnd)
+    if not handle:
+        return False
+    try:
+        logger = globals().get('_runtime_info_once')
+        if callable(logger):
+            logger(
+                'wechat-focus-applied-%X' % handle,
+                '微信抢鼠标处理已应用：hwnd=%d, reason=%s' % (
+                    handle, str(reason or '开始运行/窗口已存在')
+                ),
+            )
+    except BaseException:
+        pass
+    return True
+
+
+def _wechat_focus_apply_proved(owner, hwnd, result):
+    if result is False:
+        return False
+    handle = _wechat_focus_coerce_hwnd(hwnd)
+    if not handle:
+        return False
+    if result is True:
+        return True
+    for attr in (
+            '_wechat_focus_guard_applied_hwnd',
+            'wechat_focus_guard_applied_hwnd'):
+        try:
+            if _wechat_focus_coerce_hwnd(getattr(owner, attr, None)) == handle:
+                return True
+        except BaseException:
+            pass
+    return False
+
+
 def _wrap_apply_wechat_focus_after_hwnd(fn, name):
     if getattr(fn, '__qqfarm_wechat_focus_wrapped__', False):
         return fn, False
@@ -23259,16 +23507,22 @@ def _wrap_apply_wechat_focus_after_hwnd(fn, name):
                 return _stop_gate_return(name)
         except BaseException:
             pass
+        call_args, call_kwargs, owner, hwnd = _wechat_focus_prepare_call(
+            fn, a, k
+        )
+        reason = _wechat_focus_reason_from_call(fn, call_args, call_kwargs)
+        if _active_is_weixin_mode() and _wechat_focus_enabled() and hwnd:
+            _wechat_focus_emit_enabled(hwnd, reason)
+            _write('wechat focus apply invoking original ' + str(name) +
+                   ' hwnd=0x%X' % hwnd)
         try:
+            res = fn(*call_args, **call_kwargs)
+            if (_active_is_weixin_mode() and _wechat_focus_enabled() and
+                    _wechat_focus_apply_proved(owner, hwnd, res)):
+                _wechat_focus_emit_applied(hwnd, reason)
             if _active_is_weixin_mode() and _wechat_focus_enabled():
-                _runtime_info_once('wechat-focus-apply-forced', '\u5fae\u4fe1\u62a2\u9f20\u6807\u5904\u7406\u5df2\u5f3a\u5236\u8fdb\u5165\u5e94\u7528\u9636\u6bb5\uff1aWeChatAppEx\u3002')
-                _write('wechat focus apply invoking original ' + str(name))
-        except BaseException:
-            pass
-        try:
-            res = fn(*a, **k)
-            if _active_is_weixin_mode() and _wechat_focus_enabled():
-                _write('wechat focus apply result ' + str(name) + ' -> ' + repr(res))
+                _write('wechat focus apply result ' + str(name) +
+                       ' -> ' + repr(res))
             return res
         except BaseException as e:
             try: _write('wechat focus apply original exception ' + str(name) + ' ' + repr(e))
@@ -23310,14 +23564,20 @@ def _wrap_wechat_focus_guard(fn, name):
     if getattr(fn, '__qqfarm_wechat_focus_wrapped__', False):
         return fn, False
     def _wrapped(*a, **k):
-        if _active_is_weixin_mode() and _wechat_focus_enabled():
-            try:
-                _runtime_info_once('wechat-focus-guard-active', '\u5fae\u4fe1\u62a2\u9f20\u6807\u5904\u7406\u5df2\u5f3a\u5236\u542f\u7528\uff1a\u5f53\u524d\u5b9e\u4f8b\u4e3a weixin:// / WeChatAppEx\u3002')
-                _write('wechat focus guard invoking original ' + str(name))
-            except BaseException:
-                pass
+        call_args, call_kwargs, owner, hwnd = _wechat_focus_prepare_call(
+            fn, a, k
+        )
+        reason = _wechat_focus_reason_from_call(fn, call_args, call_kwargs)
+        if _active_is_weixin_mode() and _wechat_focus_enabled() and hwnd:
+            _wechat_focus_emit_enabled(hwnd, reason)
+            _write('wechat focus guard invoking original ' + str(name) +
+                   ' hwnd=0x%X' % hwnd)
         try:
-            return fn(*a, **k)
+            result = fn(*call_args, **call_kwargs)
+            if (_active_is_weixin_mode() and _wechat_focus_enabled() and
+                    _wechat_focus_apply_proved(owner, hwnd, result)):
+                _wechat_focus_emit_applied(hwnd, reason)
+            return result
         except BaseException as e:
             try: _write('wechat focus guard original exception ' + str(name) + ' ' + repr(e))
             except BaseException: pass
@@ -23335,35 +23595,141 @@ def _wrap_wechat_focus_guard(fn, name):
     return _wrapped, True
 
 
+def _wechat_focus_select_window_candidate(candidates, preferred_hwnd=0):
+    """Choose the miniapp window instead of any unrelated Chromium window."""
+    preferred = _wechat_focus_coerce_hwnd(preferred_hwnd)
+    best = None
+    for candidate in tuple(candidates or ()):
+        if not isinstance(candidate, dict):
+            continue
+        hwnd = _wechat_focus_coerce_hwnd(candidate.get('hwnd'))
+        if not hwnd:
+            continue
+        process_name = str(candidate.get('process_name', '') or '').lower()
+        title = str(candidate.get('title', '') or '')
+        title_lower = title.lower()
+        class_name = str(candidate.get('class_name', '') or '')
+        class_lower = class_name.lower()
+        visible = bool(candidate.get('visible', False))
+        try:
+            area = max(0, int(candidate.get('area', 0) or 0))
+        except BaseException:
+            area = 0
+        known_process = process_name.rsplit('\\', 1)[-1].rsplit('/', 1)[-1] in {
+            'wechatappex.exe', 'weixin.exe', 'wechat.exe',
+        }
+        generic_wechat_title = any(
+            marker in title_lower
+            for marker in ('微信', 'wechat', 'weixin')
+        )
+        chrome_host = 'chrome_widgetwin' in class_lower
+        if not known_process and not (generic_wechat_title and chrome_host):
+            continue
+        score = 100 if known_process else 5
+        if any(marker in title_lower for marker in (
+                'qq经典农场', '经典农场', 'qq农场', '农场', 'farm')):
+            score += 140
+        if any(marker in title_lower for marker in ('小程序', 'miniapp', 'wmpf')):
+            score += 35
+        if chrome_host:
+            score += 15
+        if visible:
+            score += 8
+        elif known_process:
+            # Hidden-window mode still needs the concrete miniapp HWND.
+            score += 2
+        score += min(30, area // 10000)
+        # The capture layer already knows the bound farm HWND in hidden or
+        # multi-window sessions.  Prefer that concrete handle over a larger
+        # but unrelated WeChat main window; keep the normal score as the
+        # fallback when no bound handle is available.
+        rank = (
+            int(bool(preferred and hwnd == preferred)),
+            score, int(known_process), int(visible), area, hwnd,
+        )
+        if best is None or rank > best[0]:
+            best = (rank, hwnd)
+    return int(best[1]) if best is not None else 0
+
+
+def _wechat_focus_process_name_for_hwnd(hwnd):
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        process_id = wintypes.DWORD(0)
+        user32.GetWindowThreadProcessId(
+            ctypes.c_void_p(_wechat_focus_coerce_hwnd(hwnd)),
+            ctypes.byref(process_id),
+        )
+        if int(process_id.value or 0) <= 0:
+            return ''
+        process = kernel32.OpenProcess(0x1000, False, process_id.value)
+        if not process:
+            return ''
+        try:
+            size = wintypes.DWORD(1024)
+            buffer = ctypes.create_unicode_buffer(int(size.value))
+            ok = kernel32.QueryFullProcessImageNameW(
+                process, 0, buffer, ctypes.byref(size)
+            )
+            if not ok:
+                return ''
+            return str(buffer.value or '').rsplit('\\', 1)[-1]
+        finally:
+            kernel32.CloseHandle(process)
+    except BaseException:
+        return ''
+
+
 def _find_wechat_hwnd():
     try:
         import ctypes
+        from ctypes import wintypes
         user32 = ctypes.windll.user32
         candidates = []
         EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
         def _cb(hwnd, lparam):
             try:
-                if not user32.IsWindowVisible(hwnd):
+                if not user32.IsWindow(hwnd):
                     return True
-                title_buf = ctypes.create_unicode_buffer(256)
+                visible = bool(user32.IsWindowVisible(hwnd))
+                title_buf = ctypes.create_unicode_buffer(512)
                 cls_buf = ctypes.create_unicode_buffer(256)
-                user32.GetWindowTextW(hwnd, title_buf, 255)
+                user32.GetWindowTextW(hwnd, title_buf, 511)
                 user32.GetClassNameW(hwnd, cls_buf, 255)
                 title = title_buf.value or ''
                 cls = cls_buf.value or ''
-                score = 0
-                if '\u5fae\u4fe1' in title: score += 5
-                if 'Chrome_WidgetWin' in cls: score += 4
-                if 'Qt' in cls: score -= 2
-                if score > 0:
-                    candidates.append((score, int(hwnd), title, cls))
+                process_name = _wechat_focus_process_name_for_hwnd(hwnd)
+                rect = wintypes.RECT()
+                area = 0
+                if user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+                    area = max(0, int(rect.right - rect.left)) * max(
+                        0, int(rect.bottom - rect.top)
+                    )
+                candidates.append({
+                    'hwnd': int(hwnd),
+                    'process_name': process_name,
+                    'title': title,
+                    'class_name': cls,
+                    'visible': visible,
+                    'area': area,
+                })
             except BaseException:
                 pass
             return True
         user32.EnumWindows(EnumWindowsProc(_cb), 0)
-        candidates.sort(reverse=True)
-        if candidates:
-            return candidates[0][1]
+        preferred = 0
+        for cache_name in ('_QQFARM_WGC_BOUND_HWND', '_QQFARM_LAST_FARM_HWND'):
+            preferred = _wechat_focus_coerce_hwnd(
+                globals().get(cache_name, 0)
+            )
+            if preferred:
+                break
+        return _wechat_focus_select_window_candidate(
+            candidates, preferred_hwnd=preferred
+        )
     except BaseException as e:
         try: _write('find wechat hwnd error ' + repr(e))
         except BaseException: pass
