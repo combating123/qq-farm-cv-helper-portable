@@ -378,11 +378,12 @@ $env:TEMP = $PortableTemp
 $env:TMP = $PortableTemp
 
 $env:QQFARM_HOOK_LOG_PATH = Join-Path $HookLogDir 'hook_runtime_log.txt'
-# Strict 24-slot rollout: the child must prove exactly which deployed hook it
-# loaded and stay inside self-farm planting until this live acceptance closes.
+# Publish the rollout marker for diagnostics, but keep the temporary strict
+# self-only gate opt-in. Production must retain the normal friend-list route;
+# forcing this to 1 traps a visible friend list in repeated no-op patrols.
 $env:QQFARM_PROXY_DIR = $AppDir
 $env:QQFARM_PERF_MARKER_LOG_PATH = Join-Path $HookLogDir 'strict-24slot-rollout-marker.log'
-$env:QQFARM_STRICT_PLANTING_ROLLOUT = '1'
+$env:QQFARM_STRICT_PLANTING_ROLLOUT = '0'
 $env:QQFARM_DAILY_FLOW_STATUS_PATH = Join-Path $CurrentProfile 'daily_flow_status.json'
 $env:QQFARM_DAILY_COUNTERS_PATH = Join-Path $CurrentProfile 'daily_counters.json'
 $env:QQFARM_PROXY_LOG_PATH = Join-Path $LogDir 'proxy_dll_load.log'

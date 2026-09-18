@@ -42279,7 +42279,67 @@ def _friend_guard_post_client_click(
                 target_hwnd != root_hwnd
                 and not win32gui.IsChild(root_hwnd, target_hwnd)
             ):
-                target_hwnd = root_hwnd
+                # The assistant window can cover the visible QQ farm surface.
+                # WindowFromPoint then returns the assistant instead of QQ's
+                # Chrome render child, and posting to the top-level Chrome shell
+                # is not accepted by every QQ/WebView build.  Resolve the child
+                # from the farm HWND itself so occlusion never changes the input
+                # destination.
+                render_candidates = []
+
+                def _child_cb(hwnd, extra):
+                    try:
+                        if not win32gui.IsWindowVisible(hwnd):
+                            return True
+                        class_name = str(win32gui.GetClassName(hwnd) or '').lower()
+                        if not any(marker in class_name for marker in (
+                                'chrome_renderwidgethosthwnd',
+                                'chrome_widgetwin',
+                                'intermediate d3d window')):
+                            return True
+                        child_rect = win32gui.GetClientRect(hwnd)
+                        child_width = int(child_rect[2] - child_rect[0])
+                        child_height = int(child_rect[3] - child_rect[1])
+                        if child_width < 120 or child_height < 120:
+                            return True
+                        child_point = win32gui.ScreenToClient(hwnd, screen_point)
+                        if not (
+                                0 <= int(child_point[0]) < child_width
+                                and 0 <= int(child_point[1]) < child_height):
+                            return True
+                        class_rank = 0 if 'chrome_renderwidgethosthwnd' in class_name else 1
+                        render_candidates.append((
+                            class_rank,
+                            abs(child_width - client_width) + abs(child_height - client_height),
+                            -child_width * child_height,
+                            int(hwnd),
+                        ))
+                    except BaseException:
+                        pass
+                    return True
+
+                try:
+                    win32gui.EnumChildWindows(root_hwnd, _child_cb, None)
+                except BaseException:
+                    render_candidates = []
+                if render_candidates:
+                    render_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+                    target_hwnd = int(render_candidates[0][3])
+                else:
+                    target_hwnd = root_hwnd
+            if target_hwnd != root_hwnd:
+                try:
+                    log_fn = globals().get('_throttled_write')
+                    if callable(log_fn):
+                        log_fn(
+                            'v490-client-render-child',
+                            'v490 client click routed to QQ render child root=' +
+                            str(root_hwnd) + ' target=' + str(target_hwnd) +
+                            ' point=' + repr((client_x, client_y)),
+                            4.0,
+                        )
+                except BaseException:
+                    pass
             target_point = win32gui.ScreenToClient(target_hwnd, screen_point)
             lparam = ((int(target_point[1]) & 0xffff) << 16) | (int(target_point[0]) & 0xffff)
             win32gui.PostMessage(target_hwnd, 0x0200, 0, lparam)
@@ -42341,7 +42401,59 @@ def _friend_guard_post_client_click(
             target_hwnd != root_hwnd
             and not user32.IsChild(ctypes.c_void_p(root_hwnd), ctypes.c_void_p(target_hwnd))
         ):
-            target_hwnd = root_hwnd
+            render_candidates = []
+            child_enum_proc = ctypes.WINFUNCTYPE(
+                ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p
+            )
+
+            def _child_cb(hwnd, lparam):
+                try:
+                    if not user32.IsWindowVisible(hwnd):
+                        return True
+                    class_buf = ctypes.create_unicode_buffer(256)
+                    user32.GetClassNameW(hwnd, class_buf, 255)
+                    class_name = str(class_buf.value or '').lower()
+                    if not any(marker in class_name for marker in (
+                            'chrome_renderwidgethosthwnd',
+                            'chrome_widgetwin',
+                            'intermediate d3d window')):
+                        return True
+                    child_rect = RECT()
+                    if not user32.GetClientRect(hwnd, ctypes.byref(child_rect)):
+                        return True
+                    child_width = int(child_rect.right - child_rect.left)
+                    child_height = int(child_rect.bottom - child_rect.top)
+                    if child_width < 120 or child_height < 120:
+                        return True
+                    child_point = POINT(int(screen_point.x), int(screen_point.y))
+                    if not user32.ScreenToClient(hwnd, ctypes.byref(child_point)):
+                        return True
+                    if not (
+                            0 <= int(child_point.x) < child_width
+                            and 0 <= int(child_point.y) < child_height):
+                        return True
+                    class_rank = 0 if 'chrome_renderwidgethosthwnd' in class_name else 1
+                    render_candidates.append((
+                        class_rank,
+                        abs(child_width - client_width) + abs(child_height - client_height),
+                        -child_width * child_height,
+                        int(hwnd),
+                    ))
+                except BaseException:
+                    pass
+                return True
+
+            try:
+                user32.EnumChildWindows(
+                    ctypes.c_void_p(root_hwnd), child_enum_proc(_child_cb), 0
+                )
+            except BaseException:
+                render_candidates = []
+            if render_candidates:
+                render_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+                target_hwnd = int(render_candidates[0][3])
+            else:
+                target_hwnd = root_hwnd
         client_point = POINT(int(screen_point.x), int(screen_point.y))
         if not user32.ScreenToClient(ctypes.c_void_p(target_hwnd), ctypes.byref(client_point)):
             return False
@@ -42529,6 +42641,150 @@ def _friend_guard_match_template(
 
 
 
+def _friend_list_card_rows(frame):
+    """Recover clickable rows from the current card-style friend-list skin.
+
+    Recent QQ skins replaced the old green ``拜访`` buttons with a chest/card
+    affordance.  The old HSV connected-component detector can then see one
+    decorative component (or none) even though three complete friend cards are
+    visible.  This fallback is deliberately gated by the friend-list tabs
+    template and a long, bright card-band signature so task/mission panels do
+    not become friend rows.
+    """
+    try:
+        np = __import__('numpy')
+        cv2 = __import__('cv2')
+        os_module = __import__('os')
+        arr = np.asarray(frame)
+        shape = getattr(arr, 'shape', None)
+        if not shape or len(shape) < 3 or int(shape[2]) < 3:
+            return []
+        height, width = int(shape[0]), int(shape[1])
+        if height < 240 or width < 180:
+            return []
+
+        # Prove that this is the friend-list surface before interpreting broad
+        # light panels as cards.  Keep this self-contained because the helper is
+        # also loaded in isolation by regression tests.
+        hook_file = globals().get('__file__', 'hook.py')
+        base = os_module.path.dirname(os_module.path.abspath(str(hook_file)))
+        template_path = globals().get(
+            '_FRIEND_LIST_TEMPLATE_PATH',
+            os_module.path.join(base, 'friend_list_tabs.png'),
+        )
+        if not os_module.path.exists(str(template_path)):
+            fallback_path = os_module.path.join(
+                os_module.getcwd(), 'friend_list_tabs.png'
+            )
+            template_path = fallback_path if os_module.path.exists(fallback_path) else None
+        if not template_path:
+            return []
+        raw = np.fromfile(str(template_path), dtype=np.uint8)
+        template = cv2.imdecode(raw, cv2.IMREAD_COLOR) if raw.size else None
+        if template is None:
+            return []
+        scale_x = max(0.25, float(width) / 428.0)
+        scale_y = max(0.25, float(height) / 800.0)
+        target_w = max(8, int(round(int(template.shape[1]) * scale_x)))
+        target_h = max(8, int(round(int(template.shape[0]) * scale_y)))
+        if target_w != int(template.shape[1]) or target_h != int(template.shape[0]):
+            interpolation = cv2.INTER_AREA if scale_x < 1.0 or scale_y < 1.0 else cv2.INTER_LINEAR
+            template = cv2.resize(template, (target_w, target_h), interpolation=interpolation)
+        if target_h > height or target_w > width:
+            return []
+        gray = cv2.cvtColor(arr[:, :, :3], cv2.COLOR_BGR2GRAY)
+        template_gray = cv2.cvtColor(template[:, :, :3], cv2.COLOR_BGR2GRAY)
+        gray_result = cv2.matchTemplate(gray, template_gray, cv2.TM_CCOEFF_NORMED)
+        _, gray_score, _, gray_location = cv2.minMaxLoc(gray_result)
+        edge = cv2.Canny(gray, 50, 150)
+        template_edge = cv2.Canny(template_gray, 50, 150)
+        edge_result = cv2.matchTemplate(edge, template_edge, cv2.TM_CCOEFF_NORMED)
+        _, edge_score, _, _ = cv2.minMaxLoc(edge_result)
+        if float(gray_score) < 0.70 or float(edge_score) < 0.14:
+            return []
+
+        hsv = cv2.cvtColor(arr[:, :, :3], cv2.COLOR_BGR2HSV)
+        # Card skins use pale cream, gold, pink, or blue artwork.  The common
+        # positive signature is a broad high-value band; the surrounding page
+        # background is darker and more saturated.  Include blue artwork while
+        # keeping the mask independent of exact crop/avatar colors.
+        value = hsv[:, :, 2]
+        saturation = hsv[:, :, 1]
+        hue = hsv[:, :, 0]
+        card_mask = (
+            (value >= 180)
+            & (
+                (saturation <= 120)
+                | ((hue >= 80) & (value >= 140))
+            )
+        ).astype(np.uint8) * 255
+        x0 = max(0, int(round(width * 0.06)))
+        x1 = min(width, max(x0 + 1, int(round(width * 0.98))))
+        header_bottom = int(gray_location[1]) + int(target_h)
+        y0 = max(
+            int(round(height * 0.25)),
+            min(height - 1, header_bottom + max(8, int(round(height * 0.035)))),
+        )
+        y1 = max(y0 + 1, min(height, int(round(height * 0.98))))
+        row_score = np.mean(card_mask[y0:y1, x0:x1] > 0, axis=1)
+        row_binary = (row_score >= 0.50).astype(np.uint8) * 255
+        close_height = max(5, min(25, int(round(height * 0.018))))
+        row_binary = cv2.morphologyEx(
+            row_binary.reshape(-1, 1),
+            cv2.MORPH_CLOSE,
+            np.ones((close_height, 1), dtype=np.uint8),
+        ).reshape(-1)
+        min_band_height = max(24, int(round(height * 0.075)))
+        rows = []
+        start = None
+        for offset, value_byte in enumerate(row_binary):
+            active = bool(value_byte)
+            if active and start is None:
+                start = offset
+            if not active and start is not None:
+                end = offset - 1
+                if end - start + 1 >= min_band_height:
+                    band_score = float(np.mean(row_score[start:end + 1]))
+                    if band_score >= 0.50:
+                        top = y0 + start
+                        bottom = y0 + end
+                        center_y = int(round((top + bottom) / 2.0))
+                        # The new skin's chest/action affordance is near 73% of
+                        # the card width.  It is safer than clicking avatar/name
+                        # artwork and remains scale-independent.
+                        click_x = int(round(width * 0.73))
+                        rows.append({
+                            'center': (click_x, center_y),
+                            'rect': (x0, top, x1, bottom + 1),
+                            'area': int(round(band_score * max(1, x1 - x0) * (bottom - top + 1))),
+                            'fill': band_score,
+                            'source': 'friend-card-band',
+                        })
+                start = None
+        if start is not None:
+            end = len(row_binary) - 1
+            if end - start + 1 >= min_band_height:
+                band_score = float(np.mean(row_score[start:end + 1]))
+                if band_score >= 0.50:
+                    top = y0 + start
+                    bottom = y0 + end
+                    center_y = int(round((top + bottom) / 2.0))
+                    click_x = int(round(width * 0.73))
+                    rows.append({
+                        'center': (click_x, center_y),
+                        'rect': (x0, top, x1, bottom + 1),
+                        'area': int(round(band_score * max(1, x1 - x0) * (bottom - top + 1))),
+                        'fill': band_score,
+                        'source': 'friend-card-band',
+                    })
+        rows.sort(key=lambda item: (int(item['center'][1]), int(item['center'][0])))
+        # Do not return a weak single band: a single decorative panel is not
+        # enough to unlock friend navigation.
+        return rows if len(rows) >= 3 else []
+    except BaseException:
+        return []
+
+
 def _friend_list_visit_button_rows(frame):
     """Return visible friend-list visit buttons ordered from top to bottom."""
     try:
@@ -42596,6 +42852,15 @@ def _friend_list_visit_button_rows(frame):
                     merged[-1] = row
                 continue
             merged.append(row)
+        if len(merged) >= 3:
+            return merged
+        # v487: current card-style friend lists no longer expose the old green
+        # visit buttons.  Replace a lone decorative component with the complete
+        # card-derived row set, never append it to the new rows.
+        card_rows_fn = globals().get('_friend_list_card_rows')
+        card_rows = card_rows_fn(frame) if callable(card_rows_fn) else []
+        if len(card_rows) >= 3:
+            return card_rows
         return merged
     except BaseException:
         return []
@@ -43136,6 +43401,16 @@ def _friend_progress_journal_restore(
             setattr(context, '_qqfarm_friend_list_visible_candidate_count', count)
         setattr(context, '_qqfarm_friend_progress_journal_restored', True)
         setattr(context, '_qqfarm_friend_progress_journal_phase', phase)
+        terminal_phase = bool(phase == 'terminal')
+        setattr(context, '_qqfarm_friend_chain_exhausted', terminal_phase)
+        setattr(context, '_qqfarm_friend_chain_allow_home', terminal_phase)
+        if terminal_phase:
+            setattr(context, '_qqfarm_friend_guard_empty_latched', True)
+            setattr(
+                context,
+                '_qqfarm_friend_guard_last_empty_reason',
+                'restored-terminal-friend-list',
+            )
         return True
     except BaseException:
         return False
@@ -43777,11 +44052,19 @@ def _commit_friend_list_entry_transition(context):
         previous_last_row_fallback = getattr(
             context, '_qqfarm_friend_last_row_card_fallback_tried', False
         )
+        previous_resume_pending = bool(getattr(
+            context, '_qqfarm_friend_list_resume_pending', False
+        ))
         setattr(
             context,
             '_qqfarm_friend_list_visit_cursor',
             confirmed_cursor,
         )
+        # A confirmed friend-farm transition means the next visible list is a
+        # continuation of this ordered pass.  Arm the token before the durable
+        # journal write so the reopened list selects ``confirmed_cursor``
+        # instead of treating it as a fresh session and resetting to row zero.
+        setattr(context, '_qqfarm_friend_list_resume_pending', True)
         setattr(context, '_qqfarm_friend_entry_retry_count', 0)
         setattr(context, '_qqfarm_friend_entry_last_retry_ts', 0.0)
         setattr(context, '_qqfarm_friend_last_row_card_fallback_tried', False)
@@ -43810,12 +44093,22 @@ def _commit_friend_list_entry_transition(context):
                 '_qqfarm_friend_last_row_card_fallback_tried',
                 previous_last_row_fallback,
             )
+            setattr(
+                context,
+                '_qqfarm_friend_list_resume_pending',
+                previous_resume_pending,
+            )
             if callable(writer):
                 writer(
                     'v342 friend list cursor journal commit failed; pending row retained '
                     'cursor=' + str(current_cursor) + ' pending=' + str(pending_cursor)
                 )
             return False
+        if callable(writer):
+            writer(
+                'v491 friend list confirmed transition armed resume cursor=' +
+                str(confirmed_cursor)
+            )
         return True
     except BaseException as error:
         try:
@@ -43839,6 +44132,42 @@ def _handle_friend_list_surface(context, frame):
         rows_fn = globals().get('_friend_list_visit_button_rows')
         rows = rows_fn(frame) if callable(rows_fn) else []
         rows = list(rows or [])
+        try:
+            diagnostic_fn = globals().get('_throttled_write')
+            if callable(diagnostic_fn):
+                diagnostic_fn(
+                    'v487-friend-list-layout',
+                    'v487 friend-list layout frame=' + str(width) + 'x' + str(height) +
+                    ' rows=' + str(len(rows)) +
+                    ' centers=' + repr([
+                        row.get('center') for row in rows[:8]
+                        if isinstance(row, dict)
+                    ]) +
+                    ' sources=' + repr([
+                        row.get('source', 'legacy') for row in rows[:8]
+                        if isinstance(row, dict)
+                    ]),
+                    4.0,
+                )
+        except BaseException:
+            pass
+        if rows and not bool(getattr(
+                context, '_qqfarm_friend_progress_journal_restored', False)):
+            # The native owner can mark an empty restore attempt before the
+            # friend-list pixels are available.  Retry once on the first real
+            # list frame so a durable terminal phase is not mistaken for a new
+            # session and reset to row zero.
+            try:
+                restore_fn = globals().get('_friend_progress_journal_restore')
+                if callable(restore_fn):
+                    restore_fn(context, row_count=len(rows))
+                setattr(
+                    context,
+                    '_qqfarm_friend_progress_journal_restore_attempted',
+                    True,
+                )
+            except BaseException:
+                pass
         if rows:
             try:
                 entry_pending = bool(getattr(
@@ -43862,11 +44191,22 @@ def _handle_friend_list_surface(context, frame):
                 exhausted = bool(getattr(
                     context, '_qqfarm_friend_chain_exhausted', False
                 ))
+                terminal_phase = bool(str(getattr(
+                    context, '_qqfarm_friend_progress_journal_phase', ''
+                ) or '') == 'terminal')
+                empty_latched = bool(getattr(
+                    context, '_qqfarm_friend_guard_empty_latched', False
+                ))
                 fresh_list_session = bool(
                     not entry_pending and not chain_pending and not chain_active
                 )
                 same_round_resume = bool(resume_pending and not exhausted)
-                if fresh_list_session and not same_round_resume and (
+                terminal_latched = bool(
+                    exhausted and not resume_pending and (
+                        terminal_phase or empty_latched or stale_cursor >= len(rows)
+                    )
+                )
+                if fresh_list_session and not same_round_resume and not terminal_latched and (
                     resume_pending or exhausted or stale_cursor > 0 or stale_pending > 0
                 ):
                     setattr(context, '_qqfarm_friend_list_visit_cursor', 0)
@@ -43918,6 +44258,14 @@ def _handle_friend_list_surface(context, frame):
         guard_enabled = bool(guard_enabled_fn()) if callable(guard_enabled_fn) else False
         mode_fn = globals().get('_guard_dog_detection_mode_config')
         guard_mode = str(mode_fn() if callable(mode_fn) else 'avatar_frame')
+        # The visible friend list is ordered even when guard-only filtering is
+        # disabled.  Reuse the durable pending/cursor state machine for that
+        # ordinary route instead of selecting rows[0] on every reopen.
+        ordered_list_mode = bool(
+            rows and (
+                not guard_enabled or guard_mode == 'friend_guard_list'
+            )
+        )
         if not (guard_enabled and guard_mode == 'avatar_frame'):
             try:
                 setattr(context, '_qqfarm_guard_row_verified', False)
@@ -43933,8 +44281,12 @@ def _handle_friend_list_surface(context, frame):
         guard_list_pending_retry = False
         guard_list_retry_count = 0
         guard_list_resume_selection = False
-        if rows and guard_enabled and guard_mode == 'friend_guard_list':
-            score_fn = globals().get('_friend_guard_list_row_match_score')
+        if rows and ordered_list_mode:
+            score_fn = (
+                globals().get('_friend_guard_list_row_match_score')
+                if guard_enabled and guard_mode == 'friend_guard_list'
+                else None
+            )
             verified_guard_rows = 0
             for row in rows:
                 center = row.get('center') if isinstance(row, dict) else None
@@ -43950,11 +44302,17 @@ def _handle_friend_list_surface(context, frame):
                 threshold_fn = globals().get('_guard_dog_match_threshold')
                 guard_threshold = float(threshold_fn('friend_guard_list')) \
                     if callable(threshold_fn) else 0.72
-                if score >= guard_threshold:
+                if (
+                        guard_enabled
+                        and guard_mode == 'friend_guard_list'
+                        and score >= guard_threshold):
                     verified_guard_rows += 1
             if not guard_list_candidates:
                 return 'native-guard-list'
-            if verified_guard_rows <= 0:
+            if (
+                    guard_enabled
+                    and guard_mode == 'friend_guard_list'
+                    and verified_guard_rows <= 0):
                 try:
                     writer = globals().get('_write')
                     if callable(writer):
@@ -43988,11 +44346,170 @@ def _handle_friend_list_surface(context, frame):
                 friend_list_resume_pending = bool(getattr(
                     context, '_qqfarm_friend_list_resume_pending', False
                 ))
+                friend_chain_exhausted = bool(getattr(
+                    context, '_qqfarm_friend_chain_exhausted', False
+                ))
             except BaseException:
                 friend_entry_pending = False
                 guard_list_retry_count = 0
                 pending_cursor = guard_list_cursor
                 friend_list_resume_pending = False
+                friend_chain_exhausted = False
+            if (
+                friend_chain_exhausted
+                and not friend_list_resume_pending
+                and guard_list_cursor >= len(guard_list_candidates)
+            ):
+                # A completed ordered pass is durable.  Native patrols can reopen
+                # the same list before verified home progress rearms friend work;
+                # close that surface without converting terminal cursor N back to
+                # row zero, otherwise every patrol starts a duplicate second pass.
+                close_x = int(round(width * 0.946))
+                close_y = int(round(height * 0.118))
+                close_fn = globals().get('_friend_guard_post_client_click')
+                try:
+                    closed = bool(close_fn(
+                        close_x, close_y, width, height
+                    )) if callable(close_fn) else False
+                except TypeError:
+                    closed = bool(close_fn(close_x, close_y))
+                except BaseException:
+                    closed = False
+                if not closed:
+                    writer = globals().get('_write')
+                    if callable(writer):
+                        writer(
+                            'v493 friend list terminal latch close retry cursor=' +
+                            str(guard_list_cursor) + '/' +
+                            str(len(guard_list_candidates))
+                        )
+                    return 'native-guard-list'
+                try:
+                    setattr(context, '_qqfarm_friend_entry_pending', False)
+                    setattr(context, '_qqfarm_friend_chain_pending', False)
+                    setattr(context, '_qqfarm_friend_chain_active', False)
+                    setattr(context, '_qqfarm_friend_chain_exhausted', True)
+                    setattr(context, '_qqfarm_friend_chain_allow_home', True)
+                    setattr(context, '_qqfarm_friend_list_resume_pending', False)
+                    setattr(context, '_qqfarm_friend_guard_empty_latched', True)
+                    setattr(
+                        context,
+                        '_qqfarm_friend_guard_last_empty_reason',
+                        'friend-list-terminal-latch',
+                    )
+                except BaseException:
+                    pass
+                writer = globals().get('_write')
+                if callable(writer):
+                    writer(
+                        'v493 friend list terminal latch active; closed without '
+                        'resetting cursor=' + str(guard_list_cursor) + '/' +
+                        str(len(guard_list_candidates))
+                    )
+                return 'closed-terminal-latch'
+            if (
+                friend_list_resume_pending
+                and guard_list_cursor >= len(guard_list_candidates)
+            ):
+                # The last selected row has already produced a confirmed friend
+                # farm.  Reopening the same list is the terminal acknowledgement
+                # for this ordered pass; resetting cursor N to zero here starts a
+                # second pass and repeats the first friend forever.
+                snapshot_fn = globals().get('_friend_progress_state_snapshot')
+                progress_snapshot = (
+                    snapshot_fn(context) if callable(snapshot_fn) else None
+                )
+                close_x = int(round(width * 0.946))
+                close_y = int(round(height * 0.118))
+                close_fn = globals().get('_friend_guard_post_client_click')
+                try:
+                    closed = bool(close_fn(
+                        close_x, close_y, width, height
+                    )) if callable(close_fn) else False
+                except TypeError:
+                    closed = bool(close_fn(close_x, close_y))
+                except BaseException:
+                    closed = False
+                if not closed:
+                    writer = globals().get('_write')
+                    if callable(writer):
+                        writer(
+                            'v492 friend list confirmed last row close retry '
+                            'cursor=' + str(guard_list_cursor) + '/' +
+                            str(len(guard_list_candidates))
+                        )
+                    return 'native-guard-list'
+                terminal_cursor = len(guard_list_candidates)
+                try:
+                    setattr(context, '_qqfarm_friend_entry_pending', False)
+                    setattr(context, '_qqfarm_friend_entry_clicked_ts', 0.0)
+                    setattr(context, '_qqfarm_friend_entry_retry_count', 0)
+                    setattr(context, '_qqfarm_friend_entry_last_retry_ts', 0.0)
+                    setattr(
+                        context,
+                        '_qqfarm_friend_list_visit_cursor',
+                        terminal_cursor,
+                    )
+                    setattr(
+                        context,
+                        '_qqfarm_friend_list_pending_cursor',
+                        terminal_cursor,
+                    )
+                    setattr(context, '_qqfarm_friend_list_resume_pending', False)
+                    setattr(context, '_qqfarm_friend_chain_pending', False)
+                    setattr(context, '_qqfarm_friend_chain_active', False)
+                    setattr(context, '_qqfarm_friend_chain_exhausted', True)
+                    setattr(context, '_qqfarm_friend_chain_allow_home', True)
+                    setattr(
+                        context,
+                        '_qqfarm_friend_last_row_card_fallback_tried',
+                        False,
+                    )
+                    setattr(context, '_qqfarm_friend_cycle_seen', False)
+                    setattr(context, '_qqfarm_visual_friend_count', 0)
+                    clear_fn = globals().get(
+                        '_friend_guard_clear_prequalification'
+                    )
+                    if callable(clear_fn):
+                        clear_fn(context)
+                except BaseException:
+                    pass
+                commit_fn = globals().get('_friend_progress_journal_commit')
+                terminal_committed = True
+                if callable(commit_fn):
+                    terminal_committed = bool(commit_fn(
+                        context,
+                        snapshot=progress_snapshot,
+                        reason='confirmed-last-row-close',
+                    ))
+                if not terminal_committed:
+                    return 'closed-journal-retry'
+                try:
+                    schedule_fn = globals().get(
+                        '_friend_guard_schedule_empty_poll'
+                    )
+                    if callable(schedule_fn):
+                        schedule_fn(
+                            context,
+                            reason='friend-list-confirmed-last-row-complete',
+                            now_ts=float(__import__('time').time()),
+                        )
+                except BaseException:
+                    pass
+                try:
+                    fast_fn = globals().get('_set_friend_chain_fast_interval')
+                    if callable(fast_fn):
+                        fast_fn(context, False)
+                except BaseException:
+                    pass
+                writer = globals().get('_write')
+                if callable(writer):
+                    writer(
+                        'v492 friend list confirmed last row complete; closed '
+                        'cursor=' + str(terminal_cursor) + '/' +
+                        str(len(guard_list_candidates))
+                    )
+                return 'closed'
             if (
                 friend_list_resume_pending
                 and guard_list_cursor < len(guard_list_candidates)
@@ -44450,7 +44967,7 @@ def _handle_friend_list_surface(context, frame):
             center = target.get('center') if isinstance(target, dict) else None
             if isinstance(center, (tuple, list)) and len(center) >= 2:
                 click_x, click_y = int(center[0]), int(center[1])
-                if guard_enabled and guard_mode == 'friend_guard_list':
+                if ordered_list_mode:
                     snapshot_fn = globals().get('_friend_progress_state_snapshot')
                     progress_snapshot = (
                         snapshot_fn(context) if callable(snapshot_fn) else None
@@ -44532,6 +45049,11 @@ def _handle_friend_list_surface(context, frame):
                             )
                             setattr(context, '_qqfarm_guard_list_row_y', int(target_row_y))
                             setattr(context, '_qqfarm_guard_list_row_score', float(target_score))
+                        else:
+                            setattr(context, '_qqfarm_guard_list_prequalified', False)
+                            setattr(context, '_qqfarm_guard_list_prequalified_ts', 0.0)
+                        if ordered_list_mode:
+                            setattr(context, '_qqfarm_friend_list_resume_pending', False)
                             if guard_list_pending_retry:
                                 next_retry_count = int(guard_list_retry_count) + 1
                             else:
@@ -44567,9 +45089,6 @@ def _handle_friend_list_surface(context, frame):
                             setattr(context, '_qqfarm_friend_chain_pending', True)
                             setattr(context, '_qqfarm_friend_chain_exhausted', False)
                             setattr(context, '_qqfarm_friend_chain_native_home_blocked', False)
-                        else:
-                            setattr(context, '_qqfarm_guard_list_prequalified', False)
-                            setattr(context, '_qqfarm_guard_list_prequalified_ts', 0.0)
                         setattr(context, '_qqfarm_friend_cycle_seen', True)
                         setattr(context, '_qqfarm_visual_friend_count', 0)
                         setattr(context, '_qqfarm_friend_page_seen_ts', 0.0)
@@ -44605,7 +45124,7 @@ def _handle_friend_list_surface(context, frame):
                         )
                     return 'visited'
                 try:
-                    if guard_enabled and guard_mode == 'friend_guard_list':
+                    if ordered_list_mode:
                         setattr(context, '_qqfarm_friend_entry_pending', False)
                         journal_fn = globals().get(
                             '_friend_progress_journal_record'
@@ -50558,6 +51077,60 @@ def _wrap_runtime_diag_method(fn, label):
                     )
                 except BaseException:
                     pass
+        # v488: some QQ builds call process_friend_farm directly from the
+        # native start loop instead of passing through the run_cycle wrapper.
+        # In that route the visible friend-list correction is logged, but the
+        # ordered-list handler never gets a chance to click the first card.
+        # Dispatch only when the fresh frame proves at least three friend-list
+        # rows; ordinary friend-farm frames and task panels fall through to the
+        # original method unchanged.
+        if str(label) == 'FarmBotCV.process_friend_farm':
+            try:
+                capture_fn = globals().get('_get_frame_from_bot')
+                rows_fn = globals().get('_friend_list_visit_button_rows')
+                list_handler = globals().get('_handle_friend_list_surface')
+                candidate_frame = (
+                    a[1] if len(a) > 1 else k.get('game_frame')
+                )
+                if candidate_frame is None and callable(capture_fn):
+                    candidate_frame = capture_fn(self_obj)
+                rows = (
+                    list(rows_fn(candidate_frame) or [])
+                    if callable(rows_fn) and candidate_frame is not None
+                    else []
+                )
+                try:
+                    diagnostic_fn = globals().get('_throttled_write')
+                    if callable(diagnostic_fn):
+                        shape = getattr(candidate_frame, 'shape', None)
+                        diagnostic_fn(
+                            'v488-process-friend-list-preflight',
+                            'v488 process_friend_farm preflight frame=' +
+                            repr(shape) + ' rows=' + str(len(rows)) +
+                            ' centers=' + repr([
+                                row.get('center') for row in rows[:8]
+                                if isinstance(row, dict)
+                            ]),
+                            4.0,
+                        )
+                except BaseException:
+                    pass
+                if len(rows) >= 3 and callable(list_handler):
+                    list_result = list_handler(self_obj, candidate_frame)
+                    _write(
+                        'v488 process_friend_farm list preflight result=' +
+                        str(list_result) + ' rows=' + str(len(rows))
+                    )
+                    if list_result in ('visited', 'closed', 'native-guard-list'):
+                        return False
+            except BaseException as error:
+                try:
+                    _write(
+                        'v488 process_friend_farm list preflight error ' +
+                        repr(error)[:240]
+                    )
+                except BaseException:
+                    pass
         try:
             cap_fn = globals().get('_qqfarm_cap_runtime_recovery_waits')
             recovery_changes = int(
@@ -50907,6 +51480,22 @@ def _wrap_runtime_diag_method(fn, label):
                         callable(list_handler)):
                     preflight_frame = capture_fn(self_obj)
                     preflight_rows = rows_fn(preflight_frame)
+                    try:
+                        diagnostic_fn = globals().get('_throttled_write')
+                        if callable(diagnostic_fn):
+                            diagnostic_fn(
+                                'v487-friend-list-preflight',
+                                'v487 friend-list preflight frame=' +
+                                repr(getattr(preflight_frame, 'shape', None)) +
+                                ' rows=' + str(len(preflight_rows or [])) +
+                                ' centers=' + repr([
+                                    row.get('center') for row in (preflight_rows or [])[:8]
+                                    if isinstance(row, dict)
+                                ]),
+                                4.0,
+                            )
+                    except BaseException:
+                        pass
                     if len(preflight_rows or []) >= 3:
                         preflight_result = list_handler(self_obj, preflight_frame)
                         _write(
@@ -52585,6 +53174,131 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
         pass
 
     def _wrapped(self, *args, **kwargs):
+        # v489: native-v225 owns ``process_friend_farm`` in production, so the
+        # generic runtime-diagnostic wrapper is intentionally not installed on
+        # this method.  Dispatch the proven multi-row friend-list surface from
+        # this native owner bridge, which is the callable production actually
+        # enters, before the compiled implementation can emit a correction log
+        # and return without clicking a friend card.
+        try:
+            candidate_frame = None
+            for value in list(args) + list(kwargs.values()):
+                shape = getattr(value, 'shape', None)
+                if shape is not None and len(shape) >= 2:
+                    candidate_frame = value
+                    break
+            capture_fn = globals().get(
+                '_qqfarm_capture_native_friend_help_frame'
+            )
+            if candidate_frame is None and callable(capture_fn):
+                candidate_frame = capture_fn(self)
+            rows_fn = globals().get('_friend_list_visit_button_rows')
+            rows = (
+                list(rows_fn(candidate_frame) or [])
+                if callable(rows_fn) and candidate_frame is not None
+                else []
+            )
+            try:
+                diagnostic_fn = globals().get('_throttled_write')
+                if callable(diagnostic_fn):
+                    diagnostic_fn(
+                        'v489-native-friend-list-preflight',
+                        'v489 native-v225 friend-list preflight rows=' +
+                        str(len(rows)) + ' centers=' + repr([
+                            row.get('center') for row in rows[:8]
+                            if isinstance(row, dict)
+                        ]),
+                        4.0,
+                    )
+            except BaseException:
+                pass
+            # The production native owner calls process_friend_farm directly;
+            # therefore the generic run_cycle wrapper never gets the chance to
+            # acknowledge a successful list-row transition.  Commit the pending
+            # row as soon as this fresh frame visibly proves a friend farm, then
+            # let native steal/help processing continue on that same frame.
+            try:
+                entry_pending = bool(getattr(
+                    self, '_qqfarm_friend_entry_pending', False
+                ))
+                state_fn = globals().get('_friend_guard_friend_ui_state')
+                friend_surface = (
+                    state_fn(candidate_frame)
+                    if entry_pending and callable(state_fn)
+                    and candidate_frame is not None and len(rows) < 3
+                    else None
+                )
+                if entry_pending and friend_surface is True:
+                    commit_fn = globals().get(
+                        '_commit_friend_list_entry_transition'
+                    )
+                    committed = bool(
+                        commit_fn(self) if callable(commit_fn) else False
+                    )
+                    if not committed:
+                        write_fn = globals().get('_write')
+                        if callable(write_fn):
+                            write_fn(
+                                'v490 native-v225 friend-list transition cursor '
+                                'commit failed; keeping pending row'
+                            )
+                        return False
+                    setattr(self, '_qqfarm_friend_entry_pending', False)
+                    setattr(self, '_qqfarm_friend_entry_clicked_ts', 0.0)
+                    setattr(
+                        self,
+                        '_qqfarm_friend_entry_verified_surface',
+                        'friend-farm',
+                    )
+                    write_fn = globals().get('_write')
+                    if callable(write_fn):
+                        write_fn(
+                            'v490 native-v225 friend-list transition confirmed '
+                            'next_cursor=' + str(getattr(
+                                self,
+                                '_qqfarm_friend_list_visit_cursor',
+                                0,
+                            ))
+                        )
+            except BaseException as error:
+                try:
+                    write_fn = globals().get('_write')
+                    if callable(write_fn):
+                        write_fn(
+                            'v490 native-v225 friend-list transition error=' +
+                            repr(error)[:220]
+                        )
+                except BaseException:
+                    pass
+            list_handler = globals().get('_handle_friend_list_surface')
+            if len(rows) >= 3 and callable(list_handler):
+                list_result = list_handler(self, candidate_frame)
+                write_fn = globals().get('_write')
+                if callable(write_fn):
+                    write_fn(
+                        'v489 native-v225 friend-list dispatch result=' +
+                        str(list_result) + ' rows=' + str(len(rows))
+                    )
+                if list_result in (
+                    'visited', 'closed', 'closed-terminal-latch',
+                    'native-guard-list',
+                    'visited-journal-pending', 'pending-row-backoff',
+                    'pending-row-journal-retry', 'pending-row-reopen',
+                    'blocked-row-next', 'blocked-row-journal-retry',
+                    'closed-journal-retry',
+                ):
+                    return False
+        except BaseException as error:
+            try:
+                write_fn = globals().get('_write')
+                if callable(write_fn):
+                    write_fn(
+                        'v489 native-v225 friend-list preflight error=' +
+                        repr(error)[:240]
+                    )
+            except BaseException:
+                pass
+
         # v481: a native friend pass can report a normal return while the
         # selected card never changed. Keep cursor-like state transactional so
         # a stale frame cannot fabricate 3/12, 4/12, ... 12/12.
