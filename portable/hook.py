@@ -23338,11 +23338,51 @@ def _wechat_focus_hwnd_from_owner(owner, prefer_applied=False):
     return read(owner)
 
 
+def _wechat_focus_process_identity(hwnd):
+    """Return the PID and executable name that own a concrete HWND."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+        handle = _wechat_focus_coerce_hwnd(hwnd)
+        if not handle:
+            return 0, ''
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        process_id = wintypes.DWORD(0)
+        user32.GetWindowThreadProcessId(
+            ctypes.c_void_p(handle), ctypes.byref(process_id)
+        )
+        pid = int(process_id.value or 0)
+        if pid <= 0:
+            return 0, ''
+        process = kernel32.OpenProcess(0x1000, False, process_id.value)
+        if not process:
+            return pid, ''
+        try:
+            size = wintypes.DWORD(1024)
+            buffer = ctypes.create_unicode_buffer(int(size.value))
+            ok = kernel32.QueryFullProcessImageNameW(
+                process, 0, buffer, ctypes.byref(size)
+            )
+            if not ok:
+                return pid, ''
+            name = str(buffer.value or '').rsplit('\\', 1)[-1]
+            return pid, name
+        finally:
+            kernel32.CloseHandle(process)
+    except BaseException:
+        return 0, ''
+
+
 def _wechat_focus_set_owner_hwnd(owner, hwnd):
     """Publish a discovered handle to the native capture object before apply."""
     handle = _wechat_focus_coerce_hwnd(hwnd)
     if owner is None or not handle:
         return False
+    try:
+        bound_pid, bound_process_name = _wechat_focus_process_identity(handle)
+    except BaseException:
+        bound_pid, bound_process_name = 0, ''
     targets = [owner]
     for name in (
             'screen_capture', 'capture', 'window_capture', 'capture_backend',
@@ -23365,6 +23405,26 @@ def _wechat_focus_set_owner_hwnd(owner, hwnd):
                     except BaseException:
                         pass
                     break
+            if bound_pid:
+                for name in ('bound_pid', '_bound_pid'):
+                    try:
+                        if name in target or name == 'bound_pid':
+                            if int(target.get(name, 0) or 0) != bound_pid:
+                                target[name] = bound_pid
+                                changed = True
+                            break
+                    except BaseException:
+                        pass
+            if bound_process_name:
+                for name in ('bound_process_name', '_bound_process_name'):
+                    try:
+                        if name in target or name == 'bound_process_name':
+                            if str(target.get(name, '') or '') != bound_process_name:
+                                target[name] = bound_process_name
+                                changed = True
+                            break
+                    except BaseException:
+                        pass
             continue
         for name in ('bound_hwnd', '_bound_hwnd', 'window_hwnd'):
             try:
@@ -23375,7 +23435,96 @@ def _wechat_focus_set_owner_hwnd(owner, hwnd):
                 break
             except BaseException:
                 continue
+        if bound_pid:
+            for name in ('bound_pid', '_bound_pid'):
+                try:
+                    current = int(getattr(target, name, 0) or 0)
+                    if current != bound_pid:
+                        setattr(target, name, bound_pid)
+                        changed = True
+                    break
+                except BaseException:
+                    continue
+        if bound_process_name:
+            for name in ('bound_process_name', '_bound_process_name'):
+                try:
+                    current = str(getattr(target, name, '') or '')
+                    if current != bound_process_name:
+                        setattr(target, name, bound_process_name)
+                        changed = True
+                    break
+                except BaseException:
+                    continue
     return changed
+
+
+def _wechat_focus_state_snapshot(owner):
+    """Capture native binding fields so pre-call injection is not proof."""
+    if owner is None:
+        return ()
+    names = (
+        'bound_hwnd', '_bound_hwnd', 'window_hwnd', '_window_hwnd',
+        'capture_hwnd', '_capture_hwnd', 'hwnd', '_hwnd',
+        'guarded_hwnd', '_guarded_hwnd', 'current_hwnd', '_current_hwnd',
+        'attempted_hwnd', '_attempted_hwnd',
+        '_wechat_focus_guard_applied_hwnd',
+        'wechat_focus_guard_applied_hwnd',
+        '_wechat_focus_guard_attempted_hwnd',
+        'wechat_focus_guard_attempted_hwnd',
+        'bound_pid', '_bound_pid', 'process_id', '_process_id',
+        'pid', '_pid', 'target_pid', '_target_pid',
+        'bound_process_name', '_bound_process_name', 'process_name',
+        '_process_name', 'target_process_name', '_target_process_name',
+        'existing_window_probe_done', '_existing_window_probe_done',
+        '_wechat_focus_guard_existing_window_probe_done',
+        'wechat_focus_guard_existing_window_probe_done',
+    )
+    nested_names = (
+        'screen_capture', 'capture', 'window_capture', 'capture_backend',
+        'window_manager', 'runtime', 'bot', 'context', 'state',
+    )
+    seen = set()
+    values = []
+
+    def read(value, depth=0):
+        if value is None or depth > 2:
+            return
+        marker = id(value)
+        if marker in seen:
+            return
+        seen.add(marker)
+        if isinstance(value, dict):
+            getter = value.get
+        else:
+            getter = lambda name: getattr(value, name, None)
+        for name in names:
+            try:
+                raw = getter(name)
+                if raw is None:
+                    continue
+                if 'hwnd' in name:
+                    normalized = _wechat_focus_coerce_hwnd(raw)
+                elif name.endswith('pid') or name.endswith('_pid') or name in {
+                        'pid', '_pid', 'process_id', '_process_id'}:
+                    try:
+                        normalized = int(raw)
+                    except BaseException:
+                        normalized = 0
+                elif 'probe_done' in name:
+                    normalized = bool(raw)
+                else:
+                    normalized = str(raw)
+                values.append((name, normalized))
+            except BaseException:
+                pass
+        for name in nested_names:
+            try:
+                read(getter(name), depth + 1)
+            except BaseException:
+                pass
+
+    read(owner)
+    return tuple(values)
 
 
 def _wechat_focus_reason_from_call(fn, args, kwargs):
@@ -23479,7 +23628,7 @@ def _wechat_focus_emit_applied(hwnd, reason):
     return True
 
 
-def _wechat_focus_apply_proved(owner, hwnd, result):
+def _wechat_focus_apply_proved(owner, hwnd, result, before_state=None):
     if result is False:
         return False
     handle = _wechat_focus_coerce_hwnd(hwnd)
@@ -23495,7 +23644,122 @@ def _wechat_focus_apply_proved(owner, hwnd, result):
                 return True
         except BaseException:
             pass
-    return False
+
+    if before_state is not None:
+        try:
+            if _wechat_focus_state_snapshot(owner) == tuple(before_state):
+                return False
+        except BaseException:
+            pass
+
+    # The v2.3.x native guard acknowledges through binding state and returns
+    # None.  Do not treat the pre-call ``bound_hwnd`` write performed by our
+    # wrapper as proof by itself; require the native process identity together
+    # with the attempted/existing-window state and a matching target handle.
+    direct_names = (
+        'bound_hwnd', '_bound_hwnd', 'window_hwnd', '_window_hwnd',
+        'capture_hwnd', '_capture_hwnd', 'hwnd', '_hwnd',
+        'guarded_hwnd', '_guarded_hwnd', 'current_hwnd', '_current_hwnd',
+        'attempted_hwnd', '_attempted_hwnd',
+        '_wechat_focus_guard_attempted_hwnd',
+        'wechat_focus_guard_attempted_hwnd',
+    )
+    pid_names = (
+        'bound_pid', '_bound_pid', 'process_id', '_process_id',
+        'pid', '_pid', 'target_pid', '_target_pid',
+    )
+    process_names = (
+        'bound_process_name', '_bound_process_name', 'process_name',
+        '_process_name', 'target_process_name', '_target_process_name',
+    )
+    probe_names = (
+        'existing_window_probe_done', '_existing_window_probe_done',
+        '_wechat_focus_guard_existing_window_probe_done',
+        'wechat_focus_guard_existing_window_probe_done',
+    )
+    nested_names = (
+        'screen_capture', 'capture', 'window_capture', 'capture_backend',
+        'window_manager', 'runtime', 'bot', 'context', 'state',
+    )
+    seen = set()
+    handles = []
+    correlated_handles = []
+    pids = []
+    process_values = []
+    probes = []
+    correlation_names = {
+        'guarded_hwnd', '_guarded_hwnd', 'current_hwnd', '_current_hwnd',
+        'attempted_hwnd', '_attempted_hwnd',
+        '_wechat_focus_guard_attempted_hwnd',
+        'wechat_focus_guard_attempted_hwnd',
+    }
+
+    def collect(value, depth=0):
+        if value is None or depth > 2:
+            return
+        marker = id(value)
+        if marker in seen:
+            return
+        seen.add(marker)
+        if isinstance(value, dict):
+            getter = value.get
+        else:
+            getter = lambda name: getattr(value, name, None)
+        for name in direct_names:
+            try:
+                candidate = _wechat_focus_coerce_hwnd(getter(name))
+                if candidate:
+                    handles.append(candidate)
+                    if name in correlation_names:
+                        correlated_handles.append(candidate)
+            except BaseException:
+                pass
+        for name in pid_names:
+            try:
+                candidate = getter(name)
+                if candidate is not None:
+                    pids.append(int(candidate))
+            except BaseException:
+                pass
+        for name in process_names:
+            try:
+                candidate = getter(name)
+                if candidate:
+                    process_values.append(str(candidate).strip().lower())
+            except BaseException:
+                pass
+        for name in probe_names:
+            try:
+                candidate = getter(name)
+                if candidate is not None:
+                    probes.append(bool(candidate))
+            except BaseException:
+                pass
+        for name in nested_names:
+            try:
+                collect(getter(name), depth + 1)
+            except BaseException:
+                pass
+
+    collect(owner)
+    if handle not in handles:
+        return False
+    if not any(pid > 0 for pid in pids):
+        return False
+    if not any(
+            value.rsplit('\\', 1)[-1].rsplit('/', 1)[-1]
+            in {'wechatappex.exe', 'weixin.exe', 'wechat.exe'}
+            or 'wechatappex' in value
+            or 'weixin' in value
+            for value in process_values):
+        return False
+    if not any(probes):
+        return False
+    # A matching attempted/guarded/current handle is the final correlation
+    # between the native state and the HWND passed to this invocation.  The
+    # generic bound handle is deliberately excluded because the wrapper sets
+    # it before calling native code.
+    return any(value == handle for value in correlated_handles)
 
 
 def _wrap_apply_wechat_focus_after_hwnd(fn, name):
@@ -23510,6 +23774,7 @@ def _wrap_apply_wechat_focus_after_hwnd(fn, name):
         call_args, call_kwargs, owner, hwnd = _wechat_focus_prepare_call(
             fn, a, k
         )
+        before_state = _wechat_focus_state_snapshot(owner)
         reason = _wechat_focus_reason_from_call(fn, call_args, call_kwargs)
         if _active_is_weixin_mode() and _wechat_focus_enabled() and hwnd:
             _wechat_focus_emit_enabled(hwnd, reason)
@@ -23518,7 +23783,8 @@ def _wrap_apply_wechat_focus_after_hwnd(fn, name):
         try:
             res = fn(*call_args, **call_kwargs)
             if (_active_is_weixin_mode() and _wechat_focus_enabled() and
-                    _wechat_focus_apply_proved(owner, hwnd, res)):
+                    _wechat_focus_apply_proved(
+                        owner, hwnd, res, before_state=before_state)):
                 _wechat_focus_emit_applied(hwnd, reason)
             if _active_is_weixin_mode() and _wechat_focus_enabled():
                 _write('wechat focus apply result ' + str(name) +
@@ -23567,6 +23833,7 @@ def _wrap_wechat_focus_guard(fn, name):
         call_args, call_kwargs, owner, hwnd = _wechat_focus_prepare_call(
             fn, a, k
         )
+        before_state = _wechat_focus_state_snapshot(owner)
         reason = _wechat_focus_reason_from_call(fn, call_args, call_kwargs)
         if _active_is_weixin_mode() and _wechat_focus_enabled() and hwnd:
             _wechat_focus_emit_enabled(hwnd, reason)
@@ -23575,7 +23842,8 @@ def _wrap_wechat_focus_guard(fn, name):
         try:
             result = fn(*call_args, **call_kwargs)
             if (_active_is_weixin_mode() and _wechat_focus_enabled() and
-                    _wechat_focus_apply_proved(owner, hwnd, result)):
+                    _wechat_focus_apply_proved(
+                        owner, hwnd, result, before_state=before_state)):
                 _wechat_focus_emit_applied(hwnd, reason)
             return result
         except BaseException as e:
@@ -23615,6 +23883,76 @@ def _wechat_focus_select_window_candidate(candidates, preferred_hwnd=0):
             area = max(0, int(candidate.get('area', 0) or 0))
         except BaseException:
             area = 0
+        try:
+            width = max(0, int(candidate.get('width', 0) or 0))
+            height = max(0, int(candidate.get('height', 0) or 0))
+        except BaseException:
+            width, height = 0, 0
+        try:
+            parent_hwnd = _wechat_focus_coerce_hwnd(
+                candidate.get('parent_hwnd', candidate.get('parent', 0))
+            )
+            root_hwnd = _wechat_focus_coerce_hwnd(
+                candidate.get('root_hwnd', candidate.get('top_hwnd', 0))
+            )
+        except BaseException:
+            parent_hwnd, root_hwnd = 0, 0
+        # WeChat creates zero-size helper/host windows alongside the actual
+        # miniapp surface.  They can carry the farm title and process name,
+        # but have no pixels for capture or coordinate input.  Treat them as
+        # non-candidates so a support HWND cannot win the farm-window score.
+        if area <= 0:
+            continue
+        # Tray balloons, IME windows, and system-message hosts may be large
+        # transient surfaces, but they are not the app/miniapp render target.
+        # Exclude them before scoring so a larger notification rectangle does
+        # not displace the real Weixin/WeChatAppEx content window.
+        non_content_class = any(marker in class_lower for marker in (
+            'trayiconmessagewindow', 'systemmessagewindow',
+            'powermessagewindow', 'msctfime',
+        )) or class_lower in {'ime', 'default ime'}
+        if non_content_class:
+            continue
+        # Weixin renders the miniapp into a child surface rather than the
+        # outer Qt shell.  The current production probe shows a stable
+        # 428x800 ``MMUIRenderSubWindowHW`` under a 443x807 shell.  Prefer a
+        # large render child, while keeping tiny Chromium helpers below the
+        # outer window.
+        mmui_render_surface = 'mmuirendersubwindowhw' in class_lower
+        mmui_container_surface = (
+            'mmuirendersubwindow' in class_lower and
+            not mmui_render_surface
+        )
+        render_surface = bool(
+            mmui_render_surface or mmui_container_surface or
+            any(marker in class_lower for marker in (
+                'chrome_renderwidgethosthwnd',
+                'chrome_widgetwin',
+            ))
+        )
+        large_render_surface = bool(
+            render_surface and area >= 20000 and width >= 240 and height >= 300
+        )
+        if render_surface and area < 20000:
+            render_surface_bonus = -80
+        elif large_render_surface:
+            # A real Weixin MMUI surface is the coordinate/capture child.  A
+            # larger, title-less WeChatAppEx shell/helper can otherwise win on
+            # area alone when both processes are present.  Keep the explicit
+            # farm-title bonus stronger than this compatibility bonus so a
+            # positively identified Chrome farm page still wins.
+            if mmui_render_surface:
+                render_surface_bonus = 190
+            elif mmui_container_surface:
+                render_surface_bonus = 170
+            else:
+                render_surface_bonus = 120
+        else:
+            render_surface_bonus = 0
+        canonical_distance = 0
+        if width > 0 and height > 0:
+            canonical_distance = abs(width - 428) + abs(height - 800)
+        canonical_bonus = max(0, 60 - min(60, canonical_distance // 4))
         known_process = process_name.rsplit('\\', 1)[-1].rsplit('/', 1)[-1] in {
             'wechatappex.exe', 'weixin.exe', 'wechat.exe',
         }
@@ -23639,17 +23977,60 @@ def _wechat_focus_select_window_candidate(candidates, preferred_hwnd=0):
             # Hidden-window mode still needs the concrete miniapp HWND.
             score += 2
         score += min(30, area // 10000)
+        score += int(render_surface_bonus) + int(canonical_bonus)
         # The capture layer already knows the bound farm HWND in hidden or
         # multi-window sessions.  Prefer that concrete handle over a larger
         # but unrelated WeChat main window; keep the normal score as the
         # fallback when no bound handle is available.
+        if preferred and hwnd == preferred:
+            preferred_rank = 4 if large_render_surface else 2
+        elif preferred and (
+                (root_hwnd and root_hwnd == preferred) or
+                (parent_hwnd and parent_hwnd == preferred)):
+            preferred_rank = 3 if large_render_surface else 1
+        else:
+            preferred_rank = 0
         rank = (
-            int(bool(preferred and hwnd == preferred)),
+            preferred_rank,
             score, int(known_process), int(visible), area, hwnd,
         )
         if best is None or rank > best[0]:
             best = (rank, hwnd)
     return int(best[1]) if best is not None else 0
+
+
+def _wechat_focus_should_enumerate_children(candidate):
+    """Gate child-window enumeration to probable Weixin/WeChat roots.
+
+    ``EnumChildWindows`` is comparatively expensive and the desktop may have
+    hundreds of unrelated top-level windows.  Only a known WeChat process or
+    an unmistakable WeChat/微信 shell should be expanded; the selector still
+    performs the final render-surface filtering for every collected handle.
+    """
+    if not isinstance(candidate, dict):
+        return False
+    process_name = str(candidate.get('process_name', '') or '').lower()
+    process_base = process_name.replace('/', '\\').rsplit('\\', 1)[-1]
+    if process_base in {'wechatappex.exe', 'weixin.exe', 'wechat.exe'}:
+        return True
+    title_lower = str(candidate.get('title', '') or '').lower()
+    if any(marker in title_lower for marker in (
+            '微信', 'wechat', 'weixin', 'qq经典农场', '经典农场',
+            'qq农场', '农场', 'farm')):
+        return True
+    # If process-name access is denied, accept only a large portrait Qt shell
+    # whose class is characteristic of the current Weixin build.  This keeps
+    # the fallback useful without recursively walking every Qt application.
+    class_lower = str(candidate.get('class_name', '') or '').lower()
+    if class_lower == 'qt51514qwindowicon':
+        try:
+            width = max(0, int(candidate.get('width', 0) or 0))
+            height = max(0, int(candidate.get('height', 0) or 0))
+        except BaseException:
+            width, height = 0, 0
+        if width >= 300 and height >= 500 and height >= width:
+            return True
+    return False
 
 
 def _wechat_focus_process_name_for_hwnd(hwnd):
@@ -23689,11 +24070,18 @@ def _find_wechat_hwnd():
         from ctypes import wintypes
         user32 = ctypes.windll.user32
         candidates = []
+        top_level_hwnds = []
+        seen_hwnds = set()
         EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
-        def _cb(hwnd, lparam):
+
+        def _add_candidate(hwnd, parent_hwnd=0, root_hwnd=0, depth=0):
             try:
+                hwnd_value = int(hwnd)
+                if hwnd_value <= 0 or hwnd_value in seen_hwnds:
+                    return None
+                seen_hwnds.add(hwnd_value)
                 if not user32.IsWindow(hwnd):
-                    return True
+                    return None
                 visible = bool(user32.IsWindowVisible(hwnd))
                 title_buf = ctypes.create_unicode_buffer(512)
                 cls_buf = ctypes.create_unicode_buffer(256)
@@ -23705,21 +24093,69 @@ def _find_wechat_hwnd():
                 rect = wintypes.RECT()
                 area = 0
                 if user32.GetWindowRect(hwnd, ctypes.byref(rect)):
-                    area = max(0, int(rect.right - rect.left)) * max(
-                        0, int(rect.bottom - rect.top)
-                    )
-                candidates.append({
-                    'hwnd': int(hwnd),
+                    width = max(0, int(rect.right - rect.left))
+                    height = max(0, int(rect.bottom - rect.top))
+                    area = width * height
+                else:
+                    width, height = 0, 0
+                candidate = {
+                    'hwnd': hwnd_value,
                     'process_name': process_name,
                     'title': title,
                     'class_name': cls,
                     'visible': visible,
                     'area': area,
-                })
+                    'width': width,
+                    'height': height,
+                    'depth': int(depth),
+                    'parent_hwnd': int(parent_hwnd or 0),
+                    'root_hwnd': int(root_hwnd or hwnd_value),
+                }
+                candidates.append(candidate)
+                return candidate
+            except BaseException:
+                return None
+
+        def _cb(hwnd, lparam):
+            candidate = _add_candidate(
+                hwnd, parent_hwnd=0, root_hwnd=int(hwnd), depth=0
+            )
+            if _wechat_focus_should_enumerate_children(candidate):
+                try:
+                    top_level_hwnds.append(int(hwnd))
+                except BaseException:
+                    pass
+            return True
+
+        user32.EnumWindows(EnumWindowsProc(_cb), 0)
+
+        # The miniapp render surface is commonly a child of the Weixin shell.
+        # EnumWindows sees only the outer Qt window and would route clicks to
+        # the shell instead of the 428x800 child that owns farm coordinates.
+        ChildEnumProc = ctypes.WINFUNCTYPE(
+            ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p
+        )
+        for root_hwnd in tuple(top_level_hwnds):
+            @ChildEnumProc
+            def _child_cb(hwnd, _lparam, _root=root_hwnd):
+                try:
+                    parent = int(user32.GetParent(hwnd) or _root)
+                except BaseException:
+                    parent = int(_root)
+                _add_candidate(
+                    hwnd,
+                    parent_hwnd=parent,
+                    root_hwnd=int(_root),
+                    depth=1,
+                )
+                return True
+            try:
+                user32.EnumChildWindows(
+                    ctypes.c_void_p(root_hwnd), _child_cb, 0
+                )
             except BaseException:
                 pass
-            return True
-        user32.EnumWindows(EnumWindowsProc(_cb), 0)
+
         preferred = 0
         for cache_name in ('_QQFARM_WGC_BOUND_HWND', '_QQFARM_LAST_FARM_HWND'):
             preferred = _wechat_focus_coerce_hwnd(
@@ -25463,6 +25899,38 @@ def _qqfarm_wgc_closed(*_args, **_kwargs):
         pass
 
 
+def _qqfarm_invalidate_wgc_frame_cache(reason=''):
+    """Drop every frame/cache field after a failed or replaced WGC session."""
+    globals()['_QQFARM_WGC_FRAME'] = None
+    globals()['_QQFARM_WGC_FRAME_TS'] = 0.0
+    globals()['_QQFARM_WGC_RAW_SIZE'] = None
+    globals()['_QQFARM_LAST_WGC_NORMALIZED_FRAME'] = None
+    globals()['_QQFARM_LAST_WGC_NORMALIZED_TS'] = 0.0
+    globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = 0.0
+    globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID'] = 0
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_GENERATION'] = 0
+    globals()['_QQFARM_LAST_GOOD_CAPTURE_HWND'] = 0
+    globals()['_QQFARM_WGC_SESSION_READY'] = False
+    globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
+    current_state = str(globals().get('_QQFARM_WGC_STATE', '') or '').strip().lower()
+    if current_state not in {'blank', 'pending-window'}:
+        globals()['_QQFARM_WGC_STATE'] = 'pending'
+    if reason:
+        try:
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v484-wgc-frame-invalidated',
+                    'v484 WGC frame cache invalidated reason=' + str(reason),
+                    5.0,
+                )
+        except BaseException:
+            pass
+    return True
+
+
 def _qqfarm_stop_wgc_capture(reason=''):
     control = globals().get('_QQFARM_WGC_CONTROL')
     capture = globals().get('_QQFARM_WGC_CAPTURE')
@@ -25693,15 +26161,37 @@ def _qqfarm_restore_hidden_miniapp_taskbar_card(reason=''):
 
 
 def _qqfarm_find_farm_capture_hwnd():
-    """Find the QQ Farm top-level HWND for capture, including hidden states.
+    """Find the active farm render HWND for capture, including hidden states.
 
     The visible desktop finder deliberately rejects minimized/off-screen
     rectangles because those pixels are not valid desktop input.  WGC is
-    different: it can bind directly to the real top-level HWND while QQ has
-    reduced it to a taskbar-sized or off-screen surface during the configured
-    hidden mode.  Keep the two concerns separate and rank exact-title
-    candidates without accepting the assistant's own renamed window.
+    different: it can bind directly to the real render HWND while the host has
+    hidden or minimized its shell.  Weixin owns a child render surface, so it
+    must use the platform selector instead of falling through to QQ title
+    enumeration.  Keep the two concerns separate and never cross-bind hosts.
     """
+    is_weixin = False
+    try:
+        mode_fn = globals().get('_active_is_weixin_mode')
+        is_weixin = bool(callable(mode_fn) and bool(mode_fn()))
+    except BaseException:
+        is_weixin = False
+    if is_weixin:
+        try:
+            find_weixin_fn = globals().get('_find_wechat_hwnd')
+            weixin_hwnd = int(find_weixin_fn() or 0) if callable(
+                find_weixin_fn
+            ) else 0
+            if weixin_hwnd > 0:
+                globals()['_QQFARM_LAST_FARM_HWND'] = weixin_hwnd
+                return weixin_hwnd
+        except BaseException:
+            pass
+        # A QQ window may exist beside Weixin.  Returning zero here is safer
+        # than allowing the QQ title finder to bind the wrong application's
+        # pixels to the active Weixin automation instance.
+        return 0
+
     try:
         visible_fn = globals().get('_share_find_farm_window_hwnd')
         if callable(visible_fn):
@@ -25844,6 +26334,15 @@ def _qqfarm_find_farm_capture_hwnd():
 def _qqfarm_start_wgc_capture():
     capture = globals().get('_QQFARM_WGC_CAPTURE')
     control = globals().get('_QQFARM_WGC_CONTROL')
+    is_weixin = False
+    try:
+        mode_fn = globals().get('_active_is_weixin_mode')
+        is_weixin = bool(callable(mode_fn) and bool(mode_fn()))
+    except BaseException:
+        is_weixin = False
+    platform_name = 'Weixin' if is_weixin else 'QQ'
+    fallback_window_title = '\u5fae\u4fe1' if is_weixin else 'QQ\u7ecf\u5178\u519c\u573a'
+    capture_selector = 'unselected'
     kernel_guard_fn = globals().get('_qqfarm_kernel_pool_guard')
     if callable(kernel_guard_fn):
         try:
@@ -25918,7 +26417,7 @@ def _qqfarm_start_wgc_capture():
                     globals()['_QQFARM_WGC_FIRST_VALID_FRAME_TS'] = 0.0
                 else:
                     if farm_hwnd <= 0:
-                        # The previously bound QQ window disappeared during a
+                        # The previously bound host window disappeared during a
                         # close/recreate transition.  Retaining that live
                         # capture would allow late callbacks or its last frame
                         # to leak into the next patrol.  Stop it before waiting
@@ -25946,7 +26445,7 @@ def _qqfarm_start_wgc_capture():
                 globals()['_QQFARM_WGC_STATE'] = 'starting'
                 return True
     if farm_hwnd <= 0:
-        # A title-only selector can bind to the helper window or to a stale QQ
+        # A title-only selector can bind to a helper window or stale host
         # surface during restart.  Wait for the concrete farm HWND instead of
         # constructing a capture object that can only produce an empty frame.
         globals()['_QQFARM_WGC_STATE'] = 'pending-window'
@@ -25956,7 +26455,8 @@ def _qqfarm_start_wgc_capture():
         if callable(log_fn):
             log_fn(
                 'v475-wgc-wait-window',
-                'v475 WGC start deferred until QQ farm HWND is available',
+                'v483 WGC start deferred until ' + platform_name +
+                ' farm HWND is available',
                 5.0,
             )
         return False
@@ -26081,8 +26581,17 @@ def _qqfarm_start_wgc_capture():
             capture_options['window_hwnd'] = farm_hwnd
             capture_selector = 'hwnd=' + str(farm_hwnd)
         else:
-            capture_options['window_name'] = 'QQ\u7ecf\u5178\u519c\u573a'
-            capture_selector = 'title=QQ-farm'
+            capture_options['window_name'] = fallback_window_title
+            capture_selector = 'title=' + platform_name
+        log_fn = globals().get('_throttled_write')
+        if callable(log_fn):
+            log_fn(
+                'v485-wgc-selector-decision',
+                'v485 WGC selector decision platform=' + platform_name +
+                ' farm_hwnd=' + str(int(farm_hwnd or 0)) +
+                ' selector=' + str(capture_selector),
+                10.0,
+            )
         try:
             capture = capture_type(
                 _guarded_frame_callback,
@@ -26104,13 +26613,13 @@ def _qqfarm_start_wgc_capture():
                 raise
             fallback_options = dict(capture_options)
             fallback_options.pop('window_hwnd', None)
-            fallback_options['window_name'] = 'QQ\u7ecf\u5178\u519c\u573a'
+            fallback_options['window_name'] = fallback_window_title
             capture = capture_type(
                 _guarded_frame_callback,
                 _guarded_close_callback,
                 **fallback_options
             )
-            capture_selector = 'title=QQ-farm-compat'
+            capture_selector = 'title=' + platform_name + '-compat'
             log_fn = globals().get('_throttled_write')
             if callable(log_fn):
                 log_fn(
@@ -26131,13 +26640,21 @@ def _qqfarm_start_wgc_capture():
         if callable(log_fn):
             log_fn(
                 'v311-wgc-started',
-                'v313 WGC game-window capture started selector=' + capture_selector,
+                'v483 WGC game-window capture started platform=' +
+                platform_name + ' selector=' + capture_selector +
+                ' hwnd=' + str(int(farm_hwnd or 0)),
                 30.0,
             )
         return True
     except BaseException as error:
         failed_control = globals().get('_QQFARM_WGC_CONTROL')
         failed_capture = globals().get('_QQFARM_WGC_CAPTURE')
+        invalidate_fn = globals().get('_qqfarm_invalidate_wgc_frame_cache')
+        if callable(invalidate_fn):
+            try:
+                invalidate_fn('start-error')
+            except BaseException:
+                pass
         globals()['_QQFARM_WGC_GENERATION'] = int(
             globals().get('_QQFARM_WGC_GENERATION', 0) or 0
         ) + 1
@@ -26163,7 +26680,10 @@ def _qqfarm_start_wgc_capture():
             if callable(log_fn):
                 log_fn(
                     'v311-wgc-start-error',
-                    'v311 WGC start error=' + repr(error)[:220],
+                    'v485 WGC start error platform=' + platform_name +
+                    ' farm_hwnd=' + str(int(farm_hwnd or 0)) +
+                    ' selector=' + str(capture_selector) +
+                    ' error=' + repr(error)[:220],
                     10.0,
                 )
         except BaseException:
@@ -26247,6 +26767,47 @@ def _qqfarm_visible_capture_frame_is_trusted(frame, max_age=4.0):
     )
 
 
+def _qqfarm_capture_frame_has_rendered_pixels(frame):
+    """Return whether a capture contains pixels that can represent a surface.
+
+    Window-owned PrintWindow and WGC can both succeed at the API level while
+    returning an allocated all-black/all-white buffer from a hidden WebView.
+    Keep that buffer out of the business recognizer even when a higher-level
+    farm-scene classifier is unavailable or temporarily permissive.
+    """
+    try:
+        np_module = globals().get('np') or __import__('numpy')
+        image = np_module.asarray(frame)
+        shape = getattr(image, 'shape', None)
+        if shape is None or len(shape) < 3 or int(shape[2]) < 3:
+            return False
+        height, width = int(shape[0]), int(shape[1])
+        if height < 32 or width < 32:
+            return False
+        pixels = image[:, :, :3]
+        if pixels.dtype != np_module.uint8:
+            pixels = np_module.clip(pixels, 0, 255).astype(np_module.uint8)
+        row_step = max(1, height // 160)
+        column_step = max(1, width // 96)
+        sample = pixels[::row_step, ::column_step]
+        if getattr(sample, 'size', 0) <= 0:
+            return False
+        white_ratio = float(np_module.mean(
+            np_module.all(sample >= 245, axis=2)
+        ))
+        black_ratio = float(np_module.mean(
+            np_module.all(sample <= 7, axis=2)
+        ))
+        if white_ratio >= 0.995 or black_ratio >= 0.995:
+            return False
+        values = sample.astype('float32', copy=False)
+        contrast = float(np_module.max(values) - np_module.min(values))
+        deviation = float(np_module.std(values))
+        return bool(contrast > 4.0 or deviation > 1.5)
+    except BaseException:
+        return False
+
+
 def _qqfarm_wgc_frame_is_rendered_game_surface(frame):
     """Reject blank WGC surfaces while allowing rendered game/menu frames."""
     try:
@@ -26266,7 +26827,16 @@ def _qqfarm_wgc_frame_is_rendered_game_surface(frame):
         if sample.dtype != np_module.uint8:
             sample = np_module.clip(sample, 0, 255).astype(np_module.uint8)
         white_ratio = float(np_module.mean(np_module.all(sample >= 245, axis=2)))
-        return bool(white_ratio < 0.92)
+        black_ratio = float(np_module.mean(np_module.all(sample <= 7, axis=2)))
+        if white_ratio >= 0.995 or black_ratio >= 0.995:
+            return False
+        values = sample.astype('float32', copy=False)
+        contrast = float(np_module.max(values) - np_module.min(values))
+        deviation = float(np_module.std(values))
+        return bool(
+            white_ratio < 0.92 and
+            (contrast > 4.0 or deviation > 1.5)
+        )
     except BaseException:
         return False
 
@@ -26274,8 +26844,25 @@ def _qqfarm_wgc_frame_is_rendered_game_surface(frame):
 def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
     try:
         start_fn = globals().get('_qqfarm_start_wgc_capture')
+        start_result = True
         if callable(start_fn):
-            start_fn()
+            try:
+                start_result = start_fn()
+            except BaseException:
+                start_result = False
+            # A failed start with no live capture must never leave the prior
+            # session's frame available to the recognizer.  A running capture
+            # may return False for a bounded retry/cooldown, so preserve its
+            # current frame only while the native owner is still present.
+            if (
+                    start_result is False and
+                    globals().get('_QQFARM_WGC_CAPTURE') is None
+            ):
+                invalidate_fn = globals().get(
+                    '_qqfarm_invalidate_wgc_frame_cache'
+                )
+                if callable(invalidate_fn):
+                    invalidate_fn('start-not-ready')
         frame = globals().get('_QQFARM_WGC_FRAME')
         timestamp = float(globals().get('_QQFARM_WGC_FRAME_TS', 0.0) or 0.0)
         if frame is None or timestamp <= 0.0:
@@ -26502,7 +27089,7 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
 
 
 def _qqfarm_farm_window_is_visible():
-    """Return true only while the current QQ Farm surface is usable.
+    """Return true only while the active farm surface is desktop-usable.
 
     ``IsWindowVisible`` describes the window object, not the pixels available
     to the capture backend.  Transparent layered windows and DWM-cloaked
@@ -26513,7 +27100,16 @@ def _qqfarm_farm_window_is_visible():
     reason to reject an otherwise valid window.
     """
     try:
-        find_fn = globals().get('_share_find_farm_window_hwnd')
+        is_weixin = False
+        try:
+            mode_fn = globals().get('_active_is_weixin_mode')
+            is_weixin = bool(callable(mode_fn) and bool(mode_fn()))
+        except BaseException:
+            is_weixin = False
+        find_fn = globals().get(
+            '_find_wechat_hwnd' if is_weixin
+            else '_share_find_farm_window_hwnd'
+        )
         hwnd = int(find_fn() or 0) if callable(find_fn) else 0
         if hwnd <= 0:
             return False
@@ -26716,6 +27312,18 @@ def _qqfarm_native_capture_frame_is_business_safe(frame):
     """Reject desktop/occluder pixels returned by a native fallback capture."""
     if frame is None:
         return False
+    pixel_gate = globals().get('_qqfarm_capture_frame_has_rendered_pixels')
+    if callable(pixel_gate):
+        try:
+            if not bool(pixel_gate(frame)):
+                globals()['_QQFARM_LAST_GOOD_CAPTURE_FRAME'] = None
+                globals()['_QQFARM_LAST_GOOD_CAPTURE_TS'] = 0.0
+                globals()['_QQFARM_VISIBLE_CAPTURE_OCCLUDED_TS'] = float(
+                    __import__('time').monotonic()
+                )
+                return False
+        except BaseException:
+            return False
     validator = globals().get('_qqfarm_visible_frame_has_farm_scene')
     try:
         valid = bool(not callable(validator) or validator(frame))
@@ -26973,11 +27581,263 @@ def _qqfarm_prepare_visible_frame_for_business(frame):
     return normalized
 
 
-def _qqfarm_install_visible_capture_priority(context):
-    """Patch loaded QQ capture owners so visible pixels bypass slow PrintWindow first."""
+def _qqfarm_prepare_capture_owner_platform(owner, farm_hwnd=None):
+    """Keep a loaded capture owner bound to the active platform.
+
+    The packaged runtime can retain a ``NativeWindowsCapture`` object across a
+    QQ/Weixin switch.  Its selector is normally stored as ``window_name`` (or
+    a private equivalent), so the next QQ frame request may still ask the
+    native backend for the old Weixin ``MMUIRenderSubWindowHW`` surface.  That
+    failure happens below the Python business layer and otherwise looks like a
+    generic capture timeout.  Normalize the small set of capture fields before
+    the owner is called and return an explicit state for callers that need to
+    avoid an immutable stale native object.
+    """
+    platform = 'unknown'
     try:
-        mode_fn = globals().get('_active_is_qq_mode')
-        if not callable(mode_fn) or not bool(mode_fn()):
+        weixin_fn = globals().get('_active_is_weixin_mode')
+        qq_fn = globals().get('_active_is_qq_mode')
+        if callable(weixin_fn) and bool(weixin_fn()):
+            platform = 'Weixin'
+        elif callable(qq_fn) and bool(qq_fn()):
+            platform = 'QQ'
+    except BaseException:
+        platform = 'unknown'
+
+    state = {
+        'platform': platform,
+        'hwnd': 0,
+        'selector': '',
+        'changed': 0,
+        'cross_platform_selector': False,
+    }
+    if owner is None or platform == 'unknown':
+        return state
+
+    selector_names = (
+        'window_name', '_window_name', 'target_window_name',
+        '_target_window_name', 'capture_window_name',
+        '_capture_window_name', 'window_title', '_window_title',
+        'capture_title', '_capture_title', 'target_title',
+        '_target_title', 'selector', '_selector', 'capture_selector',
+        '_capture_selector', 'target_name', '_target_name',
+        'title', '_title',
+    )
+    hwnd_names = (
+        'window_hwnd', '_window_hwnd', 'bound_hwnd', '_bound_hwnd',
+        'capture_hwnd', '_capture_hwnd', 'target_hwnd',
+        '_target_hwnd', 'hwnd', '_hwnd',
+    )
+    nested_names = (
+        'screen_capture', 'capture', 'window_capture',
+        'capture_backend', 'backend', 'wgc', 'runtime',
+        'context', 'state',
+    )
+    targets = []
+    seen = set()
+
+    def collect(value, depth=0):
+        if value is None or depth > 2:
+            return
+        marker = id(value)
+        if marker in seen:
+            return
+        seen.add(marker)
+        targets.append(value)
+        if isinstance(value, dict):
+            getter = value.get
+        else:
+            getter = lambda name: getattr(value, name, None)
+        for name in nested_names:
+            try:
+                child = getter(name)
+                if child is not None:
+                    collect(child, depth + 1)
+            except BaseException:
+                pass
+
+    collect(owner)
+    if not targets:
+        return state
+
+    def read(value, name):
+        try:
+            if isinstance(value, dict):
+                return value.get(name)
+            return getattr(value, name, None)
+        except BaseException:
+            return None
+
+    def write(value, name, desired):
+        try:
+            if isinstance(value, dict):
+                present = name in value
+                if present or name in ('window_name', 'window_hwnd'):
+                    old = value.get(name)
+                    if old != desired:
+                        value[name] = desired
+                        return True
+                return False
+            present = False
+            try:
+                present = name in vars(value)
+            except BaseException:
+                pass
+            if present or name in ('window_name', 'window_hwnd'):
+                old = getattr(value, name, None)
+                if old != desired:
+                    setattr(value, name, desired)
+                    return True
+        except BaseException:
+            pass
+        return False
+
+    finder_available = farm_hwnd is not None
+    if finder_available:
+        try:
+            state['hwnd'] = int(farm_hwnd or 0)
+        except BaseException:
+            state['hwnd'] = 0
+    else:
+        try:
+            finder = globals().get('_qqfarm_find_farm_capture_hwnd')
+            finder_available = bool(callable(finder))
+            state['hwnd'] = int(finder() or 0) if finder_available else 0
+        except BaseException:
+            state['hwnd'] = 0
+
+    weixin_markers = (
+        'mmuirendersubwindow', 'wechatappex', 'weixin', 'wechat',
+        '微信',
+    )
+    qq_markers = ('qq经典农场', 'qq农场', 'tencent://', 'qq-farm')
+    desired_title = '微信' if platform == 'Weixin' else 'QQ经典农场'
+    selector_values = []
+    for target in targets:
+        for name in selector_names:
+            raw = read(target, name)
+            if raw is None:
+                continue
+            text = str(raw or '').strip()
+            if text:
+                selector_values.append((target, name, text))
+        for name in hwnd_names:
+            raw = read(target, name)
+            if raw is None:
+                continue
+            try:
+                current = int(getattr(raw, 'value', raw) or 0)
+            except BaseException:
+                current = 0
+            if current > 0 and not state['hwnd'] and not finder_available:
+                state['hwnd'] = current
+
+    def is_cross(text):
+        low = str(text or '').lower()
+        has_weixin = any(marker in low for marker in weixin_markers)
+        has_qq = any(marker in low for marker in qq_markers)
+        return bool(
+            (platform == 'QQ' and has_weixin) or
+            (platform == 'Weixin' and has_qq)
+        )
+
+    for target, name, text in selector_values:
+        if is_cross(text):
+            if write(target, name, desired_title):
+                state['changed'] += 1
+            state['selector'] = desired_title
+        elif not state['selector']:
+            state['selector'] = text
+
+    # A platform-aware finder is authoritative.  Do not carry a handle from a
+    # prior Weixin session into QQ (or vice versa) while the replacement window
+    # is still being created.
+    if finder_available and state['hwnd'] <= 0:
+        for target in targets:
+            for name in hwnd_names:
+                raw = read(target, name)
+                if raw is None:
+                    continue
+                try:
+                    current = int(getattr(raw, 'value', raw) or 0)
+                except BaseException:
+                    current = 0
+                if current > 0 and write(target, name, 0):
+                    state['changed'] += 1
+
+    # Publish a concrete HWND to the native owner whenever one is available.
+    if state['hwnd'] > 0:
+        for target in targets:
+            for name in hwnd_names:
+                raw = read(target, name)
+                if raw is None and name not in ('window_hwnd', 'bound_hwnd'):
+                    continue
+                if write(target, name, int(state['hwnd'])):
+                    state['changed'] += 1
+                break
+
+    # If no selector was exposed, set the canonical title only when the owner
+    # is recognizably a capture object.  This supports older Python wrappers
+    # without mutating unrelated runtime objects.
+    if not state['selector']:
+        capture_like = False
+        for target in targets:
+            for method_name in (
+                    'get_window_frame', 'capture_window', 'start_free_threaded',
+            ):
+                try:
+                    if callable(getattr(target, method_name, None)):
+                        capture_like = True
+                        break
+                except BaseException:
+                    pass
+            if capture_like:
+                break
+        if capture_like:
+            for target in targets:
+                if write(target, 'window_name', desired_title):
+                    state['changed'] += 1
+            state['selector'] = desired_title
+
+    # Re-read selectors after normalization.  A C-extension or slots-based
+    # owner may reject assignment; callers must then bypass that stale object
+    # instead of invoking it with the wrong platform selector.
+    for target in targets:
+        for name in selector_names:
+            raw = read(target, name)
+            if raw is not None and is_cross(str(raw)):
+                state['cross_platform_selector'] = True
+                break
+        if state['cross_platform_selector']:
+            break
+
+    if state['changed']:
+        try:
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v485-capture-owner-platform',
+                    'v485 capture owner normalized platform=' +
+                    str(platform) + ' hwnd=' + str(int(state['hwnd'] or 0)) +
+                    ' selector=' + str(state['selector'] or desired_title) +
+                    ' changed=' + str(int(state['changed'])),
+                    10.0,
+                )
+        except BaseException:
+            pass
+    return state
+
+
+def _qqfarm_install_visible_capture_priority(context):
+    """Patch active host capture owners so visible pixels run before fallback."""
+    try:
+        qq_fn = globals().get('_active_is_qq_mode')
+        weixin_fn = globals().get('_active_is_weixin_mode')
+        active = bool(
+            (callable(qq_fn) and bool(qq_fn())) or
+            (callable(weixin_fn) and bool(weixin_fn()))
+        )
+        if not active:
             return 0
     except BaseException:
         return 0
@@ -26995,7 +27855,20 @@ def _qqfarm_install_visible_capture_priority(context):
     if context is not None and id(context) not in seen:
         owners.append(context)
     changed = 0
+    farm_hwnd = 0
+    try:
+        finder = globals().get('_qqfarm_find_farm_capture_hwnd')
+        if callable(finder):
+            farm_hwnd = int(finder() or 0)
+    except BaseException:
+        farm_hwnd = 0
     for owner in owners:
+        try:
+            guard_fn = globals().get('_qqfarm_prepare_capture_owner_platform')
+            if callable(guard_fn):
+                guard_fn(owner, farm_hwnd=farm_hwnd)
+        except BaseException:
+            pass
         for method_name in ('get_window_frame', 'capture_window'):
             try:
                 original = getattr(owner, method_name, None)
@@ -27006,12 +27879,32 @@ def _qqfarm_install_visible_capture_priority(context):
             if bool(getattr(original, '__qqfarm_visible_capture_priority__', False)):
                 continue
 
-            def _visible_first(*args, __original=original, **kwargs):
-                qq_mode = False
+            def _visible_first(
+                    *args, __original=original, __owner=owner, **kwargs):
+                capture_mode = False
+                owner_state = {}
                 try:
-                    active_fn = globals().get('_active_is_qq_mode')
-                    qq_mode = bool(callable(active_fn) and bool(active_fn()))
-                    if qq_mode and not bool(globals().get(
+                    guard_fn = globals().get(
+                        '_qqfarm_prepare_capture_owner_platform'
+                    )
+                    if callable(guard_fn):
+                        cached_hwnd = max(
+                            int(globals().get('_QQFARM_WGC_BOUND_HWND', 0) or 0),
+                            int(globals().get('_QQFARM_LAST_FARM_HWND', 0) or 0),
+                        )
+                        owner_state = guard_fn(
+                            __owner, farm_hwnd=cached_hwnd
+                        ) or {}
+                except BaseException:
+                    owner_state = {}
+                try:
+                    qq_fn = globals().get('_active_is_qq_mode')
+                    weixin_fn = globals().get('_active_is_weixin_mode')
+                    capture_mode = bool(
+                        (callable(qq_fn) and bool(qq_fn())) or
+                        (callable(weixin_fn) and bool(weixin_fn()))
+                    )
+                    if capture_mode and not bool(globals().get(
                             '_QQFARM_NATIVE_CAPTURE_GATE_ACTIVE', False)):
                         visible_fn = globals().get('_qqfarm_capture_visible_farm_frame')
                         visible = visible_fn() if callable(visible_fn) else None
@@ -27040,7 +27933,22 @@ def _qqfarm_install_visible_capture_priority(context):
                             return visible
                 except BaseException:
                     pass
-                if qq_mode and not bool(globals().get(
+                # If a native extension refused the platform correction, do
+                # not call it again: that would recreate the stale Weixin/QQ
+                # title lookup and emit a misleading WGC failure.  Our own
+                # bounded window-owned capture path is the only valid retry.
+                if bool(owner_state.get('cross_platform_selector')):
+                    try:
+                        capture_fn = globals().get(
+                            '_qqfarm_capture_visible_farm_frame'
+                        )
+                        recovered = capture_fn() if callable(capture_fn) else None
+                        if recovered is not None:
+                            return recovered
+                    except BaseException:
+                        pass
+                    return None
+                if capture_mode and not bool(globals().get(
                         '_QQFARM_NATIVE_CAPTURE_GATE_ACTIVE', False)):
                     try:
                         gate_fn = globals().get(
@@ -27059,7 +27967,7 @@ def _qqfarm_install_visible_capture_priority(context):
                     except BaseException:
                         pass
                 result = __original(*args, **kwargs)
-                if result is not None and qq_mode:
+                if result is not None and capture_mode:
                     safe_fn = globals().get(
                         '_qqfarm_native_capture_frame_is_business_safe'
                     )
@@ -27093,7 +28001,7 @@ def _qqfarm_install_visible_capture_priority(context):
         try:
             log_fn = globals().get('_throttled_write')
             message = (
-                'v311 visible QQ capture priority installed owners=' +
+                'v483 active-platform capture priority installed owners=' +
                 str(len(owners)) + ' methods=' + str(changed)
             )
             if callable(log_fn):
@@ -27110,8 +28018,12 @@ def _qqfarm_install_visible_capture_priority(context):
 def _get_frame_from_bot(bot):
     qq_mode = False
     try:
-        mode_fn = globals().get('_active_is_qq_mode')
-        qq_mode = bool(callable(mode_fn) and bool(mode_fn()))
+        qq_fn = globals().get('_active_is_qq_mode')
+        weixin_fn = globals().get('_active_is_weixin_mode')
+        qq_mode = bool(
+            (callable(qq_fn) and bool(qq_fn())) or
+            (callable(weixin_fn) and bool(weixin_fn()))
+        )
         if qq_mode:
             visible_fn = globals().get('_qqfarm_capture_visible_farm_frame')
             visible_frame = visible_fn() if callable(visible_fn) else None
@@ -27480,7 +28392,7 @@ def _qqfarm_capture_printwindow_farm_frame(hwnd, expected_rect=None):
             pass
 
 def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False):
-    """Capture QQ farm pixels; strict retries may bypass a stale WGC frame."""
+    """Capture active farm pixels; strict retries may bypass a stale WGC frame."""
     try:
         # Provenance is per returned frame: size alone never labels an arbitrary
         # portrait image as raw PrintWindow input.
@@ -27499,7 +28411,7 @@ def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False
         if blank_ts > 0.0 and not bool(prefer_desktop):
             visible_fn = globals().get('_qqfarm_farm_window_is_visible')
             if not callable(visible_fn) or not bool(visible_fn()):
-                # A hidden/minimized QQ window must not fall through to a
+                # A hidden/minimized host window must not fall through to a
                 # desktop crop (which is often the desktop or another app),
                 # but a concrete HWND can still provide a window-owned
                 # PrintWindow frame.  Keep that narrow recovery path alive.
@@ -27509,11 +28421,28 @@ def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False
                 if not callable(capture_probe_fn):
                     return None
                 blank_latched_hidden = True
-        find_fn = globals().get('_share_find_farm_window_hwnd')
+        is_weixin = False
+        try:
+            mode_fn = globals().get('_active_is_weixin_mode')
+            is_weixin = bool(callable(mode_fn) and bool(mode_fn()))
+        except BaseException:
+            is_weixin = False
+        find_fn = globals().get(
+            '_find_wechat_hwnd' if is_weixin
+            else '_share_find_farm_window_hwnd'
+        )
         capture_find_fn = globals().get('_qqfarm_find_farm_capture_hwnd')
         rect_fn = globals().get('_share_get_rect')
         physical_rect_fn = globals().get('_qqfarm_get_physical_window_rect')
         visible_hwnd = int(find_fn() or 0) if callable(find_fn) else 0
+        if is_weixin and visible_hwnd > 0:
+            visible_gate_fn = globals().get('_qqfarm_farm_window_is_visible')
+            if callable(visible_gate_fn):
+                try:
+                    if not bool(visible_gate_fn()):
+                        visible_hwnd = 0
+                except BaseException:
+                    visible_hwnd = 0
         capture_hwnd = visible_hwnd
         if visible_hwnd <= 0 and callable(capture_find_fn):
             try:
@@ -27543,7 +28472,7 @@ def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False
         left, top, right, bottom = [int(value) for value in rect[:4]]
         if right <= left or bottom <= top:
             return None
-        # Prefer QQ's own window surface whenever a WGC frame is unavailable.
+        # Prefer the active host's own window surface whenever WGC is unavailable.
         # This is also the normal hidden/minimized recovery path: ImageGrab is
         # a desktop compositor and can return the desktop or an occluding app.
         # Preserve raw physical dimensions so a v413 full-board result remains
@@ -27568,6 +28497,23 @@ def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False
                 )
             except BaseException:
                 printwindow_valid_shape = False
+            pixel_gate = globals().get(
+                '_qqfarm_capture_frame_has_rendered_pixels'
+            )
+            if printwindow_valid_shape and callable(pixel_gate):
+                try:
+                    if not bool(pixel_gate(printwindow_frame)):
+                        printwindow_valid_shape = False
+                        log_fn = globals().get('_throttled_write')
+                        if callable(log_fn):
+                            log_fn(
+                                'v484-printwindow-blank-surface',
+                                'v484 window-owned PrintWindow returned a blank '
+                                'surface; frame rejected',
+                                5.0,
+                            )
+                except BaseException:
+                    printwindow_valid_shape = False
             if printwindow_valid_shape:
                 validator = globals().get('_qqfarm_visible_frame_has_farm_scene')
                 valid_printwindow = bool(

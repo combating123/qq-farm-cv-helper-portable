@@ -4,7 +4,7 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.59-32C98A?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.64-32C98A?style=flat-square)](#版本与更新)
   [![Status](https://img.shields.io/badge/状态-稳定版本-17345F?style=flat-square)](#快速开始)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
@@ -248,10 +248,11 @@ CV农场助手/
 
 ## 版本与更新
 
-当前发布版本为 **v1.4.63（2026-09-16）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
+当前发布版本为 **v1.4.64（2026-09-18）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
 
 | 版本 | 面向使用者的主要更新 |
 | --- | --- |
+| **v1.4.64** | 修复 QQ/微信捕获对象跨平台串线、旧 HWND 复用和 `unknown` 连环恢复；增加 WGC 选择器诊断，保留 GUI、配置与 UserData |
 | **v1.4.57** | 修复隐藏/恢复后的 DPI 与 WGC/PrintWindow 捕获、连续空巡检、免费福利 3/3 重试和不完整 2×2 普通种子回退问题；保留 GUI、配置与 UserData |
 | **v1.4.56** | 提升隐藏小程序后台恢复、护主犬识别强度适配和自动出售入口兼容性；保留现有 GUI、用户设置与 UserData |
 | **v1.4.55** | 恢复每日刷萝卜经验模式，原生检查入口缺失时按已保存的种植设置继续判断 |
