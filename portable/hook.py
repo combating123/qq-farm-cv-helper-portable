@@ -6354,6 +6354,151 @@ def _qqfarm_empty_land_board_gate(frame, candidates):
         # A visual-processing error is not evidence that the farm is full.
         return _result('unknown', [], rejected_all, 0)
 
+
+def _qqfarm_full_board_observation_from_frame(frame, now_ts=None):
+    """Return a strict 24/0/0 observation without granting click authority.
+
+    The native empty-land detector can report stale template hits when a
+    physical PrintWindow frame still contains the QQ title bar or a DPI-offset
+    client surface.  Probe the current frame through the strict 24-slot ledger
+    before accepting those hits.  A full-board result is used only to clear
+    false empty targets and shop state; planting coordinates still come from
+    the normal action-linked ledger path.
+    """
+    observer = globals().get('_qqfarm_capture_current_frame_24_slot_ledger')
+    if not callable(observer) or frame is None:
+        return None
+    try:
+        time_module = globals().get('time') or __import__('time')
+        captured_at = float(
+            now_ts if now_ts is not None else time_module.time()
+        )
+    except BaseException:
+        captured_at = 0.0
+
+    candidates = []
+    seen_ids = set()
+
+    def _append(candidate, label):
+        if candidate is None:
+            return
+        try:
+            marker = (int(id(candidate)), str(label))
+            if marker in seen_ids:
+                return
+            seen_ids.add(marker)
+            candidates.append((candidate, str(label)))
+        except BaseException:
+            pass
+
+    _append(frame, 'current')
+    try:
+        normalize_fn = globals().get(
+            '_qqfarm_normalize_window_owned_frame_for_business'
+        )
+        shape = getattr(frame, 'shape', None)
+        if callable(normalize_fn) and shape is not None and len(shape) >= 2:
+            height = int(shape[0])
+            width = int(shape[1])
+            if (height, width) != (800, 428):
+                normalized = normalize_fn(frame)
+                _append(normalized, 'normalized')
+            else:
+                # A failed geometry crop can still leave the outer QQ chrome
+                # inside an apparently canonical 428x800 frame.  Only add the
+                # normalized candidate when the helper detects that chrome.
+                detect_fn = globals().get('_qqfarm_detect_outer_chrome_crop')
+                if callable(detect_fn):
+                    crop_box = detect_fn(frame)
+                    if crop_box and tuple(crop_box) != (0, 0, width, height):
+                        normalized = normalize_fn(frame)
+                        _append(normalized, 'canonical-chrome-crop')
+    except BaseException:
+        pass
+    try:
+        detect_fn = globals().get('_qqfarm_detect_outer_chrome_crop')
+        crop_box = detect_fn(frame) if callable(detect_fn) else None
+        if crop_box and len(crop_box) >= 4:
+            np_module = globals().get('np') or __import__('numpy')
+            cv_module = globals().get('cv2') or __import__('cv2')
+            image = np_module.asarray(frame)
+            height = int(image.shape[0])
+            width = int(image.shape[1])
+            left, top, right, bottom = [
+                int(value) for value in tuple(crop_box)[:4]
+            ]
+            # The first saturated row is normally the antialiased boundary;
+            # advance one small physical band to the stable game pixels.
+            step = max(3, int(round(float(height) * 0.0042)))
+            crop_variants = (
+                ('content-crop', top),
+                ('content-crop-minus', top - step),
+                ('content-crop-plus', top + step),
+            )
+            for label, variant_top in crop_variants:
+                variant_top = max(0, min(height - 120, int(variant_top)))
+                variant_left = max(0, min(width - 120, int(left)))
+                variant_right = max(
+                    variant_left + 120, min(width, int(right))
+                )
+                variant_bottom = max(
+                    variant_top + 120, min(height, int(bottom))
+                )
+                cropped = image[
+                    variant_top:variant_bottom,
+                    variant_left:variant_right,
+                    :3,
+                ]
+                if getattr(cropped, 'size', 0) <= 0:
+                    continue
+                normalized_crop = cv_module.resize(
+                    cropped, (428, 800), interpolation=cv_module.INTER_AREA
+                )
+                normalized_crop = np_module.ascontiguousarray(
+                    normalized_crop[:, :, :3]
+                ).copy()
+                _append(normalized_crop, label)
+    except BaseException:
+        pass
+
+    last_observation = None
+    for candidate, label in candidates:
+        try:
+            observation = observer(
+                candidate,
+                frame_id='v494-full-board-probe-' + label,
+                captured_at=captured_at,
+            )
+        except TypeError:
+            try:
+                observation = observer(candidate)
+            except BaseException:
+                observation = None
+        except BaseException:
+            observation = None
+        if not isinstance(observation, dict):
+            continue
+        last_observation = observation
+        try:
+            full = bool(
+                str(observation.get('capture_status') or '') == 'aligned' and
+                bool(observation.get('full_board_confirmed')) and
+                int(observation.get('occupied_count') or 0) == 24 and
+                int(observation.get('empty_count') or 0) == 0 and
+                int(observation.get('unknown_count') or 0) == 0 and
+                not bool(observation.get('ui_blocked'))
+            )
+        except BaseException:
+            full = False
+        if full:
+            result = dict(observation)
+            result['_qqfarm_full_board_probe_source'] = label
+            result['_qqfarm_full_board_probe_observation_only'] = bool(
+                observation.get('observation_only', False)
+            )
+            return result
+    return last_observation
+
 def _qqfarm_home_priority_active(context):
     """Return whether unfinished home planting must outrank all friend routes."""
     try:
@@ -12828,6 +12973,92 @@ def _wrap_detect_empty_lands_state(fn, name=''):
                 except BaseException:
                     pass
             result = fn(*args, **kwargs)
+            full_board_short_circuit = False
+            full_board_probe = None
+            if bot is not None and isinstance(result, list):
+                try:
+                    probe_fn = globals().get(
+                        '_qqfarm_full_board_observation_from_frame'
+                    )
+                    post_harvest_pending = bool(
+                        getattr(bot, '_qqfarm_post_harvest_pending', False) or
+                        getattr(bot, '_qqfarm_single_harvest_planting_pending', False)
+                    )
+                    recent_count = max(0, int(getattr(
+                        bot, '_qqfarm_recent_empty_land_count', 0
+                    ) or 0))
+                    if callable(probe_fn) and not post_harvest_pending and (
+                        bool(result) or recent_count > 0
+                    ):
+                        full_board_probe = probe_fn(frame)
+                    full_board_confirmed = bool(
+                        isinstance(full_board_probe, dict) and
+                        bool(full_board_probe.get('full_board_confirmed')) and
+                        int(full_board_probe.get('occupied_count') or 0) == 24 and
+                        int(full_board_probe.get('empty_count') or 0) == 0 and
+                        int(full_board_probe.get('unknown_count') or 0) == 0
+                    )
+                    if full_board_confirmed:
+                        full_board_short_circuit = True
+                        native_candidate_count = len(result)
+                        result = []
+                        board_anchor_count = max(0, int(
+                            full_board_probe.get('anchor_count') or 24
+                        ))
+                        try:
+                            now_full = __import__('time').time()
+                        except BaseException:
+                            now_full = 0.0
+                        setattr(bot, '_qqfarm_empty_land_board_gate_state', 'confirmed')
+                        setattr(bot, '_qqfarm_empty_land_board_anchor_count', board_anchor_count)
+                        setattr(bot, '_qqfarm_empty_land_board_gate_ts', now_full)
+                        setattr(bot, '_qqfarm_empty_land_scene_confirmed_full', True)
+                        setattr(bot, '_qqfarm_empty_land_scene_confirmed_full_ts', now_full)
+                        setattr(bot, '_qqfarm_recent_empty_lands', [])
+                        setattr(bot, '_qqfarm_recent_empty_land_count', 0)
+                        setattr(bot, '_qqfarm_recent_empty_land_centers', [])
+                        setattr(bot, '_qqfarm_stable_empty_lands', [])
+                        setattr(bot, '_qqfarm_stable_empty_land_count', 0)
+                        setattr(bot, '_qqfarm_stable_empty_land_ts', now_full)
+                        setattr(bot, '_qqfarm_home_empty_land_pending', False)
+                        setattr(bot, '_qqfarm_home_empty_land_remaining', 0)
+                        setattr(bot, '_qqfarm_home_empty_zero_confirmations', 2)
+                        setattr(bot, '_qqfarm_home_visual_recheck_required', False)
+                        setattr(bot, '_qqfarm_force_self_cycle_next', False)
+                        setattr(bot, '_qqfarm_cycle_branch_hint', '')
+                        setattr(
+                            bot, '_qqfarm_inventory_empty_land_proof_pending', False
+                        )
+                        setattr(
+                            bot,
+                            '_qqfarm_inventory_empty_land_proof_owned_recheck',
+                            False,
+                        )
+                        try:
+                            if bool(getattr(
+                                bot,
+                                '_qqfarm_backpack_inventory_hard_gate_owns_shop_block',
+                                False,
+                            )):
+                                setattr(bot, '_qqfarm_block_level_based_shop', False)
+                                setattr(
+                                    bot,
+                                    '_qqfarm_backpack_inventory_hard_gate_owns_shop_block',
+                                    False,
+                                )
+                        except BaseException:
+                            pass
+                        _write(
+                            'v494 strict full-board proof overrode native empty '
+                            'candidates count=' + str(native_candidate_count) +
+                            ' source=' + str(full_board_probe.get(
+                                '_qqfarm_full_board_probe_source', 'current'
+                            )) + ' name=' + str(name)
+                        )
+                        return []
+                except BaseException:
+                    full_board_short_circuit = False
+                    full_board_probe = None
             visual_marker_raw_count = 0
             visual_marker_added_count = 0
             try:
@@ -13093,7 +13324,10 @@ def _wrap_detect_empty_lands_state(fn, name=''):
             try:
                 board_gate_fn = globals().get('_qqfarm_empty_land_board_gate')
                 board_candidates = result if isinstance(result, list) else None
-                if callable(board_gate_fn) and board_candidates is not None:
+                if (
+                    not full_board_short_circuit and
+                    callable(board_gate_fn) and board_candidates is not None
+                ):
                     board_decision = board_gate_fn(frame, board_candidates)
                     if isinstance(board_decision, dict):
                         board_state = str(board_decision.get('state') or 'bypass').lower()
@@ -13522,6 +13756,170 @@ def _wrap_buy_seed_for_crop_backpack_guard(fn, name=''):
                 now_value = __import__('time').time()
             except BaseException:
                 now_value = 0.0
+
+            if bot is not None:
+                # A shop call is destructive relative to the user's inventory
+                # preference.  A positive integer left over from an earlier
+                # detector pass is not enough: require the current wrapper to
+                # carry a fresh confirmed board timestamp and at least one
+                # concrete current land record before buying any seed.
+                try:
+                    proof_contract_present = bool(
+                        hasattr(bot, '_qqfarm_recent_empty_land_ts') or
+                        hasattr(bot, '_qqfarm_empty_land_board_gate_ts')
+                    )
+                    proof_count = max(0, int(getattr(
+                        bot, '_qqfarm_recent_empty_land_count', 0
+                    ) or 0))
+                    proof_lands = list(getattr(
+                        bot, '_qqfarm_recent_empty_lands', []
+                    ) or [])
+                    proof_ts = float(getattr(
+                        bot, '_qqfarm_recent_empty_land_ts', 0.0
+                    ) or 0.0)
+                    gate_state = str(getattr(
+                        bot, '_qqfarm_empty_land_board_gate_state', ''
+                    ) or '').strip().lower()
+                    gate_ts = float(getattr(
+                        bot, '_qqfarm_empty_land_board_gate_ts', 0.0
+                    ) or 0.0)
+                    full_frame = bool(getattr(
+                        bot, '_qqfarm_empty_land_scene_confirmed_full', False
+                    ))
+                    full_frame_ts = float(getattr(
+                        bot, '_qqfarm_empty_land_scene_confirmed_full_ts', 0.0
+                    ) or 0.0)
+                    proof_age = (
+                        max(0.0, now_value - proof_ts)
+                        if proof_ts > 0.0 else 999999.0
+                    )
+                    gate_age = (
+                        max(0.0, now_value - gate_ts)
+                        if gate_ts > 0.0 else 999999.0
+                    )
+                    full_age = (
+                        max(0.0, now_value - full_frame_ts)
+                        if full_frame_ts > 0.0 else 999999.0
+                    )
+                    fresh_full_board_proof = bool(
+                        full_frame and full_age <= 45.0
+                    )
+                    fresh_empty_land_proof = bool(
+                        proof_count > 0 and
+                        bool(proof_lands) and
+                        proof_ts > 0.0 and proof_age <= 45.0 and
+                        gate_state == 'confirmed' and
+                        gate_ts > 0.0 and gate_age <= 45.0 and
+                        not fresh_full_board_proof
+                    )
+                except BaseException:
+                    proof_contract_present = False
+                    proof_count = 0
+                    proof_lands = []
+                    proof_age = 999999.0
+                    gate_state = ''
+                    gate_age = 999999.0
+                    fresh_full_board_proof = False
+                    fresh_empty_land_proof = False
+                if proof_contract_present and fresh_full_board_proof:
+                    try:
+                        setattr(
+                            bot, '_qqfarm_inventory_empty_land_proof_pending', False
+                        )
+                        if bool(getattr(
+                            bot,
+                            '_qqfarm_inventory_empty_land_proof_owned_recheck',
+                            False,
+                        )):
+                            setattr(
+                                bot, '_qqfarm_home_visual_recheck_required', False
+                            )
+                            setattr(bot, '_qqfarm_home_empty_land_pending', False)
+                            setattr(bot, '_qqfarm_home_empty_land_remaining', 0)
+                            setattr(bot, '_qqfarm_force_self_cycle_next', False)
+                            setattr(bot, '_qqfarm_cycle_branch_hint', '')
+                        setattr(
+                            bot,
+                            '_qqfarm_inventory_empty_land_proof_owned_recheck',
+                            False,
+                        )
+                        _write(
+                            'v494 deferred seed shop after fresh strict full-board '
+                            'proof age=' + ('%.1f' % full_age) +
+                            ' crop=' + str(crop_name) + ' name=' + str(name)
+                        )
+                    except BaseException:
+                        pass
+                    return False
+                if proof_contract_present and not fresh_empty_land_proof:
+                    try:
+                        if not bool(getattr(
+                            bot, '_qqfarm_block_level_based_shop', False
+                        )):
+                            setattr(
+                                bot,
+                                '_qqfarm_backpack_inventory_hard_gate_owns_shop_block',
+                                True,
+                            )
+                        setattr(bot, '_qqfarm_block_level_based_shop', True)
+                        setattr(
+                            bot, '_qqfarm_inventory_empty_land_proof_pending', True
+                        )
+                        setattr(
+                            bot,
+                            '_qqfarm_inventory_empty_land_proof_owned_recheck',
+                            True,
+                        )
+                        setattr(bot, '_qqfarm_home_visual_recheck_required', True)
+                        setattr(
+                            bot, '_qqfarm_home_visual_recheck_required_ts', now_value
+                        )
+                        setattr(bot, '_qqfarm_home_empty_land_pending', True)
+                        setattr(
+                            bot,
+                            '_qqfarm_home_empty_land_remaining',
+                            max(1, proof_count),
+                        )
+                        setattr(bot, '_qqfarm_force_self_cycle_next', True)
+                        setattr(bot, '_qqfarm_cycle_branch_hint', 'self')
+                        setattr(
+                            bot, 'planting_buy_retry_no_buy_quota',
+                            max(1, int(getattr(
+                                bot, 'planting_buy_retry_no_buy_quota', 0
+                            ) or 0)),
+                        )
+                        _write(
+                            'v494 deferred seed shop: no fresh confirmed empty-land '
+                            'proof count=' + str(proof_count) +
+                            ' lands=' + str(len(proof_lands)) +
+                            ' proof_age=' + ('%.1f' % proof_age) +
+                            ' gate=' + str(gate_state or 'missing') +
+                            ' gate_age=' + ('%.1f' % gate_age) +
+                            ' crop=' + str(crop_name) + ' name=' + str(name)
+                        )
+                    except BaseException:
+                        pass
+                    return False
+                if fresh_empty_land_proof:
+                    try:
+                        setattr(
+                            bot, '_qqfarm_inventory_empty_land_proof_pending', False
+                        )
+                        if bool(getattr(
+                            bot,
+                            '_qqfarm_inventory_empty_land_proof_owned_recheck',
+                            False,
+                        )):
+                            setattr(
+                                bot, '_qqfarm_home_visual_recheck_required', False
+                            )
+                        setattr(
+                            bot,
+                            '_qqfarm_inventory_empty_land_proof_owned_recheck',
+                            False,
+                        )
+                    except BaseException:
+                        pass
 
             if bot is not None:
                 try:
@@ -18833,9 +19231,25 @@ def _wrap_planting_flow_fast(fn, name=''):
                 ).strip()
             except BaseException:
                 crop_name = ''
-            corrected_crop_name = _qqfarm_correct_crop_name_for_level(
-                bot, crop_name, name=name
-            )
+            # Isolated regression loaders may execute this wrapper without the
+            # catalog helper in the same temporary module.  Production normally
+            # has it in hook globals, but a missing optional correction must not
+            # crash the planting flow itself.
+            try:
+                crop_corrector = globals().get(
+                    '_qqfarm_correct_crop_name_for_level'
+                )
+                if not callable(crop_corrector):
+                    runtime_globals = getattr(fn, '__globals__', {}) or {}
+                    crop_corrector = runtime_globals.get(
+                        '_qqfarm_correct_crop_name_for_level'
+                    ) if isinstance(runtime_globals, dict) else None
+                corrected_crop_name = (
+                    crop_corrector(bot, crop_name, name=name)
+                    if callable(crop_corrector) else crop_name
+                )
+            except BaseException:
+                corrected_crop_name = crop_name
             if corrected_crop_name != crop_name:
                 crop_name = corrected_crop_name
                 if len(call_args) > crop_arg_index:
@@ -27434,6 +27848,70 @@ def _qqfarm_compute_client_crop_box(
         return (left, top, right, bottom)
     except BaseException:
         return None
+
+
+def _qqfarm_detect_outer_chrome_crop(frame):
+    """Locate the neutral QQ title band above the rendered farm content.
+
+    Some PrintWindow/DWM variants include the native title bar in the sampled
+    portrait surface while the strict 24-slot observer is calibrated to the
+    rendered game client.  This detector accepts only a narrow top-of-frame
+    transition from a bright, low-saturation band into several rows of strongly
+    saturated farm pixels.  It returns no crop for ordinary in-game light UI.
+    """
+    try:
+        np_module = globals().get('np') or __import__('numpy')
+        cv_module = globals().get('cv2') or __import__('cv2')
+        image = np_module.asarray(frame)
+        shape = getattr(image, 'shape', ())
+        if len(shape) < 3 or int(shape[2]) < 3:
+            return None
+        height = int(shape[0])
+        width = int(shape[1])
+        if height < 320 or width < 180:
+            return None
+        bgr = image[:, :, :3]
+        if bgr.dtype != np_module.uint8:
+            bgr = np_module.clip(bgr, 0, 255).astype(np_module.uint8)
+        hsv = cv_module.cvtColor(bgr, cv_module.COLOR_BGR2HSV)
+        saturated = (
+            (hsv[:, :, 1] >= 70) &
+            (hsv[:, :, 2] >= 25)
+        )
+        neutral_bright = (
+            (hsv[:, :, 1] <= 55) &
+            (hsv[:, :, 2] >= 170)
+        )
+        saturated_rows = np_module.mean(saturated, axis=1)
+        neutral_rows = np_module.mean(neutral_bright, axis=1)
+        search_start = max(18, int(round(float(height) * 0.025)))
+        search_end = min(
+            height - 12,
+            max(search_start + 1, int(round(float(height) * 0.10))),
+        )
+        lookahead = max(5, int(round(float(height) * 0.006)))
+        lookbehind = max(14, int(round(float(height) * 0.020)))
+        for top in range(search_start, search_end):
+            before_start = max(0, top - lookbehind)
+            after_end = min(height, top + lookahead)
+            if after_end - top < 4 or top - before_start < 8:
+                continue
+            before_neutral = float(np_module.mean(
+                neutral_rows[before_start:top]
+            ))
+            after_saturated = float(np_module.mean(
+                saturated_rows[top:after_end]
+            ))
+            if before_neutral < 0.72 or after_saturated < 0.55:
+                continue
+            # The transition must stay in the narrow title-band region; a
+            # later white in-game panel is never a crop authority.
+            if top > int(round(float(height) * 0.085)):
+                continue
+            return (0, int(top), int(width), int(height))
+    except BaseException:
+        return None
+    return None
 
 
 def _qqfarm_normalize_window_owned_frame_for_business(
@@ -43401,6 +43879,11 @@ def _friend_progress_journal_restore(
             setattr(context, '_qqfarm_friend_list_visible_candidate_count', count)
         setattr(context, '_qqfarm_friend_progress_journal_restored', True)
         setattr(context, '_qqfarm_friend_progress_journal_phase', phase)
+        setattr(
+            context,
+            '_qqfarm_friend_progress_journal_business_date',
+            today_value,
+        )
         terminal_phase = bool(phase == 'terminal')
         setattr(context, '_qqfarm_friend_chain_exhausted', terminal_phase)
         setattr(context, '_qqfarm_friend_chain_allow_home', terminal_phase)
@@ -44132,6 +44615,25 @@ def _handle_friend_list_surface(context, frame):
         rows_fn = globals().get('_friend_list_visit_button_rows')
         rows = rows_fn(frame) if callable(rows_fn) else []
         rows = list(rows or [])
+        if rows:
+            # A worker may span midnight.  Re-arm the dated traversal before
+            # the same-day terminal latch is evaluated, otherwise yesterday's
+            # cursor N/N closes today's readable list and skips row zero.
+            try:
+                rearm_fn = globals().get(
+                    '_friend_progress_journal_rearm_for_business_date'
+                )
+                if callable(rearm_fn):
+                    day_fn = globals().get('_daily_business_date')
+                    today_value = (
+                        str(day_fn()) if callable(day_fn) else None
+                    )
+                    try:
+                        rearm_fn(context, today=today_value)
+                    except TypeError:
+                        rearm_fn(context)
+            except BaseException:
+                pass
         try:
             diagnostic_fn = globals().get('_throttled_write')
             if callable(diagnostic_fn):
@@ -52212,6 +52714,133 @@ def _qqfarm_clear_native_full_board_planting_state(context):
         return False
 
 
+def _friend_progress_journal_rearm_for_business_date(
+        context, *, today=None, journal_path=None):
+    """Release yesterday's terminal latch when a new Shanghai business day starts.
+
+    The worker can remain alive across midnight.  In that case the in-memory
+    terminal cursor is older than the current daily journal even though the
+    list pixels are valid.  Treating that cursor as a same-day terminal state
+    closes the list immediately and skips every actionable friend.  This
+    helper compares both the runtime marker and the durable journal date,
+    resets only the dated friend traversal fields, and writes a fresh cursor-0
+    journal before the first row is selected.
+    """
+    if context is None:
+        return False
+    os_module = __import__('os')
+    json_module = __import__('json')
+    time_module = __import__('time')
+    try:
+        day_source = globals().get('_daily_business_date')
+        today_value = str(
+            today or (
+                day_source() if callable(day_source)
+                else time_module.strftime('%Y-%m-%d')
+            )
+        ).strip()
+    except BaseException:
+        today_value = str(today or time_module.strftime('%Y-%m-%d')).strip()
+    if not today_value:
+        return False
+
+    try:
+        runtime_day = str(getattr(
+            context, '_qqfarm_friend_progress_journal_business_date', ''
+        ) or '').strip()
+    except BaseException:
+        runtime_day = ''
+    path = str(journal_path or os_module.environ.get(
+        'QQFARM_FRIEND_PROGRESS_JOURNAL_PATH', ''
+    ) or '').strip()
+    if not path:
+        base = str(os_module.environ.get('APPDATA', '') or '').strip()
+        if not base:
+            base = str(os_module.environ.get('LOCALAPPDATA', '') or '').strip()
+        path = os_module.path.join(
+            base, 'QQFarmCopilot', 'friend_traversal_journal.json'
+        )
+    journal_day = ''
+    try:
+        with open(path, 'r', encoding='utf-8-sig') as handle:
+            payload = json_module.load(handle)
+        if isinstance(payload, dict):
+            journal_day = str(payload.get('business_date', '') or '').strip()
+    except BaseException:
+        journal_day = ''
+
+    # A missing runtime marker on a genuinely current journal is just an old
+    # binary/context object being upgraded; preserve its same-day terminal
+    # semantics.  A dated journal from yesterday is the cross-day evidence
+    # needed to release the latch.
+    if runtime_day and runtime_day != today_value:
+        stale = True
+    elif journal_day and journal_day != today_value:
+        stale = True
+    else:
+        try:
+            setattr(
+                context,
+                '_qqfarm_friend_progress_journal_business_date',
+                today_value,
+            )
+        except BaseException:
+            pass
+        return False
+
+    reset_fields = {
+        '_qqfarm_friend_list_visit_cursor': 0,
+        '_qqfarm_friend_list_pending_cursor': 0,
+        '_qqfarm_friend_list_resume_pending': False,
+        '_qqfarm_friend_entry_pending': False,
+        '_qqfarm_friend_entry_retry_count': 0,
+        '_qqfarm_friend_entry_last_retry_ts': 0.0,
+        '_qqfarm_friend_entry_clicked_ts': 0.0,
+        '_qqfarm_friend_last_row_card_fallback_tried': False,
+        '_qqfarm_friend_chain_pending': False,
+        '_qqfarm_friend_chain_active': False,
+        '_qqfarm_friend_chain_exhausted': False,
+        '_qqfarm_friend_chain_allow_home': False,
+        '_qqfarm_friend_chain_native_home_blocked': False,
+        '_qqfarm_friend_guard_empty_latched': False,
+        '_qqfarm_friend_guard_last_empty_reason': '',
+        '_qqfarm_friend_list_visible_candidate_count': 0,
+        '_qqfarm_friend_progress_journal_phase': 'active',
+        '_qqfarm_friend_progress_journal_restored': True,
+        '_qqfarm_friend_progress_journal_restore_attempted': True,
+        '_qqfarm_friend_progress_journal_retry_pending': False,
+        '_qqfarm_friend_progress_journal_business_date': today_value,
+    }
+    try:
+        for field, value in reset_fields.items():
+            setattr(context, field, value)
+    except BaseException:
+        return False
+
+    persisted = False
+    try:
+        record_fn = globals().get('_friend_progress_journal_record')
+        if callable(record_fn):
+            try:
+                persisted = bool(record_fn(context, today=today_value))
+            except TypeError:
+                persisted = bool(record_fn(context))
+    except BaseException:
+        persisted = False
+    try:
+        writer = globals().get('_write')
+        if callable(writer):
+            writer(
+                'v494 friend progress cross-day reset old=' +
+                str(journal_day or runtime_day or 'unknown') +
+                ' new=' + str(today_value) +
+                ' cursor=0 persisted=' + str(bool(persisted)).lower()
+            )
+    except BaseException:
+        pass
+    return True
+
+
 def _wrap_native_v225_crop_catalog_planting_flow(fn, name=''):
     """Apply the crop catalog correction to the native planting owner."""
     if getattr(fn, '__qqfarm_native_v225_crop_catalog_wrapped__', False):
@@ -53298,6 +53927,41 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                     )
             except BaseException:
                 pass
+
+        # Once the ordered list has reached its same-day terminal cursor, do
+        # not let the compiled native owner reopen the list on every patrol.
+        # Check the durable business date first so a process that survived
+        # midnight is rearmed before the empty/terminal latch is evaluated.
+        try:
+            rearm_fn = globals().get(
+                '_friend_progress_journal_rearm_for_business_date'
+            )
+            if callable(rearm_fn):
+                day_fn = globals().get('_daily_business_date')
+                today_value = str(day_fn()) if callable(day_fn) else None
+                try:
+                    rearm_fn(self, today=today_value)
+                except TypeError:
+                    rearm_fn(self)
+        except BaseException:
+            pass
+        try:
+            dispatch_allowed_fn = globals().get(
+                '_friend_guard_poll_dispatch_allowed'
+            )
+            if callable(dispatch_allowed_fn) and not bool(
+                    dispatch_allowed_fn(self)):
+                diagnostic_fn = globals().get('_throttled_write')
+                if callable(diagnostic_fn):
+                    diagnostic_fn(
+                        'v495-native-friend-terminal-hold',
+                        'v495 native friend owner held by the same-day '
+                        'terminal/empty latch; skipped friend-list reopen',
+                        10.0,
+                    )
+                return False
+        except BaseException:
+            pass
 
         # v481: a native friend pass can report a normal return while the
         # selected card never changed. Keep cursor-like state transactional so

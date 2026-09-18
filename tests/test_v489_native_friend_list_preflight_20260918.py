@@ -87,6 +87,59 @@ class V489NativeFriendListPreflight20260918Tests(unittest.TestCase):
         self.assertTrue(any(item[0] == "list" for item in calls))
         self.assertFalse(any(item[0] == "original" for item in calls))
 
+    def test_same_day_terminal_latch_blocks_native_owner_before_list_reopen(self):
+        namespace = self.namespace
+        calls = []
+        namespace.update(
+            {
+                "_friend_guard_original_chain": lambda fn: [fn],
+                "_qqfarm_capture_native_friend_help_frame": lambda _owner: None,
+                "_friend_list_visit_button_rows": lambda _frame: [],
+                "_daily_business_date": lambda: "2026-09-19",
+                "_friend_progress_journal_rearm_for_business_date": (
+                    lambda owner, today=None: calls.append(("rearm", today))
+                    or False
+                ),
+                "_friend_guard_poll_dispatch_allowed": lambda _owner: False,
+                "_throttled_write": lambda *args, **_kwargs: calls.append(
+                    ("throttled",) + args
+                ),
+                "_write": lambda message: calls.append(("log", message)),
+            }
+        )
+        context = types.SimpleNamespace(
+            _qqfarm_friend_progress_journal_business_date="2026-09-19",
+            _qqfarm_friend_progress_journal_phase="terminal",
+            _qqfarm_friend_list_visit_cursor=5,
+            _qqfarm_friend_list_visible_candidate_count=5,
+            _qqfarm_friend_chain_exhausted=True,
+            _qqfarm_friend_guard_empty_latched=True,
+        )
+
+        def native_process_friend(owner, *_args, **_kwargs):
+            calls.append(("original", owner))
+            return "native-result"
+
+        wrapped, changed = namespace[
+            "_wrap_native_v225_friend_help_candidate_cache"
+        ](
+            native_process_friend,
+            "bot.infrastructure.legacy_bot_engine.FarmBotCV.process_friend_farm",
+        )
+
+        result = wrapped(context)
+
+        self.assertTrue(changed)
+        self.assertFalse(result)
+        self.assertEqual([("rearm", "2026-09-19")], [
+            item for item in calls if item[0] == "rearm"
+        ])
+        self.assertFalse(any(item[0] == "original" for item in calls))
+        self.assertTrue(any(
+            item[0] == "throttled" and "terminal" in str(item).lower()
+            for item in calls
+        ))
+
 
 if __name__ == "__main__":
     unittest.main()

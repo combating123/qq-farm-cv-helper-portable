@@ -242,6 +242,8 @@ class HomeEmptyLandPriorityTests(unittest.TestCase):
             _qqfarm_recent_empty_land_count=2,
             _qqfarm_recent_empty_lands=lands,
             _qqfarm_recent_empty_land_ts=now,
+            _qqfarm_empty_land_board_gate_state="confirmed",
+            _qqfarm_empty_land_board_gate_ts=now,
             _try_planting_with_direct_lands=(
                 lambda _owner, _crop, _lands: (False, False)
             ),
@@ -1912,6 +1914,8 @@ class HomeEmptyLandPriorityTests(unittest.TestCase):
             _qqfarm_backpack_candidate_centers=[(68, 512), (204, 512)],
             _qqfarm_recent_empty_land_count=20,
             _qqfarm_recent_empty_land_ts=now,
+            _qqfarm_empty_land_board_gate_state="confirmed",
+            _qqfarm_empty_land_board_gate_ts=now,
             _qqfarm_recent_empty_lands=[
                 {"center": (index * 10, 100)} for index in range(20)
             ],
@@ -2163,6 +2167,8 @@ class HomeEmptyLandPriorityTests(unittest.TestCase):
             _qqfarm_recent_empty_land_count=4,
             _qqfarm_recent_empty_lands=list(range(4)),
             _qqfarm_recent_empty_land_ts=now,
+            _qqfarm_empty_land_board_gate_state="confirmed",
+            _qqfarm_empty_land_board_gate_ts=now,
         )
 
         self.assertTrue(changed)
