@@ -16210,24 +16210,632 @@ def _qqfarm_configured_player_level_floor(default=120):
     return int(_configured_player_level(default))
 
 
+_QQFARM_V237_CROP_CATALOG_CACHE = None
+_QQFARM_V237_CROP_CATALOG_CACHE_PATH = ''
+
+
+def _qqfarm_v237_crop_catalog_path(base_dir=''):
+    """Return the portable copy of the v2.3.7 authoritative crop catalog."""
+    try:
+        os_module = __import__('os')
+        override = str(os_module.environ.get(
+            'QQFARM_V237_PLANT_CATALOG', ''
+        ) or '').strip()
+        if override:
+            return os_module.path.abspath(override)
+        root = str(base_dir or '').strip()
+        if not root:
+            root = os_module.path.dirname(os_module.path.abspath(
+                globals().get('__file__', 'hook.py') or 'hook.py'
+            ))
+        return os_module.path.abspath(os_module.path.join(
+            root, 'data', 'v237_plant_catalog.json'
+        ))
+    except BaseException:
+        return ''
+
+
+def _qqfarm_load_v237_crop_catalog(path='', force_reload=False):
+    """Load and validate the extracted v2.3.7 Plant.json data once."""
+    global _QQFARM_V237_CROP_CATALOG_CACHE
+    global _QQFARM_V237_CROP_CATALOG_CACHE_PATH
+    try:
+        os_module = __import__('os')
+        json_module = __import__('json')
+        target = str(path or '').strip()
+        if not target:
+            target = _qqfarm_v237_crop_catalog_path()
+        target = os_module.path.abspath(target) if target else ''
+        cached = globals().get('_QQFARM_V237_CROP_CATALOG_CACHE')
+        cached_path = str(globals().get(
+            '_QQFARM_V237_CROP_CATALOG_CACHE_PATH', ''
+        ) or '')
+        if (
+            not bool(force_reload) and
+            isinstance(cached, tuple) and
+            cached_path == target
+        ):
+            return list(cached)
+        if not target or not os_module.path.isfile(target):
+            return []
+        with open(target, 'r', encoding='utf-8-sig') as stream:
+            raw = json_module.load(stream)
+        if not isinstance(raw, list):
+            return []
+        records = []
+        seen_names = set()
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get('name', '') or '').strip()
+            asset_name = str(item.get('asset_name', '') or '').strip()
+            try:
+                level = int(item.get('land_level_need', 0) or 0)
+            except BaseException:
+                level = 0
+            if not name or not asset_name or not 1 <= level <= 999:
+                continue
+            if name in seen_names:
+                continue
+            seen_names.add(name)
+            record = dict(item)
+            record['name'] = name
+            record['asset_name'] = asset_name
+            record['land_level_need'] = level
+            records.append(record)
+        if len(records) < 100:
+            return []
+        records.sort(key=lambda item: (
+            int(item.get('land_level_need', 0) or 0),
+            int(item.get('seed_id', 0) or 0),
+            str(item.get('name', '') or ''),
+        ))
+        _QQFARM_V237_CROP_CATALOG_CACHE = tuple(records)
+        _QQFARM_V237_CROP_CATALOG_CACHE_PATH = target
+        return list(records)
+    except BaseException as exc:
+        try:
+            writer = globals().get('_throttled_write')
+            if callable(writer):
+                writer(
+                    'v503-crop-catalog-load-error',
+                    'v503 v2.3.7 crop catalog load failed: ' + repr(exc),
+                    120.0,
+                )
+        except BaseException:
+            pass
+        return []
+
+
+def _qqfarm_crop_growth_phase_seconds(crop):
+    """Return positive growth-stage durations from a Plant.json crop row."""
+    try:
+        raw = crop.get('grow_phases', '') if isinstance(crop, dict) else ''
+        values = []
+        if isinstance(raw, dict):
+            source = list(raw.values())
+        elif isinstance(raw, (list, tuple)):
+            source = list(raw)
+        else:
+            source = []
+            for part in str(raw or '').split(';'):
+                text = str(part or '').strip()
+                if not text:
+                    continue
+                source.append(text.rsplit(':', 1)[-1])
+        for value in source:
+            try:
+                seconds = int(float(str(value).strip()))
+            except BaseException:
+                continue
+            if seconds > 0:
+                values.append(seconds)
+        return values
+    except BaseException:
+        return []
+
+
+def _qqfarm_crop_total_growth_seconds(crop):
+    """Apply v2.3.7 multi-season timing: later seasons repeat final stages."""
+    try:
+        phases = _qqfarm_crop_growth_phase_seconds(crop)
+        if not phases:
+            return 0
+        seasons = max(1, int(crop.get('seasons', 1) or 1))
+        first_season = int(sum(phases))
+        repeat_stages = phases[-2:] if len(phases) >= 2 else phases
+        return int(first_season + (seasons - 1) * sum(repeat_stages))
+    except BaseException:
+        return 0
+
+
+def _qqfarm_crop_exp_per_second(crop):
+    """Calculate the catalog's total experience efficiency."""
+    try:
+        total_seconds = float(_qqfarm_crop_total_growth_seconds(crop) or 0)
+        if total_seconds <= 0:
+            return 0.0
+        seasons = max(1, int(crop.get('seasons', 1) or 1))
+        experience = float(crop.get('exp', 0) or 0)
+        return float(experience * seasons / total_seconds)
+    except BaseException:
+        return 0.0
+
+
+def _qqfarm_crop_profit_per_hour(crop):
+    """Calculate v2.3.7 net profit per growth hour from authoritative prices."""
+    try:
+        total_seconds = float(_qqfarm_crop_total_growth_seconds(crop) or 0)
+        if total_seconds <= 0:
+            return 0.0
+        fruit = crop.get('fruit', {}) if isinstance(crop, dict) else {}
+        if not isinstance(fruit, dict):
+            return 0.0
+        count = float(fruit.get('count', 0) or 0)
+        sell_price = float(fruit.get('sell_price', 0) or 0)
+        seed_price = float(crop.get('seed_price', 0) or 0)
+        seasons = max(1, int(crop.get('seasons', 1) or 1))
+        net_profit = count * sell_price * seasons - seed_price
+        return float(net_profit / (total_seconds / 3600.0))
+    except BaseException:
+        return 0.0
+
+
+def _qqfarm_v237_crop_by_name(crop_name, catalog=None):
+    """Return one exact crop row; short OCR prefixes are deliberately rejected."""
+    try:
+        target = str(crop_name or '').strip()
+        for suffix in ('种子', '作物'):
+            if target.endswith(suffix):
+                target = target[:-len(suffix)].strip()
+        if not target:
+            return None
+        records = (
+            list(catalog)
+            if isinstance(catalog, (list, tuple))
+            else _qqfarm_load_v237_crop_catalog()
+        )
+        for record in records:
+            if str(record.get('name', '') or '').strip() == target:
+                return dict(record)
+    except BaseException:
+        pass
+    return None
+
+
+def _qqfarm_v237_crop_for_level(level, catalog=None):
+    """Return the highest unlocked v2.3.7 crop row for a player level."""
+    try:
+        current_level = int(float(str(level).strip()))
+    except BaseException:
+        return None
+    if not 1 <= current_level <= 999:
+        return None
+    records = (
+        list(catalog)
+        if isinstance(catalog, (list, tuple))
+        else _qqfarm_load_v237_crop_catalog()
+    )
+    selected = None
+    selected_level = -1
+    for record in records:
+        try:
+            unlock_level = int(record.get('land_level_need', 0) or 0)
+        except BaseException:
+            continue
+        if unlock_level > current_level:
+            continue
+        if unlock_level >= selected_level:
+            selected = record
+            selected_level = unlock_level
+    return dict(selected) if isinstance(selected, dict) else None
+
+
+def _qqfarm_v237_crop_asset_name(crop_name):
+    """Return the exact seed-template asset name from the v2.3.7 catalog."""
+    record = _qqfarm_v237_crop_by_name(crop_name)
+    if not isinstance(record, dict):
+        return ''
+    return str(record.get('asset_name', '') or '').strip()
+
+
+def _wrap_native_v237_crop_asset_name_func(fn, name=''):
+    """Prefer v2.3.7 exact asset names while preserving unknown native rows."""
+    if not callable(fn):
+        return fn, False
+    if getattr(fn, '__qqfarm_v237_crop_asset_wrapped__', False):
+        return fn, False
+
+    def _wrapped(crop_name, *args, **kwargs):
+        try:
+            authoritative = _qqfarm_v237_crop_asset_name(crop_name)
+            if authoritative:
+                return authoritative
+        except BaseException:
+            pass
+        return fn(crop_name, *args, **kwargs)
+
+    try:
+        _wrapped.__name__ = getattr(fn, '__name__', 'get_crop_asset_name')
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__qqfarm_v237_crop_asset_wrapped__ = True
+        _wrapped.__qqfarm_v237_crop_asset_orig__ = fn
+        _wrapped.__qqfarm_v237_crop_asset_name__ = str(name or '')
+    except BaseException:
+        pass
+    return _wrapped, True
+
+
+def _patch_native_v237_crop_catalog_data_for_module(module, tag=''):
+    """Attach v2.3.7 data without replacing native positional row schemas."""
+    try:
+        if module is None:
+            return 0
+        module_name = str(getattr(module, '__name__', '') or '')
+        if not module_name.startswith('bot.'):
+            return 0
+        has_catalog_surface = bool(
+            module_name.endswith('.crop_catalog') or
+            hasattr(module, 'CROPS') or
+            callable(getattr(module, 'get_crop_asset_name', None)) or
+            callable(getattr(module, 'get_best_crop_for_level', None))
+        )
+        if not has_catalog_surface:
+            return 0
+        records = _qqfarm_load_v237_crop_catalog()
+        if len(records) < 100:
+            return 0
+        changed = 0
+        crop_rows = [dict(record) for record in records]
+        asset_map = dict(
+            (str(record.get('name', '') or '').strip(),
+             str(record.get('asset_name', '') or '').strip())
+            for record in crop_rows
+            if str(record.get('name', '') or '').strip()
+            and str(record.get('asset_name', '') or '').strip()
+        )
+        profit_map = dict(
+            (str(record.get('name', '') or '').strip(),
+             float(_qqfarm_crop_profit_per_hour(record)))
+            for record in crop_rows
+            if str(record.get('name', '') or '').strip()
+        )
+
+        # Native builds do not share one public row schema.  Some use tuples
+        # and access crop[0], while tests and newer builds may expose dicts.
+        # Replacing CROPS or its companion maps with dict rows caused a live
+        # startup KeyError: 0.  Keep all native containers byte-for-byte and
+        # publish the recovered catalog through private sidecars instead.
+        catalog_source = _qqfarm_v237_crop_catalog_path()
+        catalog_marker = (
+            str(catalog_source or ''),
+            int(len(crop_rows)),
+            str(crop_rows[0].get('asset_name', '') or ''),
+            str(crop_rows[-1].get('asset_name', '') or ''),
+        )
+        if getattr(
+                module, '__qqfarm_v237_crop_catalog_marker__', None
+        ) != catalog_marker:
+            setattr(
+                module,
+                '__qqfarm_v237_crop_catalog_rows__',
+                tuple(dict(record) for record in crop_rows),
+            )
+            setattr(
+                module,
+                '__qqfarm_v237_crop_asset_map__',
+                dict(asset_map),
+            )
+            setattr(
+                module,
+                '__qqfarm_v237_crop_profit_per_hour__',
+                dict(profit_map),
+            )
+            setattr(
+                module,
+                '__qqfarm_v237_crop_catalog_marker__',
+                catalog_marker,
+            )
+            changed += 4
+
+        old_asset = getattr(module, 'get_crop_asset_name', None)
+        if callable(old_asset):
+            wrapped, wrapped_ok = _wrap_native_v237_crop_asset_name_func(
+                old_asset, module_name + '.get_crop_asset_name'
+            )
+            if wrapped_ok:
+                setattr(module, 'get_crop_asset_name', wrapped)
+                changed += 1
+        try:
+            setattr(
+                module,
+                '__qqfarm_v237_crop_catalog_source__',
+                catalog_source,
+            )
+        except BaseException:
+            pass
+        if changed:
+            try:
+                _write(
+                    'v503 v2.3.7 crop catalog data installed tag=' +
+                    str(tag) + ' module=' + module_name +
+                    ' rows=' + str(len(crop_rows)) +
+                    ' changed=' + str(changed)
+                )
+            except BaseException:
+                pass
+        return changed
+    except BaseException:
+        return 0
+
+
+_QQFARM_V237_TEMPLATE_CACHE = {}
+
+
+def _qqfarm_v237_template_root(base_dir=''):
+    """Return the portable root containing templates recovered from v2.3.7."""
+    try:
+        os_module = __import__('os')
+        override = str(os_module.environ.get(
+            'QQFARM_V237_TEMPLATE_ROOT', ''
+        ) or '').strip()
+        if override:
+            return os_module.path.abspath(override)
+        root = str(base_dir or '').strip()
+        if not root:
+            root = os_module.path.dirname(os_module.path.abspath(
+                globals().get('__file__', 'hook.py') or 'hook.py'
+            ))
+        return os_module.path.abspath(os_module.path.join(
+            root, 'data', 'v237_templates'
+        ))
+    except BaseException:
+        return ''
+
+
+def _qqfarm_load_v237_template(relative_path, force_reload=False):
+    """Decode one template through bytes so Chinese deployment paths work."""
+    try:
+        os_module = __import__('os')
+        relative = str(relative_path or '').replace('\\', '/').strip('/')
+        parts = [part for part in relative.split('/') if part]
+        if not parts or any(part in ('.', '..') for part in parts):
+            return None
+        if ':' in parts[0]:
+            return None
+        root = _qqfarm_v237_template_root()
+        if not root:
+            return None
+        target = os_module.path.abspath(os_module.path.join(root, *parts))
+        prefix = root.rstrip('\\/') + os_module.sep
+        if not target.startswith(prefix):
+            return None
+        cache = globals().setdefault('_QQFARM_V237_TEMPLATE_CACHE', {})
+        if not bool(force_reload) and target in cache:
+            return cache.get(target)
+        if not os_module.path.isfile(target):
+            return None
+        numpy_module = globals().get('np') or __import__('numpy')
+        cv_module = globals().get('cv2') or __import__('cv2')
+        with open(target, 'rb') as stream:
+            payload = stream.read()
+        encoded = numpy_module.frombuffer(payload, dtype=numpy_module.uint8)
+        frame = cv_module.imdecode(encoded, cv_module.IMREAD_UNCHANGED)
+        if frame is None or getattr(frame, 'shape', None) is None:
+            return None
+        cache[target] = frame
+        return frame
+    except BaseException:
+        return None
+
+
+def _qqfarm_template_frame_digest(frame):
+    """Build a stable identity for decoded template de-duplication."""
+    try:
+        hash_module = __import__('hashlib')
+        shape = repr(tuple(int(value) for value in frame.shape)).encode('ascii')
+        dtype = str(getattr(frame, 'dtype', '')).encode('ascii', errors='ignore')
+        payload = memoryview(frame).tobytes()
+        digest = hash_module.sha256()
+        digest.update(shape)
+        digest.update(b'|')
+        digest.update(dtype)
+        digest.update(b'|')
+        digest.update(payload)
+        return digest.hexdigest()
+    except BaseException:
+        return ''
+
+
+def _qqfarm_merge_template_frames(existing, additions):
+    """Append decoded templates exactly once and preserve original ordering."""
+    merged = list(existing) if isinstance(existing, (list, tuple)) else []
+    seen = set()
+    for frame in merged:
+        digest = _qqfarm_template_frame_digest(frame)
+        if digest:
+            seen.add(digest)
+    added = 0
+    for frame in list(additions or ()):
+        if frame is None:
+            continue
+        digest = _qqfarm_template_frame_digest(frame)
+        if not digest or digest in seen:
+            continue
+        seen.add(digest)
+        merged.append(frame)
+        added += 1
+    return merged, added
+
+
+def _patch_native_v237_template_overlays_for_module(module, tag=''):
+    """Merge the v2.3.7 compatibility templates into matching native lists."""
+    try:
+        if module is None:
+            return 0
+        module_name = str(getattr(module, '__name__', '') or '')
+        if not module_name.startswith('bot.'):
+            return 0
+        specs = (
+            ('empty_land_frames', (
+                'assert/templates/element/self/empty_land/11-m-1.png',
+                'assert/templates/element/self/empty_land/11-m.png',
+                'assert/templates/element/self/empty_land/22-m-1.png',
+                'assert/templates/element/self/empty_land/22-m.png',
+                'assert/templates/element/self/empty_land/33-m-1.png',
+                'assert/templates/element/self/empty_land/33-m.png',
+                'assert/templates/element/self/empty_land/44-m-1.png',
+                'assert/templates/element/self/empty_land/44-m.png',
+                'assert/templates/element/self/empty_land/55-m.png',
+            )),
+            ('seed_land_frames', (
+                'assert/templates/element/friend/seed_land/13.png',
+                'assert/templates/element/friend/seed_land/14.png',
+                'assert/templates/element/friend/seed_land/15.png',
+                'assert/templates/element/friend/seed_land/16.png',
+                'assert/templates/element/friend/seed_land/17.png',
+            )),
+            ('friend_seed_land_frames', (
+                'assert/templates/element/friend/seed_land/13.png',
+                'assert/templates/element/friend/seed_land/14.png',
+                'assert/templates/element/friend/seed_land/15.png',
+                'assert/templates/element/friend/seed_land/16.png',
+                'assert/templates/element/friend/seed_land/17.png',
+            )),
+            ('friend_list_enter_frames', (
+                'assert/templates/element/friend_list/enter/0.png',
+                'assert/templates/element/friend_list/enter/1.png',
+            )),
+            ('marketplace_entry_frames', (
+                'assert/templates/element/self/marketplace_entry/1.png',
+                'assert/templates/element/self/marketplace_entry/2.png',
+                'assert/templates/element/self/marketplace_entry/3.png',
+                'assert/templates/element/self/marketplace_entry/4.png',
+            )),
+            ('share_entry_frames', (
+                'assert/templates/element/self/share_entry/11.png',
+                'assert/templates/element/self/share_entry/22.png',
+            )),
+            ('svip_entry_frames', (
+                'assert/templates/element/self/svip_entry/33.png',
+                'assert/templates/element/self/svip_entry/44.png',
+            )),
+            ('tree_frames', (
+                'assert/templates/element/self/tree/2.png',
+            )),
+            ('vendor_leave_frames', (
+                'assert/templates/element/self/vendor/leave/2.png',
+            )),
+        )
+        changed = 0
+        for attr_name, relative_paths in specs:
+            if not hasattr(module, attr_name):
+                continue
+            current = getattr(module, attr_name, None)
+            if not isinstance(current, (list, tuple)):
+                continue
+            decoded = [
+                _qqfarm_load_v237_template(relative)
+                for relative in relative_paths
+            ]
+            merged, added = _qqfarm_merge_template_frames(current, decoded)
+            if added:
+                setattr(module, attr_name, merged)
+                changed += int(added)
+        if changed:
+            try:
+                _write(
+                    'v504 v2.3.7 template overlays installed tag=' +
+                    str(tag) + ' module=' + module_name +
+                    ' added=' + str(changed)
+                )
+            except BaseException:
+                pass
+        return changed
+    except BaseException:
+        return 0
+
+
+def _patch_native_v237_template_overlays_loaded(tag=''):
+    """Patch loaded bot modules, their classes, and the active cycle owner."""
+    changed = []
+    seen = set()
+    targets = []
+    try:
+        sys_module = globals().get('sys') or __import__('sys')
+        for module_name, module in list(sys_module.modules.items()):
+            if module is None or not str(module_name or '').startswith('bot.'):
+                continue
+            targets.append((str(module_name), module))
+            try:
+                for attr_name, value in list(vars(module).items())[:800]:
+                    if isinstance(value, type):
+                        targets.append((
+                            str(module_name) + '.' + str(attr_name), value
+                        ))
+            except BaseException:
+                pass
+        active = globals().get('_ACTIVE_RUN_CYCLE_CONTEXT')
+        if active is not None:
+            targets.append(('active-cycle-context', active))
+    except BaseException:
+        targets = []
+    for label, target in targets:
+        try:
+            marker = id(target)
+            if marker in seen:
+                continue
+            seen.add(marker)
+            # The object patch shares the same attribute contract as modules;
+            # provide a temporary bot.* identity only for a live cycle owner.
+            temporary_name = False
+            if not str(getattr(target, '__name__', '') or '').startswith('bot.'):
+                if label != 'active-cycle-context':
+                    continue
+                setattr(target, '__name__', 'bot.active_cycle_context')
+                temporary_name = True
+            count = _patch_native_v237_template_overlays_for_module(target, tag)
+            if count:
+                changed.append(str(label) + ':' + str(count))
+            if temporary_name:
+                try:
+                    delattr(target, '__name__')
+                except BaseException:
+                    pass
+        except BaseException:
+            continue
+    return changed
+
+
 def _qqfarm_v233_authoritative_crop_for_level(level):
-    """Return the crop unlocked at the highest known v2.3.3 level boundary."""
+    """Return the authoritative high-level crop from the v2.3.7 catalog."""
     try:
         current_level = int(float(str(level).strip()))
     except BaseException:
         return ''
-    if not 1 <= current_level <= 999:
+    if not 134 <= current_level <= 999:
         return ''
+    try:
+        record = _qqfarm_v237_crop_for_level(current_level)
+        if isinstance(record, dict):
+            name = str(record.get('name', '') or '').strip()
+            unlock_level = int(record.get('land_level_need', 0) or 0)
+            if name and unlock_level >= 134:
+                return name
+    except BaseException:
+        pass
+    # Keep startup deterministic if the external data file is temporarily
+    # unavailable.  These boundaries mirror the recovered v2.3.7 Plant.json.
     catalog = (
         (134, '晚香玉'),
         (136, '人参'),
         (138, '鳄梨'),
-        (140, '似血牡丹'),
+        (140, '似血杜鹃'),
         (142, '文殊兰'),
         (144, '郁金香'),
         (146, '薰衣草'),
         (148, '马蹄莲'),
-        (150, '蝴蝶兰'),
+        (150, '艳蝶兰'),
         (152, '宝华玉兰'),
         (154, '月季花'),
         (156, '兰花'),
@@ -53650,6 +54258,12 @@ def _patch_native_v225_crop_catalog_for_module(module, tag=''):
     if not module_name.startswith('bot.'):
         return 0
     changed = 0
+    try:
+        changed += int(
+            _patch_native_v237_crop_catalog_data_for_module(module, tag) or 0
+        )
+    except BaseException:
+        pass
     targets = []
     try:
         cls = getattr(module, 'FarmBotCV', None)
@@ -60740,6 +61354,12 @@ def _patch_loaded(tag=''):
             # Keep crop-catalog correction active when native-v225 owns planting;
             # it must not depend on the legacy business-wrapper gate.
             _patch_native_v225_crop_catalog_loaded(tag)
+        except BaseException:
+            pass
+        try:
+            # Extend only existing native template lists.  The strict visual
+            # board proof remains the click authority for empty-land actions.
+            _patch_native_v237_template_overlays_loaded(tag)
         except BaseException:
             pass
         try:

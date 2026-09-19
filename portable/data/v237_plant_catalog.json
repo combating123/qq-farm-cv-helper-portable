@@ -1,0 +1,1850 @@
+[
+    {
+        "name": "白萝卜",
+        "asset_name": "crop_2",
+        "seed_id": 20002,
+        "land_level_need": 1,
+        "seasons": 1,
+        "grow_phases": "种子:30;发芽:30;成熟:0;",
+        "exp": 1,
+        "fruit": {
+            "count": 5,
+            "sell_price": 2
+        },
+        "seed_price": 2
+    },
+    {
+        "name": "胡萝卜",
+        "asset_name": "crop_3",
+        "seed_id": 20003,
+        "land_level_need": 2,
+        "seasons": 1,
+        "grow_phases": "种子:30;发芽:30;小叶子:30;大叶子:30;成熟:0;",
+        "exp": 2,
+        "fruit": {
+            "count": 10,
+            "sell_price": 2
+        },
+        "seed_price": 4
+    },
+    {
+        "name": "大白菜",
+        "asset_name": "crop_59",
+        "seed_id": 20059,
+        "land_level_need": 3,
+        "seasons": 1,
+        "grow_phases": "种子:60;发芽:60;幼苗:60;成株:60;卷心:60;成熟:0;",
+        "exp": 5,
+        "fruit": {
+            "count": 20,
+            "sell_price": 2
+        },
+        "seed_price": 10
+    },
+    {
+        "name": "大蒜",
+        "asset_name": "crop_65",
+        "seed_id": 20065,
+        "land_level_need": 4,
+        "seasons": 1,
+        "grow_phases": "种子:120;发芽:120;幼苗:120;伸长:120;初熟:120;成熟:0;",
+        "exp": 10,
+        "fruit": {
+            "count": 20,
+            "sell_price": 5
+        },
+        "seed_price": 20
+    },
+    {
+        "name": "大葱",
+        "asset_name": "crop_64",
+        "seed_id": 20064,
+        "land_level_need": 5,
+        "seasons": 1,
+        "grow_phases": "种子:300;发芽:300;小叶子:300;大叶子:300;成熟:0;",
+        "exp": 20,
+        "fruit": {
+            "count": 30,
+            "sell_price": 7
+        },
+        "seed_price": 42
+    },
+    {
+        "name": "水稻",
+        "asset_name": "crop_60",
+        "seed_id": 20060,
+        "land_level_need": 6,
+        "seasons": 1,
+        "grow_phases": "种子:480;幼苗:480;秧苗:480;幼穗:480;开花:480;成熟:0;",
+        "exp": 41,
+        "fruit": {
+            "count": 30,
+            "sell_price": 14
+        },
+        "seed_price": 84
+    },
+    {
+        "name": "小麦",
+        "asset_name": "crop_61",
+        "seed_id": 20061,
+        "land_level_need": 7,
+        "seasons": 1,
+        "grow_phases": "种子:720;发芽:720;小叶子:720;大叶子:720;幼穗:720;成熟:0;",
+        "exp": 62,
+        "fruit": {
+            "count": 40,
+            "sell_price": 15
+        },
+        "seed_price": 126
+    },
+    {
+        "name": "玉米",
+        "asset_name": "crop_4",
+        "seed_id": 20004,
+        "land_level_need": 8,
+        "seasons": 1,
+        "grow_phases": "种子:960;发芽:960;小叶子:960;大叶子:960;开花:960;成熟:0;",
+        "exp": 82,
+        "fruit": {
+            "count": 40,
+            "sell_price": 21
+        },
+        "seed_price": 168
+    },
+    {
+        "name": "鲜姜",
+        "asset_name": "crop_66",
+        "seed_id": 20066,
+        "land_level_need": 9,
+        "seasons": 1,
+        "grow_phases": "种子:1500;发芽:1500;小叶子:1500;大叶子:1500;成熟:0;",
+        "exp": 106,
+        "fruit": {
+            "count": 60,
+            "sell_price": 18
+        },
+        "seed_price": 223
+    },
+    {
+        "name": "土豆",
+        "asset_name": "crop_5",
+        "seed_id": 20005,
+        "land_level_need": 10,
+        "seasons": 1,
+        "grow_phases": "种子:1440;发芽:1440;小叶子:1440;大叶子:1440;初熟:1440;成熟:0;",
+        "exp": 128,
+        "fruit": {
+            "count": 60,
+            "sell_price": 22
+        },
+        "seed_price": 268
+    },
+    {
+        "name": "小白菜",
+        "asset_name": "crop_71",
+        "seed_id": 20071,
+        "land_level_need": 11,
+        "seasons": 1,
+        "grow_phases": "种子:2250;发芽:2250;小叶子:2250;大叶子:2250;成熟:0;",
+        "exp": 160,
+        "fruit": {
+            "count": 80,
+            "sell_price": 20
+        },
+        "seed_price": 335
+    },
+    {
+        "name": "生菜",
+        "asset_name": "crop_96",
+        "seed_id": 20096,
+        "land_level_need": 12,
+        "seasons": 1,
+        "grow_phases": "种子:2160;发芽:2160;小叶子:2160;大叶子:2160;初熟:2160;成熟:0;",
+        "exp": 192,
+        "fruit": {
+            "count": 80,
+            "sell_price": 25
+        },
+        "seed_price": 402
+    },
+    {
+        "name": "油菜",
+        "asset_name": "crop_99",
+        "seed_id": 20099,
+        "land_level_need": 13,
+        "seasons": 1,
+        "grow_phases": "种子:3600;发芽:3600;小叶子:3600;大叶子:3600;成熟:0;",
+        "exp": 272,
+        "fruit": {
+            "count": 200,
+            "sell_price": 14
+        },
+        "seed_price": 576
+    },
+    {
+        "name": "茄子",
+        "asset_name": "crop_6",
+        "seed_id": 20006,
+        "land_level_need": 14,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;开花:5760;成熟:0;",
+        "exp": 544,
+        "fruit": {
+            "count": 200,
+            "sell_price": 28
+        },
+        "seed_price": 1152
+    },
+    {
+        "name": "红枣",
+        "asset_name": "crop_51",
+        "seed_id": 20051,
+        "land_level_need": 15,
+        "seasons": 1,
+        "grow_phases": "种子:8640;发芽:8640;小叶子:8640;大叶子:8640;开花:8640;成熟:0;",
+        "exp": 816,
+        "fruit": {
+            "count": 200,
+            "sell_price": 43
+        },
+        "seed_price": 1728
+    },
+    {
+        "name": "蒲公英",
+        "asset_name": "crop_120",
+        "seed_id": 20120,
+        "land_level_need": 16,
+        "seasons": 1,
+        "grow_phases": "种子:17280;小叶子:17280;大叶子:17280;花蕾:17280;盛开:17280;成熟:0;",
+        "exp": 1632,
+        "fruit": {
+            "count": 200,
+            "sell_price": 86
+        },
+        "seed_price": 3456
+    },
+    {
+        "name": "银莲花",
+        "asset_name": "crop_259",
+        "seed_id": 20259,
+        "land_level_need": 17,
+        "seasons": 1,
+        "grow_phases": "种子:2880;发芽:2880;小叶:2880;大叶:2880;花蕾:2880;开花:0;",
+        "exp": 288,
+        "fruit": {
+            "count": 200,
+            "sell_price": 16
+        },
+        "seed_price": 640
+    },
+    {
+        "name": "番茄",
+        "asset_name": "crop_7",
+        "seed_id": 20007,
+        "land_level_need": 18,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;开花:5760;成熟:0;",
+        "exp": 576,
+        "fruit": {
+            "count": 200,
+            "sell_price": 32
+        },
+        "seed_price": 1280
+    },
+    {
+        "name": "花菜",
+        "asset_name": "crop_98",
+        "seed_id": 20098,
+        "land_level_need": 19,
+        "seasons": 1,
+        "grow_phases": "种子:8640;发芽:8640;幼苗:8640;卷心:8640;初熟:8640;成熟:0;",
+        "exp": 864,
+        "fruit": {
+            "count": 200,
+            "sell_price": 48
+        },
+        "seed_price": 1920
+    },
+    {
+        "name": "韭菜",
+        "asset_name": "crop_305",
+        "seed_id": 20305,
+        "land_level_need": 20,
+        "seasons": 1,
+        "grow_phases": "种子:17280;发芽:17280;小叶子:17280;大叶子:17280;初熟:17280;成熟:0;",
+        "exp": 1728,
+        "fruit": {
+            "count": 200,
+            "sell_price": 96
+        },
+        "seed_price": 3840
+    },
+    {
+        "name": "小雏菊",
+        "asset_name": "crop_105",
+        "seed_id": 20105,
+        "land_level_need": 21,
+        "seasons": 1,
+        "grow_phases": "种子:2880;发芽:2880;小叶子:2880;大叶子:2880;初熟:2880;成熟:0;",
+        "exp": 304,
+        "fruit": {
+            "count": 200,
+            "sell_price": 17
+        },
+        "seed_price": 704
+    },
+    {
+        "name": "豌豆",
+        "asset_name": "crop_8",
+        "seed_id": 20008,
+        "land_level_need": 22,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;初熟:5760;成熟:0;",
+        "exp": 608,
+        "fruit": {
+            "count": 200,
+            "sell_price": 35
+        },
+        "seed_price": 1408
+    },
+    {
+        "name": "莲藕",
+        "asset_name": "crop_37",
+        "seed_id": 20037,
+        "land_level_need": 23,
+        "seasons": 1,
+        "grow_phases": "种子:8640;发芽:8640;小叶子:8640;大叶子:8640;开花:8640;成熟:0;",
+        "exp": 912,
+        "fruit": {
+            "count": 200,
+            "sell_price": 52
+        },
+        "seed_price": 2112
+    },
+    {
+        "name": "红玫瑰",
+        "asset_name": "crop_41",
+        "seed_id": 20041,
+        "land_level_need": 24,
+        "seasons": 1,
+        "grow_phases": "种子:17280;发芽:17280;小叶子:17280;大叶子:17280;初熟:17280;成熟:0;",
+        "exp": 1824,
+        "fruit": {
+            "count": 200,
+            "sell_price": 105
+        },
+        "seed_price": 4224
+    },
+    {
+        "name": "黄色秋菊",
+        "asset_name": "crop_161",
+        "seed_id": 20161,
+        "land_level_need": 25,
+        "seasons": 1,
+        "grow_phases": "种子:2880;发芽:2880;小叶子:2880;大叶子:2880;花蕾:2880;盛开:0;",
+        "exp": 324,
+        "fruit": {
+            "count": 200,
+            "sell_price": 19
+        },
+        "seed_price": 792
+    },
+    {
+        "name": "满天星",
+        "asset_name": "crop_110",
+        "seed_id": 20110,
+        "land_level_need": 26,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;花蕾:5760;盛开:0;",
+        "exp": 648,
+        "fruit": {
+            "count": 200,
+            "sell_price": 39
+        },
+        "seed_price": 1584
+    },
+    {
+        "name": "含羞草",
+        "asset_name": "crop_143",
+        "seed_id": 20143,
+        "land_level_need": 27,
+        "seasons": 1,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:7200;花蕾:7200;盛开:7200;成熟:0;",
+        "exp": 972,
+        "fruit": {
+            "count": 200,
+            "sell_price": 59
+        },
+        "seed_price": 2376
+    },
+    {
+        "name": "牵牛花",
+        "asset_name": "crop_147",
+        "seed_id": 20147,
+        "land_level_need": 28,
+        "seasons": 1,
+        "grow_phases": "种子:17280;发芽:17280;小叶子:17280;大叶子:17280;花蕾:17280;盛开:0;",
+        "exp": 1944,
+        "fruit": {
+            "count": 200,
+            "sell_price": 118
+        },
+        "seed_price": 4752
+    },
+    {
+        "name": "红色秋菊",
+        "asset_name": "crop_162",
+        "seed_id": 20162,
+        "land_level_need": 29,
+        "seasons": 1,
+        "grow_phases": "种子:2880;发芽:2880;小叶子:2880;大叶子:2880;花蕾:2880;盛开:0;",
+        "exp": 344,
+        "fruit": {
+            "count": 200,
+            "sell_price": 22
+        },
+        "seed_price": 888
+    },
+    {
+        "name": "辣椒",
+        "asset_name": "crop_9",
+        "seed_id": 20009,
+        "land_level_need": 30,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;初熟:5760;成熟:0;",
+        "exp": 688,
+        "fruit": {
+            "count": 200,
+            "sell_price": 44
+        },
+        "seed_price": 1776
+    },
+    {
+        "name": "黄瓜",
+        "asset_name": "crop_97",
+        "seed_id": 20097,
+        "land_level_need": 31,
+        "seasons": 1,
+        "grow_phases": "种子:8640;发芽:8640;小叶子:8640;大叶子:8640;开花:8640;成熟:0;",
+        "exp": 1032,
+        "fruit": {
+            "count": 200,
+            "sell_price": 66
+        },
+        "seed_price": 2664
+    },
+    {
+        "name": "芹菜",
+        "asset_name": "crop_306",
+        "seed_id": 20306,
+        "land_level_need": 32,
+        "seasons": 1,
+        "grow_phases": "种子:17280;发芽:17280;小叶子:17280;大叶子:17280;初熟:17280;成熟:0;",
+        "exp": 2064,
+        "fruit": {
+            "count": 200,
+            "sell_price": 133
+        },
+        "seed_price": 5328
+    },
+    {
+        "name": "天香百合",
+        "asset_name": "crop_103",
+        "seed_id": 20103,
+        "land_level_need": 33,
+        "seasons": 1,
+        "grow_phases": "种子:2880;发芽:2880;小叶子:2880;大叶子:2880;初熟:2880;成熟:0;",
+        "exp": 368,
+        "fruit": {
+            "count": 200,
+            "sell_price": 24
+        },
+        "seed_price": 992
+    },
+    {
+        "name": "南瓜",
+        "asset_name": "crop_10",
+        "seed_id": 20010,
+        "land_level_need": 34,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;初熟:5760;成熟:0;",
+        "exp": 736,
+        "fruit": {
+            "count": 200,
+            "sell_price": 49
+        },
+        "seed_price": 1984
+    },
+    {
+        "name": "核桃",
+        "asset_name": "crop_308",
+        "seed_id": 20308,
+        "land_level_need": 35,
+        "seasons": 1,
+        "grow_phases": "种子:10800;发芽:10800;小叶子:10800;大叶子:10800;成熟:0;",
+        "exp": 1104,
+        "fruit": {
+            "count": 200,
+            "sell_price": 74
+        },
+        "seed_price": 2976
+    },
+    {
+        "name": "山楂",
+        "asset_name": "crop_91",
+        "seed_id": 20091,
+        "land_level_need": 36,
+        "seasons": 1,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:14400;开花:14400;初熟:14400;成熟:0;",
+        "exp": 2208,
+        "fruit": {
+            "count": 200,
+            "sell_price": 148
+        },
+        "seed_price": 5952
+    },
+    {
+        "name": "菠菜",
+        "asset_name": "crop_73",
+        "seed_id": 20073,
+        "land_level_need": 37,
+        "seasons": 1,
+        "grow_phases": "种子:2880;发芽:2880;小叶子:2880;大叶子:2880;初熟:2880;成熟:0;",
+        "exp": 392,
+        "fruit": {
+            "count": 200,
+            "sell_price": 28
+        },
+        "seed_price": 1120
+    },
+    {
+        "name": "草莓",
+        "asset_name": "crop_1",
+        "seed_id": 20001,
+        "land_level_need": 38,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;开花:5760;成熟:0;",
+        "exp": 784,
+        "fruit": {
+            "count": 200,
+            "sell_price": 56
+        },
+        "seed_price": 2240
+    },
+    {
+        "name": "苹果",
+        "asset_name": "crop_11",
+        "seed_id": 20011,
+        "land_level_need": 39,
+        "seasons": 1,
+        "grow_phases": "种子:8640;发芽:8640;小叶子:8640;大叶子:8640;开花:8640;成熟:0;",
+        "exp": 1176,
+        "fruit": {
+            "count": 200,
+            "sell_price": 84
+        },
+        "seed_price": 3360
+    },
+    {
+        "name": "四叶草",
+        "asset_name": "crop_62",
+        "seed_id": 20062,
+        "land_level_need": 40,
+        "seasons": 1,
+        "grow_phases": "种子:17280;发芽:17280;小叶子:17280;大叶子:17280;初熟:17280;成熟:0;",
+        "exp": 2352,
+        "fruit": {
+            "count": 200,
+            "sell_price": 168
+        },
+        "seed_price": 6720
+    },
+    {
+        "name": "非洲菊",
+        "asset_name": "crop_104",
+        "seed_id": 20104,
+        "land_level_need": 41,
+        "seasons": 1,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:2400;花蕾:2400;盛开:2400;成熟:0;",
+        "exp": 420,
+        "fruit": {
+            "count": 200,
+            "sell_price": 31
+        },
+        "seed_price": 1248
+    },
+    {
+        "name": "火绒草",
+        "asset_name": "crop_135",
+        "seed_id": 20135,
+        "land_level_need": 42,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;花蕾:5760;盛开:0;",
+        "exp": 840,
+        "fruit": {
+            "count": 200,
+            "sell_price": 62
+        },
+        "seed_price": 2496
+    },
+    {
+        "name": "花香根鸢尾",
+        "asset_name": "crop_141",
+        "seed_id": 20141,
+        "land_level_need": 43,
+        "seasons": 1,
+        "grow_phases": "种子:8640;发芽:8640;小叶子:8640;大叶子:8640;花蕾:8640;盛开:0;",
+        "exp": 1260,
+        "fruit": {
+            "count": 200,
+            "sell_price": 93
+        },
+        "seed_price": 3744
+    },
+    {
+        "name": "虞美人",
+        "asset_name": "crop_142",
+        "seed_id": 20142,
+        "land_level_need": 44,
+        "seasons": 1,
+        "grow_phases": "种子:17280;发芽:17280;小叶子:17280;大叶子:17280;花蕾:17280;盛开:0;",
+        "exp": 2520,
+        "fruit": {
+            "count": 200,
+            "sell_price": 187
+        },
+        "seed_price": 7488
+    },
+    {
+        "name": "向日葵",
+        "asset_name": "crop_145",
+        "seed_id": 20145,
+        "land_level_need": 45,
+        "seasons": 1,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:2400;开花:2400;初熟:2400;成熟:0;",
+        "exp": 448,
+        "fruit": {
+            "count": 200,
+            "sell_price": 35
+        },
+        "seed_price": 1400
+    },
+    {
+        "name": "西瓜",
+        "asset_name": "crop_14",
+        "seed_id": 20014,
+        "land_level_need": 46,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;开花:5760;成熟:0;",
+        "exp": 896,
+        "fruit": {
+            "count": 200,
+            "sell_price": 70
+        },
+        "seed_price": 2800
+    },
+    {
+        "name": "黄豆",
+        "asset_name": "crop_70",
+        "seed_id": 20070,
+        "land_level_need": 47,
+        "seasons": 1,
+        "grow_phases": "种子:8640;发芽:8640;小叶子:8640;大叶子:8640;初熟:8640;成熟:0;",
+        "exp": 1344,
+        "fruit": {
+            "count": 200,
+            "sell_price": 105
+        },
+        "seed_price": 4200
+    },
+    {
+        "name": "香蕉",
+        "asset_name": "crop_15",
+        "seed_id": 20015,
+        "land_level_need": 48,
+        "seasons": 1,
+        "grow_phases": "种子:17280;发芽:17280;小叶子:17280;大叶子:17280;开花:17280;成熟:0;",
+        "exp": 2688,
+        "fruit": {
+            "count": 200,
+            "sell_price": 210
+        },
+        "seed_price": 8400
+    },
+    {
+        "name": "竹笋",
+        "asset_name": "crop_100",
+        "seed_id": 20100,
+        "land_level_need": 49,
+        "seasons": 1,
+        "grow_phases": "种子:2880;发芽:2880;幼苗:2880;伸长:2880;初熟:2880;成熟:0;",
+        "exp": 476,
+        "fruit": {
+            "count": 200,
+            "sell_price": 39
+        },
+        "seed_price": 1560
+    },
+    {
+        "name": "桃子",
+        "asset_name": "crop_18",
+        "seed_id": 20018,
+        "land_level_need": 50,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;开花:5760;小叶子:5760;大叶子:5760;成熟:0;",
+        "exp": 952,
+        "fruit": {
+            "count": 200,
+            "sell_price": 78
+        },
+        "seed_price": 3120
+    },
+    {
+        "name": "甘蔗",
+        "asset_name": "crop_47",
+        "seed_id": 20047,
+        "land_level_need": 51,
+        "seasons": 1,
+        "grow_phases": "种子:8640;发芽:8640;幼苗:8640;分叶:8640;伸长:8640;成熟:0;",
+        "exp": 1428,
+        "fruit": {
+            "count": 200,
+            "sell_price": 117
+        },
+        "seed_price": 4680
+    },
+    {
+        "name": "橙子",
+        "asset_name": "crop_19",
+        "seed_id": 20019,
+        "land_level_need": 52,
+        "seasons": 1,
+        "grow_phases": "种子:17280;发芽:17280;小叶子:17280;大叶子:17280;开花:17280;成熟:0;",
+        "exp": 2856,
+        "fruit": {
+            "count": 200,
+            "sell_price": 234
+        },
+        "seed_price": 9360
+    },
+    {
+        "name": "茉莉花",
+        "asset_name": "crop_128",
+        "seed_id": 20128,
+        "land_level_need": 53,
+        "seasons": 1,
+        "grow_phases": "种子:2880;发芽:2880;小叶子:2880;大叶子:2880;花蕾:2880;盛开:0;",
+        "exp": 508,
+        "fruit": {
+            "count": 200,
+            "sell_price": 43
+        },
+        "seed_price": 1728
+    },
+    {
+        "name": "葡萄",
+        "asset_name": "crop_13",
+        "seed_id": 20013,
+        "land_level_need": 54,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;开花:5760;成熟:0;",
+        "exp": 1016,
+        "fruit": {
+            "count": 200,
+            "sell_price": 86
+        },
+        "seed_price": 3456
+    },
+    {
+        "name": "丝瓜",
+        "asset_name": "crop_44",
+        "seed_id": 20044,
+        "land_level_need": 55,
+        "seasons": 1,
+        "grow_phases": "种子:8640;长枝:8640;开花:8640;小叶子:8640;大叶子:8640;结果:0;",
+        "exp": 1524,
+        "fruit": {
+            "count": 200,
+            "sell_price": 129
+        },
+        "seed_price": 5184
+    },
+    {
+        "name": "榛子",
+        "asset_name": "crop_72",
+        "seed_id": 20072,
+        "land_level_need": 56,
+        "seasons": 1,
+        "grow_phases": "种子:17280;发芽:17280;开花:17280;小叶子:17280;大叶子:17280;成熟:0;",
+        "exp": 3048,
+        "fruit": {
+            "count": 200,
+            "sell_price": 259
+        },
+        "seed_price": 10368
+    },
+    {
+        "name": "迎春花",
+        "asset_name": "crop_396",
+        "seed_id": 20396,
+        "land_level_need": 57,
+        "seasons": 1,
+        "grow_phases": "种子:2880;幼芽:2880;小叶:2880;大叶:2880;花蕾:2880;开花:0;",
+        "exp": 540,
+        "fruit": {
+            "count": 200,
+            "sell_price": 48
+        },
+        "seed_price": 1920
+    },
+    {
+        "name": "石榴",
+        "asset_name": "crop_23",
+        "seed_id": 20023,
+        "land_level_need": 58,
+        "seasons": 1,
+        "grow_phases": "种子:5760;发芽:5760;小叶子:5760;大叶子:5760;开花:5760;成熟:0;",
+        "exp": 1080,
+        "fruit": {
+            "count": 200,
+            "sell_price": 96
+        },
+        "seed_price": 3840
+    },
+    {
+        "name": "栗子",
+        "asset_name": "crop_95",
+        "seed_id": 20095,
+        "land_level_need": 59,
+        "seasons": 1,
+        "grow_phases": "种子:8640;发芽:8640;小叶子:8640;大叶子:8640;开花:8640;成熟:0;",
+        "exp": 1620,
+        "fruit": {
+            "count": 200,
+            "sell_price": 144
+        },
+        "seed_price": 5760
+    },
+    {
+        "name": "柚子",
+        "asset_name": "crop_26",
+        "seed_id": 20026,
+        "land_level_need": 60,
+        "seasons": 1,
+        "grow_phases": "种子:17280;发芽:17280;小叶子:17280;大叶子:17280;开花:17280;成熟:0;",
+        "exp": 3240,
+        "fruit": {
+            "count": 200,
+            "sell_price": 288
+        },
+        "seed_price": 11520
+    },
+    {
+        "name": "蘑菇",
+        "asset_name": "crop_50",
+        "seed_id": 20050,
+        "land_level_need": 61,
+        "seasons": 2,
+        "grow_phases": "种子:3600;发芽:3600;大叶子:3600;初熟:3600;成熟:0;",
+        "exp": 429,
+        "fruit": {
+            "count": 200,
+            "sell_price": 39
+        },
+        "seed_price": 3168
+    },
+    {
+        "name": "菠萝",
+        "asset_name": "crop_27",
+        "seed_id": 20027,
+        "land_level_need": 62,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;开花:7200;成熟:0;",
+        "exp": 858,
+        "fruit": {
+            "count": 200,
+            "sell_price": 79
+        },
+        "seed_price": 6336
+    },
+    {
+        "name": "箬竹",
+        "asset_name": "crop_36",
+        "seed_id": 20036,
+        "land_level_need": 63,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;初熟:10800;成熟:0;",
+        "exp": 1287,
+        "fruit": {
+            "count": 200,
+            "sell_price": 118
+        },
+        "seed_price": 9504
+    },
+    {
+        "name": "无花果",
+        "asset_name": "crop_43",
+        "seed_id": 20043,
+        "land_level_need": 64,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;开花:21600;成熟:0;",
+        "exp": 2574,
+        "fruit": {
+            "count": 200,
+            "sell_price": 237
+        },
+        "seed_price": 19008
+    },
+    {
+        "name": "椰子",
+        "asset_name": "crop_29",
+        "seed_id": 20029,
+        "land_level_need": 65,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;初熟:3600;成熟:0;",
+        "exp": 456,
+        "fruit": {
+            "count": 200,
+            "sell_price": 43
+        },
+        "seed_price": 3492
+    },
+    {
+        "name": "花生",
+        "asset_name": "crop_49",
+        "seed_id": 20049,
+        "land_level_need": 66,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;初熟:7200;成熟:0;",
+        "exp": 912,
+        "fruit": {
+            "count": 200,
+            "sell_price": 87
+        },
+        "seed_price": 6984
+    },
+    {
+        "name": "金针菇",
+        "asset_name": "crop_52",
+        "seed_id": 20052,
+        "land_level_need": 67,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发菌:7200;出菇:7200;幼菇:10800;初熟:10800;成熟:0;",
+        "exp": 1368,
+        "fruit": {
+            "count": 200,
+            "sell_price": 130
+        },
+        "seed_price": 10476
+    },
+    {
+        "name": "葫芦",
+        "asset_name": "crop_31",
+        "seed_id": 20031,
+        "land_level_need": 68,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;初熟:21600;成熟:0;",
+        "exp": 2736,
+        "fruit": {
+            "count": 200,
+            "sell_price": 261
+        },
+        "seed_price": 20952
+    },
+    {
+        "name": "猕猴桃",
+        "asset_name": "crop_45",
+        "seed_id": 20045,
+        "land_level_need": 69,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;开花:3600;成熟:0;",
+        "exp": 480,
+        "fruit": {
+            "count": 200,
+            "sell_price": 47
+        },
+        "seed_price": 3828
+    },
+    {
+        "name": "梨",
+        "asset_name": "crop_54",
+        "seed_id": 20054,
+        "land_level_need": 70,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;初熟:7200;成熟:0;",
+        "exp": 960,
+        "fruit": {
+            "count": 200,
+            "sell_price": 95
+        },
+        "seed_price": 7656
+    },
+    {
+        "name": "睡莲",
+        "asset_name": "crop_442",
+        "seed_id": 20442,
+        "land_level_need": 71,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;幼株:10800;成熟:0;",
+        "exp": 1440,
+        "fruit": {
+            "count": 200,
+            "sell_price": 143
+        },
+        "seed_price": 11484
+    },
+    {
+        "name": "火龙果",
+        "asset_name": "crop_33",
+        "seed_id": 20033,
+        "land_level_need": 72,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;初熟:21600;成熟:0;",
+        "exp": 2880,
+        "fruit": {
+            "count": 200,
+            "sell_price": 287
+        },
+        "seed_price": 22968
+    },
+    {
+        "name": "枇杷",
+        "asset_name": "crop_55",
+        "seed_id": 20055,
+        "land_level_need": 73,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;初熟:3600;成熟:0;",
+        "exp": 510,
+        "fruit": {
+            "count": 200,
+            "sell_price": 52
+        },
+        "seed_price": 4176
+    },
+    {
+        "name": "樱桃",
+        "asset_name": "crop_34",
+        "seed_id": 20034,
+        "land_level_need": 74,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;开花:7200;成熟:0;",
+        "exp": 1020,
+        "fruit": {
+            "count": 200,
+            "sell_price": 104
+        },
+        "seed_price": 8352
+    },
+    {
+        "name": "李子",
+        "asset_name": "crop_413",
+        "seed_id": 20413,
+        "land_level_need": 75,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;开花:10800;成熟:0;",
+        "exp": 1530,
+        "fruit": {
+            "count": 200,
+            "sell_price": 156
+        },
+        "seed_price": 12528
+    },
+    {
+        "name": "荔枝",
+        "asset_name": "crop_35",
+        "seed_id": 20035,
+        "land_level_need": 76,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;开花:21600;成熟:0;",
+        "exp": 3060,
+        "fruit": {
+            "count": 200,
+            "sell_price": 313
+        },
+        "seed_price": 25056
+    },
+    {
+        "name": "香瓜",
+        "asset_name": "crop_67",
+        "seed_id": 20067,
+        "land_level_need": 77,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;开花:3600;成熟:0;",
+        "exp": 537,
+        "fruit": {
+            "count": 200,
+            "sell_price": 57
+        },
+        "seed_price": 4560
+    },
+    {
+        "name": "木瓜",
+        "asset_name": "crop_38",
+        "seed_id": 20038,
+        "land_level_need": 78,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;开花:7200;成熟:0;",
+        "exp": 1074,
+        "fruit": {
+            "count": 200,
+            "sell_price": 114
+        },
+        "seed_price": 9120
+    },
+    {
+        "name": "桂圆",
+        "asset_name": "crop_53",
+        "seed_id": 20053,
+        "land_level_need": 79,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;开花:10800;成熟:0;",
+        "exp": 1611,
+        "fruit": {
+            "count": 200,
+            "sell_price": 171
+        },
+        "seed_price": 13680
+    },
+    {
+        "name": "月柿",
+        "asset_name": "crop_80",
+        "seed_id": 20080,
+        "land_level_need": 80,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;开花:21600;成熟:0;",
+        "exp": 3222,
+        "fruit": {
+            "count": 200,
+            "sell_price": 342
+        },
+        "seed_price": 27360
+    },
+    {
+        "name": "杨桃",
+        "asset_name": "crop_39",
+        "seed_id": 20039,
+        "land_level_need": 81,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;开花:3600;成熟:0;",
+        "exp": 567,
+        "fruit": {
+            "count": 200,
+            "sell_price": 61
+        },
+        "seed_price": 4944
+    },
+    {
+        "name": "哈密瓜",
+        "asset_name": "crop_56",
+        "seed_id": 20056,
+        "land_level_need": 82,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;开花:7200;成熟:0;",
+        "exp": 1134,
+        "fruit": {
+            "count": 200,
+            "sell_price": 123
+        },
+        "seed_price": 9888
+    },
+    {
+        "name": "桑葚",
+        "asset_name": "crop_75",
+        "seed_id": 20075,
+        "land_level_need": 83,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;开花:10800;成熟:0;",
+        "exp": 1701,
+        "fruit": {
+            "count": 200,
+            "sell_price": 185
+        },
+        "seed_price": 14832
+    },
+    {
+        "name": "柠檬",
+        "asset_name": "crop_42",
+        "seed_id": 20042,
+        "land_level_need": 84,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;初熟:21600;成熟:0;",
+        "exp": 3402,
+        "fruit": {
+            "count": 200,
+            "sell_price": 370
+        },
+        "seed_price": 29664
+    },
+    {
+        "name": "芒果",
+        "asset_name": "crop_57",
+        "seed_id": 20057,
+        "land_level_need": 85,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;初熟:3600;成熟:0;",
+        "exp": 597,
+        "fruit": {
+            "count": 200,
+            "sell_price": 67
+        },
+        "seed_price": 5364
+    },
+    {
+        "name": "杨梅",
+        "asset_name": "crop_48",
+        "seed_id": 20048,
+        "land_level_need": 86,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;开花:7200;成熟:0;",
+        "exp": 1194,
+        "fruit": {
+            "count": 200,
+            "sell_price": 134
+        },
+        "seed_price": 10728
+    },
+    {
+        "name": "榴莲",
+        "asset_name": "crop_58",
+        "seed_id": 20058,
+        "land_level_need": 87,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;开花:10800;成熟:0;",
+        "exp": 1791,
+        "fruit": {
+            "count": 200,
+            "sell_price": 201
+        },
+        "seed_price": 16092
+    },
+    {
+        "name": "番石榴",
+        "asset_name": "crop_79",
+        "seed_id": 20079,
+        "land_level_need": 88,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;开花:21600;成熟:0;",
+        "exp": 3582,
+        "fruit": {
+            "count": 200,
+            "sell_price": 402
+        },
+        "seed_price": 32184
+    },
+    {
+        "name": "瓶子树",
+        "asset_name": "crop_218",
+        "seed_id": 20218,
+        "land_level_need": 89,
+        "seasons": 2,
+        "grow_phases": "种子:2400;长枝:2400;小叶子:2400;大叶子:3600;初熟:3600;成树:0;",
+        "exp": 627,
+        "fruit": {
+            "count": 200,
+            "sell_price": 72
+        },
+        "seed_price": 5796
+    },
+    {
+        "name": "蓝莓",
+        "asset_name": "crop_77",
+        "seed_id": 20077,
+        "land_level_need": 90,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;初熟:7200;成熟:0;",
+        "exp": 1254,
+        "fruit": {
+            "count": 200,
+            "sell_price": 144
+        },
+        "seed_price": 11592
+    },
+    {
+        "name": "猪笼草",
+        "asset_name": "crop_220",
+        "seed_id": 20220,
+        "land_level_need": 91,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;初熟:10800;成熟:0;",
+        "exp": 1881,
+        "fruit": {
+            "count": 200,
+            "sell_price": 217
+        },
+        "seed_price": 17388
+    },
+    {
+        "name": "山竹",
+        "asset_name": "crop_76",
+        "seed_id": 20076,
+        "land_level_need": 92,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;开花:21600;成熟:0;",
+        "exp": 3762,
+        "fruit": {
+            "count": 200,
+            "sell_price": 434
+        },
+        "seed_price": 34776
+    },
+    {
+        "name": "曼陀罗华",
+        "asset_name": "crop_116",
+        "seed_id": 20116,
+        "land_level_need": 93,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;花蕾:3600;盛开:0;",
+        "exp": 660,
+        "fruit": {
+            "count": 200,
+            "sell_price": 78
+        },
+        "seed_price": 6240
+    },
+    {
+        "name": "曼珠沙华",
+        "asset_name": "crop_126",
+        "seed_id": 20126,
+        "land_level_need": 94,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;初熟:7200;成熟:0;",
+        "exp": 1320,
+        "fruit": {
+            "count": 200,
+            "sell_price": 156
+        },
+        "seed_price": 12480
+    },
+    {
+        "name": "苦瓜",
+        "asset_name": "crop_63",
+        "seed_id": 20063,
+        "land_level_need": 95,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;开花:10800;成熟:0;",
+        "exp": 1980,
+        "fruit": {
+            "count": 200,
+            "sell_price": 234
+        },
+        "seed_price": 18720
+    },
+    {
+        "name": "天堂鸟",
+        "asset_name": "crop_221",
+        "seed_id": 20221,
+        "land_level_need": 96,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;花蕾:21600;盛开:0;",
+        "exp": 3960,
+        "fruit": {
+            "count": 200,
+            "sell_price": 468
+        },
+        "seed_price": 37440
+    },
+    {
+        "name": "冬瓜",
+        "asset_name": "crop_68",
+        "seed_id": 20068,
+        "land_level_need": 97,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;开花:3600;成熟:0;",
+        "exp": 693,
+        "fruit": {
+            "count": 200,
+            "sell_price": 84
+        },
+        "seed_price": 6720
+    },
+    {
+        "name": "豹皮花",
+        "asset_name": "crop_222",
+        "seed_id": 20222,
+        "land_level_need": 98,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;花蕾:7200;盛开:0;",
+        "exp": 1386,
+        "fruit": {
+            "count": 200,
+            "sell_price": 168
+        },
+        "seed_price": 13440
+    },
+    {
+        "name": "杏子",
+        "asset_name": "crop_78",
+        "seed_id": 20078,
+        "land_level_need": 99,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;初熟:10800;成熟:0;",
+        "exp": 2079,
+        "fruit": {
+            "count": 200,
+            "sell_price": 252
+        },
+        "seed_price": 20160
+    },
+    {
+        "name": "金桔",
+        "asset_name": "crop_74",
+        "seed_id": 20074,
+        "land_level_need": 100,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;初熟:21600;成熟:0;",
+        "exp": 4158,
+        "fruit": {
+            "count": 200,
+            "sell_price": 504
+        },
+        "seed_price": 40320
+    },
+    {
+        "name": "红毛丹",
+        "asset_name": "crop_83",
+        "seed_id": 20083,
+        "land_level_need": 102,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;初熟:3600;成熟:0;",
+        "exp": 726,
+        "fruit": {
+            "count": 200,
+            "sell_price": 90
+        },
+        "seed_price": 7200
+    },
+    {
+        "name": "莴笋",
+        "asset_name": "crop_69",
+        "seed_id": 20069,
+        "land_level_need": 104,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;幼苗:4800;莲座期:7200;成株期:7200;成熟:0;",
+        "exp": 1452,
+        "fruit": {
+            "count": 200,
+            "sell_price": 180
+        },
+        "seed_price": 14400
+    },
+    {
+        "name": "芭蕉",
+        "asset_name": "crop_84",
+        "seed_id": 20084,
+        "land_level_need": 106,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;开花:10800;结果:0;",
+        "exp": 2178,
+        "fruit": {
+            "count": 200,
+            "sell_price": 270
+        },
+        "seed_price": 21600
+    },
+    {
+        "name": "依米花",
+        "asset_name": "crop_226",
+        "seed_id": 20226,
+        "land_level_need": 108,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;花蕾:21600;盛开:0;",
+        "exp": 4356,
+        "fruit": {
+            "count": 200,
+            "sell_price": 540
+        },
+        "seed_price": 43200
+    },
+    {
+        "name": "番荔枝",
+        "asset_name": "crop_85",
+        "seed_id": 20085,
+        "land_level_need": 110,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;开花:3600;结果:0;",
+        "exp": 762,
+        "fruit": {
+            "count": 200,
+            "sell_price": 96
+        },
+        "seed_price": 7716
+    },
+    {
+        "name": "大王花",
+        "asset_name": "crop_227",
+        "seed_id": 20227,
+        "land_level_need": 112,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;幼蕾:4800;含苞:7200;初放:7200;盛开:0;",
+        "exp": 1524,
+        "fruit": {
+            "count": 200,
+            "sell_price": 192
+        },
+        "seed_price": 15432
+    },
+    {
+        "name": "橄榄",
+        "asset_name": "crop_86",
+        "seed_id": 20086,
+        "land_level_need": 114,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;开花:10800;成熟:0;",
+        "exp": 2286,
+        "fruit": {
+            "count": 200,
+            "sell_price": 289
+        },
+        "seed_price": 23148
+    },
+    {
+        "name": "人参果",
+        "asset_name": "crop_228",
+        "seed_id": 20228,
+        "land_level_need": 116,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;开花:21600;成熟:0;",
+        "exp": 4572,
+        "fruit": {
+            "count": 200,
+            "sell_price": 578
+        },
+        "seed_price": 46296
+    },
+    {
+        "name": "百香果",
+        "asset_name": "crop_87",
+        "seed_id": 20087,
+        "land_level_need": 118,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;开花:3600;结果:0;",
+        "exp": 795,
+        "fruit": {
+            "count": 200,
+            "sell_price": 103
+        },
+        "seed_price": 8244
+    },
+    {
+        "name": "金花茶",
+        "asset_name": "crop_235",
+        "seed_id": 20235,
+        "land_level_need": 120,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;花蕾:7200;盛开:0;",
+        "exp": 1590,
+        "fruit": {
+            "count": 200,
+            "sell_price": 206
+        },
+        "seed_price": 16488
+    },
+    {
+        "name": "灯笼果",
+        "asset_name": "crop_88",
+        "seed_id": 20088,
+        "land_level_need": 122,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;开花:10800;结果:0;",
+        "exp": 2385,
+        "fruit": {
+            "count": 200,
+            "sell_price": 309
+        },
+        "seed_price": 24732
+    },
+    {
+        "name": "天山雪莲",
+        "asset_name": "crop_201",
+        "seed_id": 20201,
+        "land_level_need": 124,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;幼株:21600;成熟:0;",
+        "exp": 4770,
+        "fruit": {
+            "count": 200,
+            "sell_price": 618
+        },
+        "seed_price": 49464
+    },
+    {
+        "name": "芦荟",
+        "asset_name": "crop_89",
+        "seed_id": 20089,
+        "land_level_need": 126,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;开花:3600;成熟:0;",
+        "exp": 831,
+        "fruit": {
+            "count": 200,
+            "sell_price": 109
+        },
+        "seed_price": 8784
+    },
+    {
+        "name": "金边灵芝",
+        "asset_name": "crop_202",
+        "seed_id": 20202,
+        "land_level_need": 128,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;芝蕾:4800;幼芝:7200;初熟:7200;成熟:0;",
+        "exp": 1662,
+        "fruit": {
+            "count": 200,
+            "sell_price": 219
+        },
+        "seed_price": 17568
+    },
+    {
+        "name": "薄荷",
+        "asset_name": "crop_90",
+        "seed_id": 20090,
+        "land_level_need": 130,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;开花:10800;成熟:0;",
+        "exp": 2493,
+        "fruit": {
+            "count": 200,
+            "sell_price": 329
+        },
+        "seed_price": 26352
+    },
+    {
+        "name": "何首乌",
+        "asset_name": "crop_229",
+        "seed_id": 20229,
+        "land_level_need": 132,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;初熟:21600;成熟:0;",
+        "exp": 4986,
+        "fruit": {
+            "count": 200,
+            "sell_price": 658
+        },
+        "seed_price": 52704
+    },
+    {
+        "name": "晚香玉",
+        "asset_name": "crop_174",
+        "seed_id": 20174,
+        "land_level_need": 134,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;花蕾:3600;盛开:0;",
+        "exp": 867,
+        "fruit": {
+            "count": 200,
+            "sell_price": 117
+        },
+        "seed_price": 9360
+    },
+    {
+        "name": "人参",
+        "asset_name": "crop_204",
+        "seed_id": 20204,
+        "land_level_need": 136,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;初熟:7200;成熟:0;",
+        "exp": 1734,
+        "fruit": {
+            "count": 200,
+            "sell_price": 234
+        },
+        "seed_price": 18720
+    },
+    {
+        "name": "鳄梨",
+        "asset_name": "crop_22",
+        "seed_id": 20022,
+        "land_level_need": 138,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;开花:10800;成熟:0;",
+        "exp": 2601,
+        "fruit": {
+            "count": 200,
+            "sell_price": 351
+        },
+        "seed_price": 28080
+    },
+    {
+        "name": "似血杜鹃",
+        "asset_name": "crop_242",
+        "seed_id": 20242,
+        "land_level_need": 140,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;花蕾:21600;盛开:0;",
+        "exp": 5202,
+        "fruit": {
+            "count": 200,
+            "sell_price": 702
+        },
+        "seed_price": 56160
+    },
+    {
+        "name": "文殊兰",
+        "asset_name": "crop_188",
+        "seed_id": 20188,
+        "land_level_need": 142,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;花蕾:3600;盛开:0;",
+        "exp": 906,
+        "fruit": {
+            "count": 200,
+            "sell_price": 124
+        },
+        "seed_price": 9936
+    },
+    {
+        "name": "郁金香",
+        "asset_name": "crop_106",
+        "seed_id": 20106,
+        "land_level_need": 144,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;花蕾:7200;盛开:0;",
+        "exp": 1812,
+        "fruit": {
+            "count": 200,
+            "sell_price": 248
+        },
+        "seed_price": 19872
+    },
+    {
+        "name": "薰衣草",
+        "asset_name": "crop_101",
+        "seed_id": 20101,
+        "land_level_need": 146,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;花蕾:10800;盛开:0;",
+        "exp": 2718,
+        "fruit": {
+            "count": 200,
+            "sell_price": 372
+        },
+        "seed_price": 29808
+    },
+    {
+        "name": "马蹄莲",
+        "asset_name": "crop_102",
+        "seed_id": 20102,
+        "land_level_need": 148,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;初熟:21600;成熟:0;",
+        "exp": 5436,
+        "fruit": {
+            "count": 200,
+            "sell_price": 745
+        },
+        "seed_price": 59616
+    },
+    {
+        "name": "艳蝶兰",
+        "asset_name": "crop_182",
+        "seed_id": 20182,
+        "land_level_need": 150,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;花蕾:3600;盛开:0;",
+        "exp": 945,
+        "fruit": {
+            "count": 200,
+            "sell_price": 131
+        },
+        "seed_price": 10548
+    },
+    {
+        "name": "宝华玉兰",
+        "asset_name": "crop_225",
+        "seed_id": 20225,
+        "land_level_need": 152,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;花蕾:7200;盛开:0;",
+        "exp": 1890,
+        "fruit": {
+            "count": 200,
+            "sell_price": 263
+        },
+        "seed_price": 21096
+    },
+    {
+        "name": "月季花",
+        "asset_name": "crop_124",
+        "seed_id": 20124,
+        "land_level_need": 154,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;花蕾:10800;盛开:0;",
+        "exp": 2835,
+        "fruit": {
+            "count": 200,
+            "sell_price": 395
+        },
+        "seed_price": 31644
+    },
+    {
+        "name": "兰花",
+        "asset_name": "crop_115",
+        "seed_id": 20115,
+        "land_level_need": 156,
+        "seasons": 2,
+        "grow_phases": "种子:14400;小叶子:14400;大叶子:14400;花蕾:21600;盛开:21600;成熟:0;",
+        "exp": 5670,
+        "fruit": {
+            "count": 200,
+            "sell_price": 791
+        },
+        "seed_price": 63288
+    },
+    {
+        "name": "君子兰",
+        "asset_name": "crop_187",
+        "seed_id": 20187,
+        "land_level_need": 158,
+        "seasons": 2,
+        "grow_phases": "种子:2400;发芽:2400;小叶子:2400;大叶子:3600;花蕾:3600;盛开:0;",
+        "exp": 981,
+        "fruit": {
+            "count": 200,
+            "sell_price": 139
+        },
+        "seed_price": 11172
+    },
+    {
+        "name": "六月雪",
+        "asset_name": "crop_131",
+        "seed_id": 20131,
+        "land_level_need": 160,
+        "seasons": 2,
+        "grow_phases": "种子:4800;发芽:4800;小叶子:4800;大叶子:7200;花蕾:7200;盛开:0;",
+        "exp": 1962,
+        "fruit": {
+            "count": 200,
+            "sell_price": 279
+        },
+        "seed_price": 22344
+    },
+    {
+        "name": "蓝铃花",
+        "asset_name": "crop_132",
+        "seed_id": 20132,
+        "land_level_need": 162,
+        "seasons": 2,
+        "grow_phases": "种子:7200;发芽:7200;小叶子:7200;大叶子:10800;花蕾:10800;盛开:0;",
+        "exp": 2943,
+        "fruit": {
+            "count": 200,
+            "sell_price": 418
+        },
+        "seed_price": 33516
+    },
+    {
+        "name": "宋梅",
+        "asset_name": "crop_172",
+        "seed_id": 20172,
+        "land_level_need": 164,
+        "seasons": 2,
+        "grow_phases": "种子:14400;发芽:14400;小叶子:14400;大叶子:21600;花蕾:21600;盛开:0;",
+        "exp": 5886,
+        "fruit": {
+            "count": 200,
+            "sell_price": 837
+        },
+        "seed_price": 67032
+    }
+]

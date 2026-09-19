@@ -4,7 +4,7 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.72-32C98A?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.73-32C98A?style=flat-square)](#版本与更新)
   [![Status](https://img.shields.io/badge/状态-稳定版本-17345F?style=flat-square)](#快速开始)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
@@ -94,6 +94,7 @@
 ### 3. 播种策略
 
 - 读取当前等级并过滤不可用作物；
+- 使用同步自 2.3.7 资源的 132 项作物目录，统一等级边界、种子资源名、经验效率和净利润计算；
 - 支持偏好作物、固定作物和活动种子；
 - 优先使用背包已有种子；
 - 在缺少种子时按开关决定是否购买；
@@ -248,10 +249,11 @@ CV农场助手/
 
 ## 版本与更新
 
-当前发布版本为 **v1.4.72（2026-09-19）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
+当前发布版本为 **v1.4.73（2026-09-19）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
 
 | 版本 | 面向使用者的主要更新 |
 | --- | --- |
+| **v1.4.73** | 同步 2.3.7 的 132 项作物目录与空地、好友入口、已播种土地兼容模板，修正高等级作物、模板缩放覆盖和资源映射 |
 | **v1.4.72** | 识别当前“16 个单格幼苗 + 两块活动平台 + 稀疏土地锚点”的满地画面，清除错误空地并阻止错误买种 |
 | **v1.4.71** | 原生日志空地数量改为只读诊断，必须经过新鲜画面与 24 格土地验证后才允许播种、买种或锁定自家流程 |
 | **v1.4.70** | 修复好友列表末行关闭后停留在好友农场的回家确认与有界恢复；保留 v1.4.69 的自家/好友页面识别修复 |
