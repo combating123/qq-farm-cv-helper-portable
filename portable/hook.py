@@ -185,6 +185,8 @@ _write('v336 lower seed-panel badge rows enabled')
 _write('v337 confirmed-zero fresh-board + stale preflight clear enabled')
 _write('v338 merged-purple occupied-platform fast reject enabled')
 _write('v339 stable full-board lightweight patrol + home-priority interval lease release enabled')
+_write('v499 visible self surface releases stale friend terminal route enabled')
+_write('v500 terminal friend-list close -> bounded verified home recovery enabled')
 
 try:
     # Keep the bootstrap import set minimal.  The packaged proxy loads this
@@ -43330,16 +43332,57 @@ def _friend_list_visit_button_rows(frame):
                     merged[-1] = row
                 continue
             merged.append(row)
-        if len(merged) >= 3:
+
+        def _friend_list_row_geometry_is_plausible(candidate_rows):
+            """Reject green self-home controls that happen to form 3+ blobs.
+
+            The self page has several green controls on the left and lower
+            edge.  They can satisfy the old connected-component thresholds,
+            but a friend list has a much stronger geometry invariant: the
+            visit controls share one right-side x band and are laid out on a
+            near-regular vertical cadence.
+            """
+            try:
+                ordered = list(candidate_rows or [])
+                if len(ordered) < 3:
+                    return False
+                centers = [
+                    tuple(item.get('center')) for item in ordered
+                    if isinstance(item, dict) and isinstance(item.get('center'), (tuple, list))
+                ]
+                if len(centers) != len(ordered):
+                    return False
+                x_values = [float(point[0]) for point in centers]
+                y_values = sorted(float(point[1]) for point in centers)
+                # Rows remain in the right action column; a broad x spread is
+                # characteristic of the self-home toolbar, not friend cards.
+                max_x_spread = max(18.0, float(width) * 0.10)
+                if (max(x_values) - min(x_values)) > max_x_spread:
+                    return False
+                gaps = [
+                    y_values[index + 1] - y_values[index]
+                    for index in range(len(y_values) - 1)
+                ]
+                if not gaps or min(gaps) < max(18.0, float(height) * 0.045):
+                    return False
+                median_gap = float(np.median(np.asarray(gaps, dtype=np.float32)))
+                if median_gap <= 0.0:
+                    return False
+                tolerance = max(12.0, median_gap * 0.60)
+                return all(abs(gap - median_gap) <= tolerance for gap in gaps)
+            except BaseException:
+                return False
+
+        if len(merged) >= 3 and _friend_list_row_geometry_is_plausible(merged):
             return merged
         # v487: current card-style friend lists no longer expose the old green
         # visit buttons.  Replace a lone decorative component with the complete
         # card-derived row set, never append it to the new rows.
         card_rows_fn = globals().get('_friend_list_card_rows')
         card_rows = card_rows_fn(frame) if callable(card_rows_fn) else []
-        if len(card_rows) >= 3:
+        if len(card_rows) >= 3 and _friend_list_row_geometry_is_plausible(card_rows):
             return card_rows
-        return merged
+        return []
     except BaseException:
         return []
 
@@ -46012,6 +46055,242 @@ def _invoke_friend_guard_home_coordinate_click(context, fresh_frame):
     return accepted
 
 
+def _recover_home_after_friend_list_terminal(
+        context, list_result, closed_frame, original_fn=None,
+        original_args=(), original_kwargs=None):
+    """Leave the selected friend after a terminal list close, with proof.
+
+    The ordered friend-list handler closes the list when its final row is
+    complete.  The native owner used to return immediately at that point,
+    leaving the worker on the selected friend's farm with the same-day empty
+    latch set.  This bridge makes the close a bounded state transition:
+    capture a fresh surface, click the scale-aware friend home control when
+    needed, and release the latch only after a fresh non-friend surface is
+    observed.
+    """
+    if context is None or str(list_result or '') not in (
+        'closed', 'closed-terminal-latch'
+    ):
+        return False
+    time_module = __import__('time')
+    try:
+        now_mono = float(time_module.monotonic())
+    except BaseException:
+        now_mono = 0.0
+    try:
+        last_attempt = float(getattr(
+            context, '_qqfarm_friend_terminal_home_recovery_last_ts', 0.0
+        ) or 0.0)
+    except BaseException:
+        last_attempt = 0.0
+    # One close can be observed by both the direct native route and the outer
+    # run_cycle wrapper.  Keep those two callbacks from issuing two home clicks
+    # in the same patrol interval; a later 12-second patrol may retry.
+    if last_attempt > 0.0 and now_mono >= last_attempt and (
+            now_mono - last_attempt < 8.0):
+        try:
+            _throttled_write(
+                'v500-terminal-home-recovery-gate',
+                'v500 terminal friend-list home recovery already attempted in '
+                'the current patrol interval',
+                4.0,
+            )
+        except BaseException:
+            pass
+        return False
+    try:
+        attempt_count = max(0, int(getattr(
+            context, '_qqfarm_friend_terminal_home_recovery_attempts', 0
+        ) or 0))
+    except BaseException:
+        attempt_count = 0
+    if last_attempt <= 0.0 or (now_mono > last_attempt and now_mono - last_attempt > 60.0):
+        attempt_count = 0
+    if attempt_count >= 3:
+        try:
+            _write(
+                'v500 terminal friend-list home recovery bounded out at 3/3; '
+                'waiting for a later fresh route'
+            )
+        except BaseException:
+            pass
+        return False
+    try:
+        setattr(
+            context, '_qqfarm_friend_terminal_home_recovery_last_ts', now_mono
+        )
+        setattr(
+            context, '_qqfarm_friend_terminal_home_recovery_attempts',
+            attempt_count + 1,
+        )
+        setattr(context, '_qqfarm_friend_terminal_home_recovery_pending', True)
+    except BaseException:
+        pass
+
+    state_fn = globals().get('_friend_guard_friend_ui_state')
+    capture_fn = globals().get('_qqfarm_capture_native_friend_help_frame')
+    if not callable(capture_fn):
+        capture_fn = globals().get('_get_frame_from_bot')
+    if not callable(state_fn) or not callable(capture_fn):
+        return False
+
+    def _capture_state():
+        try:
+            frame = capture_fn(context)
+        except TypeError:
+            try:
+                frame = capture_fn()
+            except BaseException:
+                frame = None
+        except BaseException:
+            frame = None
+        try:
+            state = state_fn(frame) if frame is not None else None
+        except BaseException:
+            state = None
+        return frame, state
+
+    def _release_verified_self(frame):
+        if frame is None:
+            return False
+        reconcile_fn = globals().get('_qqfarm_reconcile_visible_self_surface')
+        if callable(reconcile_fn):
+            try:
+                if bool(reconcile_fn(context, frame, False)):
+                    return True
+            except BaseException:
+                pass
+        # The normal reconciliation helper is the authority.  Do not clear a
+        # terminal latch through a weaker unknown-frame fallback.
+        return False
+
+    # The list close is asynchronous on QQ.  A short bounded settle window
+    # avoids both a stale list capture and a long blocking patrol.
+    friend_frame = None
+    friend_state = None
+    for _attempt in range(3):
+        friend_frame, friend_state = _capture_state()
+        if friend_state is False:
+            released = _release_verified_self(friend_frame)
+            if released:
+                try:
+                    setattr(
+                        context,
+                        '_qqfarm_friend_terminal_home_recovery_pending',
+                        False,
+                    )
+                    setattr(
+                        context,
+                        '_qqfarm_friend_terminal_home_recovery_attempts',
+                        0,
+                    )
+                except BaseException:
+                    pass
+                _write(
+                    'v500 terminal friend-list close already reached verified '
+                    'self surface; stale friend route released'
+                )
+                return True
+            return False
+        if friend_state is True:
+            break
+        try:
+            time_module.sleep(0.18)
+        except BaseException:
+            pass
+    if friend_state is not True or friend_frame is None:
+        try:
+            _write(
+                'v500 terminal friend-list close did not produce a verified '
+                'friend/self surface'
+            )
+        except BaseException:
+            pass
+        return False
+
+    try:
+        setattr(context, '_qqfarm_live_scene_hint', 'friend')
+        setattr(context, '_qqfarm_cycle_branch_hint', 'friend')
+        setattr(context, '_last_friend_farm_go_home_present', True)
+    except BaseException:
+        pass
+    click_result = False
+    coordinate_fn = globals().get('_invoke_friend_guard_home_coordinate_click')
+    if callable(coordinate_fn):
+        try:
+            click_result = bool(coordinate_fn(context, friend_frame))
+        except BaseException:
+            click_result = False
+    if not click_result:
+        resolve_fn = globals().get('_resolve_friend_guard_action')
+        invoke_fn = globals().get('_invoke_friend_guard_action')
+        frame_args_fn = globals().get('_friend_guard_args_with_frame')
+        try:
+            action, target, _label = (
+                resolve_fn(original_fn, original_args, original_kwargs or {})
+                if callable(resolve_fn) else (None, None, '')
+            )
+        except BaseException:
+            action, target = None, None
+        if callable(action) and callable(invoke_fn):
+            try:
+                action_args, action_kwargs = (
+                    frame_args_fn(
+                        context, original_args, original_kwargs or {}, friend_frame
+                    ) if callable(frame_args_fn) else (
+                        tuple(original_args or ()), dict(original_kwargs or {})
+                    )
+                )
+                click_result = bool(invoke_fn(
+                    action, target, action_args, action_kwargs
+                ))
+            except BaseException:
+                click_result = False
+    if not click_result:
+        try:
+            _write('v500 terminal friend-list home click not accepted')
+        except BaseException:
+            pass
+        return False
+
+    for _attempt in range(4):
+        try:
+            time_module.sleep(0.20)
+        except BaseException:
+            pass
+        after_frame, after_state = _capture_state()
+        if after_state is False:
+            if _release_verified_self(after_frame):
+                try:
+                    setattr(
+                        context,
+                        '_qqfarm_friend_terminal_home_recovery_pending',
+                        False,
+                    )
+                    setattr(
+                        context,
+                        '_qqfarm_friend_terminal_home_recovery_attempts',
+                        0,
+                    )
+                    setattr(context, '_last_friend_farm_go_home_present', False)
+                except BaseException:
+                    pass
+                _write(
+                    'v500 terminal friend-list home transition verified self '
+                    'surface; friend terminal released'
+                )
+                return True
+            return False
+    try:
+        _write(
+            'v500 terminal friend-list home transition unconfirmed; keeping '
+            'bounded retry pending'
+        )
+    except BaseException:
+        pass
+    return False
+
+
 def _invoke_friend_guard_post_click_self(fn, context, original_args=(), original_kwargs=None):
     fresh_frame = _get_frame_from_bot(context)
     friend_state = None
@@ -48138,6 +48417,9 @@ def _wrap_friend_guard_continuous_poll_func(fn, name=''):
                         'entry_clicked_ts': float(getattr(
                             context, '_qqfarm_friend_entry_clicked_ts', 0.0
                         ) or 0.0),
+                        'entry_pending': bool(getattr(
+                            context, '_qqfarm_friend_entry_pending', False
+                        )),
                     }
                 except BaseException:
                     dispatch_before = {}
@@ -48221,10 +48503,24 @@ def _wrap_friend_guard_continuous_poll_func(fn, name=''):
             except BaseException:
                 durable_after = None
             try:
+                # Only durable list-cursor claims require visual rollback.  The
+                # action/navigation/entry fields are live hand-off signals: a
+                # native call may set one of them before the next capture is
+                # available, and dropping that signal would close the chain
+                # prematurely (the exact symptom covered by the continuous
+                # polling regressions).
+                durable_cursor_fields = (
+                    '_qqfarm_friend_list_visit_cursor',
+                    '_qqfarm_friend_list_pending_cursor',
+                    '_qqfarm_friend_entry_retry_count',
+                    '_qqfarm_friend_entry_last_retry_ts',
+                    '_qqfarm_friend_next_entry_pending_identity',
+                )
                 claimed_cursor_progress = bool(
                     cursor_transaction_before
                     and any(
-                        getattr(context, field_name, None) != value
+                        field_name in durable_cursor_fields
+                        and getattr(context, field_name, None) != value
                         for field_name, value in cursor_transaction_before.items()
                     )
                 ) if context is not None else False
@@ -48277,9 +48573,18 @@ def _wrap_friend_guard_continuous_poll_func(fn, name=''):
                 if (
                     context is not None
                     and visual_unconfirmed
+                    and claimed_cursor_progress
                     and cursor_transaction_before
                 ):
-                    for field_name, value in cursor_transaction_before.items():
+                    # A durable cursor mutation without a fresh visual proof is
+                    # still a failed transaction, even when the native call also
+                    # emitted action/navigation metadata.  Restore the complete
+                    # transaction snapshot; signal-only changes never enter this
+                    # branch because ``claimed_cursor_progress`` excludes them.
+                    for field_name in cursor_transaction_before:
+                        if field_name not in cursor_transaction_before:
+                            continue
+                        value = cursor_transaction_before[field_name]
                         try:
                             setattr(context, field_name, value)
                         except BaseException:
@@ -53689,6 +53994,125 @@ def _qqfarm_capture_native_friend_help_frame(context):
     return None
 
 
+def _qqfarm_native_friend_surface_cache_fresh(
+        context, now_ts=None, max_age=45.0):
+    """Keep a just-verified friend farm actionable across one bad capture.
+
+    QQ/WGC can return a valid-size non-farm frame for one polling pass while
+    the visible mini-program is still on the selected friend's farm.  The
+    native owner otherwise treats that single miss as proof that the friend
+    terminal latch should be re-entered.  This cache is deliberately short
+    lived and is only written after a positive friend-farm classification.
+    """
+    try:
+        if context is None:
+            return False
+        seen_ts = float(getattr(
+            context, '_qqfarm_native_friend_surface_seen_ts', 0.0
+        ) or 0.0)
+        if seen_ts <= 0.0:
+            return False
+        time_module = __import__('time')
+        current_ts = float(
+            now_ts if now_ts is not None else time_module.monotonic()
+        )
+        age = current_ts - seen_ts
+        if age < 0.0 or age > max(8.0, min(90.0, float(max_age))):
+            return False
+        # A later, explicit home transition invalidates the friend-surface
+        # grace.  An empty/unknown scene hint remains eligible because that is
+        # the exact capture failure this guard is meant to bridge.
+        hint = str(getattr(
+            context, '_qqfarm_live_scene_hint', ''
+        ) or '').strip().lower()
+        if hint in ('home', 'self', 'self-farm') and not bool(
+            getattr(context, '_qqfarm_friend_entry_pending', False)
+        ):
+            return False
+        return True
+    except BaseException:
+        return False
+
+
+def _qqfarm_reconcile_visible_self_surface(context, frame, state=None):
+    """Release stale friend routing when a fresh frame visibly proves self home.
+
+    The native owner can be entered with a terminal friend latch even after
+    QQ has already returned to the user's own farm.  In that state the native
+    friend method must not reopen the list; it must hand control back to the
+    self route and invalidate the one-frame friend grace cache.
+    """
+    try:
+        if context is None or frame is None:
+            return False
+        if state is None:
+            state_fn = globals().get('_friend_guard_friend_ui_state')
+            state = state_fn(frame) if callable(state_fn) else None
+        if state is not False:
+            return False
+        stale_friend_route = any(bool(getattr(context, name, False)) for name in (
+            '_qqfarm_friend_guard_empty_latched',
+            '_qqfarm_friend_chain_pending',
+            '_qqfarm_friend_chain_active',
+            '_qqfarm_friend_cycle_seen',
+            '_qqfarm_friend_entry_pending',
+            '_last_friend_farm_go_home_present',
+        )) or str(getattr(
+            context, '_qqfarm_cycle_branch_hint', ''
+        ) or '').strip().lower() == 'friend' or str(getattr(
+            context, '_qqfarm_live_scene_hint', ''
+        ) or '').strip().lower() in ('friend', 'friend-list')
+        if not stale_friend_route:
+            return False
+        # A real friend farm is the only page that may keep the friend grace.
+        # A self frame has no selected friend card plus action footer; do not
+        # use list-row blobs as proof because home controls also occupy the
+        # right/lower edge.
+        selected_fn = globals().get('_friend_selected_carousel_card_bounds')
+        selected = selected_fn(frame) if callable(selected_fn) else None
+        if isinstance(selected, dict) and selected:
+            return False
+        now_fn = globals().get('_friend_watchdog_now')
+        now_ts = float(now_fn()) if callable(now_fn) else float(__import__('time').time())
+        for name, value in (
+            ('_qqfarm_friend_guard_empty_latched', False),
+            ('_qqfarm_friend_guard_empty_latched_since_ts', 0.0),
+            ('_qqfarm_friend_guard_next_poll_ts', 0.0),
+            ('_qqfarm_friend_chain_pending', False),
+            ('_qqfarm_friend_chain_active', False),
+            ('_qqfarm_friend_chain_exhausted', False),
+            ('_qqfarm_friend_chain_allow_home', False),
+            ('_qqfarm_friend_cycle_seen', False),
+            ('_qqfarm_friend_page_seen_ts', 0.0),
+            ('_qqfarm_friend_branch_last_ts', 0.0),
+            ('_last_friend_farm_go_home_present', False),
+            ('_qqfarm_friend_home_noop_count', 0),
+            ('_qqfarm_friend_home_recovery_fail_count', 0),
+            ('_qqfarm_native_friend_surface_seen_ts', 0.0),
+            ('_qqfarm_native_friend_surface_state', 'self-home'),
+            ('_qqfarm_live_scene_hint', 'home'),
+            ('_qqfarm_cycle_branch_hint', 'self'),
+            ('_qqfarm_force_self_cycle_next', True),
+        ):
+            setattr(context, name, value)
+        setattr(context, '_qqfarm_friend_entry_pending', False)
+        setattr(context, '_qqfarm_friend_entry_clicked_ts', 0.0)
+        setattr(context, '_qqfarm_friend_entry_verified_surface', '')
+        setattr(context, '_qqfarm_friend_entry_verified_frame_id', 0)
+        hint_fn = globals().get('_qqfarm_set_live_scene_hint')
+        if callable(hint_fn):
+            hint_fn(context, scene_hint='home')
+        write_fn = globals().get('_write')
+        if callable(write_fn):
+            write_fn(
+                'v499 visible self surface released stale friend route '
+                'and returned home now=' + ('%.3f' % now_ts)
+            )
+        return True
+    except BaseException:
+        return False
+
+
 def _qqfarm_native_friend_help_card_signature(frame):
     """Return a stable selected-carousel identity signature, or None when unknown."""
     try:
@@ -53809,18 +54233,42 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
         # this native owner bridge, which is the callable production actually
         # enters, before the compiled implementation can emit a correction log
         # and return without clicking a friend card.
+        active_friend_surface = False
+        recent_friend_surface = False
+        dispatch_allowed = True
         try:
             candidate_frame = None
-            for value in list(args) + list(kwargs.values()):
-                shape = getattr(value, 'shape', None)
-                if shape is not None and len(shape) >= 2:
-                    candidate_frame = value
-                    break
             capture_fn = globals().get(
                 '_qqfarm_capture_native_friend_help_frame'
             )
-            if candidate_frame is None and callable(capture_fn):
-                candidate_frame = capture_fn(self)
+            # v497: the native owner may receive a crop/mask ndarray before
+            # the actual farm frame.  Prefer the fresh owner capture and only
+            # fall back to a call argument that has full-frame dimensions;
+            # otherwise the terminal latch sees a tiny non-farm array and
+            # incorrectly blocks the already-visible friend farm page.
+            if callable(capture_fn):
+                captured = capture_fn(self)
+                captured_shape = getattr(captured, 'shape', None)
+                if (
+                    captured_shape is not None
+                    and len(captured_shape) >= 3
+                    and int(captured_shape[0]) >= 240
+                    and int(captured_shape[1]) >= 180
+                    and int(captured_shape[2]) >= 3
+                ):
+                    candidate_frame = captured
+            if candidate_frame is None:
+                for value in list(args) + list(kwargs.values()):
+                    shape = getattr(value, 'shape', None)
+                    if (
+                        shape is not None
+                        and len(shape) >= 3
+                        and int(shape[0]) >= 240
+                        and int(shape[1]) >= 180
+                        and int(shape[2]) >= 3
+                    ):
+                        candidate_frame = value
+                        break
             rows_fn = globals().get('_friend_list_visit_button_rows')
             rows = (
                 list(rows_fn(candidate_frame) or [])
@@ -53853,10 +54301,36 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                 state_fn = globals().get('_friend_guard_friend_ui_state')
                 friend_surface = (
                     state_fn(candidate_frame)
-                    if entry_pending and callable(state_fn)
-                    and candidate_frame is not None and len(rows) < 3
+                    if callable(state_fn) and candidate_frame is not None
                     else None
                 )
+                active_friend_surface = bool(friend_surface is True)
+                if not active_friend_surface and friend_surface is False:
+                    reconcile_fn = globals().get(
+                        '_qqfarm_reconcile_visible_self_surface'
+                    )
+                    released = bool(
+                        reconcile_fn(self, candidate_frame, friend_surface)
+                        if callable(reconcile_fn) else False
+                    )
+                    if released:
+                        return False
+                if active_friend_surface:
+                    try:
+                        import time as _time_module
+                        setattr(
+                            self,
+                            '_qqfarm_native_friend_surface_seen_ts',
+                            float(_time_module.monotonic()),
+                        )
+                        setattr(
+                            self,
+                            '_qqfarm_native_friend_surface_state',
+                            'friend-farm',
+                        )
+                        setattr(self, '_qqfarm_live_scene_hint', 'friend')
+                    except BaseException:
+                        pass
                 if entry_pending and friend_surface is True:
                     commit_fn = globals().get(
                         '_commit_friend_list_entry_transition'
@@ -53916,6 +54390,30 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                     'blocked-row-next', 'blocked-row-journal-retry',
                     'closed-journal-retry',
                 ):
+                    if list_result in ('closed', 'closed-terminal-latch'):
+                        recovery_fn = globals().get(
+                            '_recover_home_after_friend_list_terminal'
+                        )
+                        if callable(recovery_fn):
+                            try:
+                                recovery_fn(
+                                    self,
+                                    list_result,
+                                    candidate_frame,
+                                    fn,
+                                    args,
+                                    kwargs,
+                                )
+                            except BaseException as error:
+                                try:
+                                    write_fn = globals().get('_write')
+                                    if callable(write_fn):
+                                        write_fn(
+                                            'v500 terminal friend-list home '
+                                            'recovery error=' + repr(error)[:220]
+                                        )
+                                except BaseException:
+                                    pass
                     return False
         except BaseException as error:
             try:
@@ -53949,8 +54447,16 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
             dispatch_allowed_fn = globals().get(
                 '_friend_guard_poll_dispatch_allowed'
             )
-            if callable(dispatch_allowed_fn) and not bool(
-                    dispatch_allowed_fn(self)):
+            if callable(dispatch_allowed_fn):
+                dispatch_allowed = bool(dispatch_allowed_fn(self))
+            if not dispatch_allowed and not active_friend_surface:
+                recent_fn = globals().get(
+                    '_qqfarm_native_friend_surface_cache_fresh'
+                )
+                recent_friend_surface = bool(
+                    recent_fn(self) if callable(recent_fn) else False
+                )
+            if not dispatch_allowed and not active_friend_surface and not recent_friend_surface:
                 diagnostic_fn = globals().get('_throttled_write')
                 if callable(diagnostic_fn):
                     diagnostic_fn(
@@ -53960,6 +54466,15 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                         10.0,
                     )
                 return False
+            if not dispatch_allowed and (active_friend_surface or recent_friend_surface):
+                write_fn = globals().get('_write')
+                if callable(write_fn):
+                    write_fn(
+                        'v498 recent friend farm surface bypassed same-day '
+                        'terminal latch; allowing current-page action/home recovery '
+                        'active=' + repr(active_friend_surface) +
+                        ' cached=' + repr(recent_friend_surface)
+                    )
         except BaseException:
             pass
 

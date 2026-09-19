@@ -4,7 +4,7 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.65-32C98A?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.70-32C98A?style=flat-square)](#版本与更新)
   [![Status](https://img.shields.io/badge/状态-稳定版本-17345F?style=flat-square)](#快速开始)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
@@ -248,10 +248,15 @@ CV农场助手/
 
 ## 版本与更新
 
-当前发布版本为 **v1.4.65（2026-09-18）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
+当前发布版本为 **v1.4.70（2026-09-19）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
 
 | 版本 | 面向使用者的主要更新 |
 | --- | --- |
+| **v1.4.70** | 修复好友列表末行关闭后停留在好友农场的回家确认与有界恢复；保留 v1.4.69 的自家/好友页面识别修复 |
+| **v1.4.69** | 修复已回到自家农场后仍被好友终态锁住、把自家底部绿色控件误当好友列表行并持续空巡检的问题 |
+| **v1.4.68** | 为已确认好友农场增加 45 秒有界捕获恢复窗口，避免一次异常帧重新触发终态门和 12 秒空巡检循环；确认回家后自动失效 |
+| **v1.4.67** | 修复原生好友入口误取裁剪图导致已打开好友农场被终态门拦截的问题；优先完整新鲜画面并放行当前好友页动作/回家恢复，结束 12 秒空巡检循环 |
+| **v1.4.66** | 修复好友终态门误拦截已打开的好友农场页面，避免“回家”入口可见但每轮不点击、日志循环的问题 |
 | **v1.4.65** | 修复满地幼苗误报空地、陈旧土地凭据触发买种、跨天好友终态不重置，以及当前卡片式好友列表刚打开就关闭或日志空推进的问题 |
 | **v1.4.64** | 修复 QQ/微信捕获对象跨平台串线、旧 HWND 复用和 `unknown` 连环恢复；增加 WGC 选择器诊断，保留 GUI、配置与 UserData |
 | **v1.4.57** | 修复隐藏/恢复后的 DPI 与 WGC/PrintWindow 捕获、连续空巡检、免费福利 3/3 重试和不完整 2×2 普通种子回退问题；保留 GUI、配置与 UserData |
