@@ -4,7 +4,7 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.70-32C98A?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.72-32C98A?style=flat-square)](#版本与更新)
   [![Status](https://img.shields.io/badge/状态-稳定版本-17345F?style=flat-square)](#快速开始)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
@@ -248,10 +248,12 @@ CV农场助手/
 
 ## 版本与更新
 
-当前发布版本为 **v1.4.70（2026-09-19）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
+当前发布版本为 **v1.4.72（2026-09-19）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
 
 | 版本 | 面向使用者的主要更新 |
 | --- | --- |
+| **v1.4.72** | 识别当前“16 个单格幼苗 + 两块活动平台 + 稀疏土地锚点”的满地画面，清除错误空地并阻止错误买种 |
+| **v1.4.71** | 原生日志空地数量改为只读诊断，必须经过新鲜画面与 24 格土地验证后才允许播种、买种或锁定自家流程 |
 | **v1.4.70** | 修复好友列表末行关闭后停留在好友农场的回家确认与有界恢复；保留 v1.4.69 的自家/好友页面识别修复 |
 | **v1.4.69** | 修复已回到自家农场后仍被好友终态锁住、把自家底部绿色控件误当好友列表行并持续空巡检的问题 |
 | **v1.4.68** | 为已确认好友农场增加 45 秒有界捕获恢复窗口，避免一次异常帧重新触发终态门和 12 秒空巡检循环；确认回家后自动失效 |

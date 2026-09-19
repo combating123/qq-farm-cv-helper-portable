@@ -187,6 +187,8 @@ _write('v338 merged-purple occupied-platform fast reject enabled')
 _write('v339 stable full-board lightweight patrol + home-priority interval lease release enabled')
 _write('v499 visible self surface releases stale friend terminal route enabled')
 _write('v500 terminal friend-list close -> bounded verified home recovery enabled')
+_write('v501 native empty-land log requires fresh visual proof enabled')
+_write('v502 sparse-terrain seedling/platform full-board proof enabled')
 
 try:
     # Keep the bootstrap import set minimal.  The packaged proxy loads this
@@ -11349,6 +11351,408 @@ def _qqfarm_fit_dynamic_24_slot_lattice_from_geometry_anchors(
             },
         }
 
+    def _sparse_terrain_seedling_full_board_fit():
+        """Prove a closed mixed board when only a few soil anchors remain.
+
+        The live QQ board can contain two large activity platforms plus sixteen
+        ordinary seedlings.  In that composition the platforms hide the upper
+        terrain triad, while five lower soil anchors remain visible.  The old
+        terrain route therefore returned ``unknown`` and left stale native
+        empty-template hits without a fresh full-board contradiction.
+
+        This route is observation-only.  It requires one unique seedling phase,
+        at least sixteen one-to-one crop markers, four same-frame terrain
+        matches, four strong outer LAB boundaries, and local crop occupancy at
+        every one of the twenty-four projected slots.  It never publishes
+        coordinates for planting or creates an empty slot.
+        """
+        if (
+                frame is None or
+                len(seedling_records) < 16 or
+                not (4 <= len(terrain_records_for_crop) <= 7) or
+                int(frame_width) != 428 or int(frame_height) != 800):
+            return None
+        try:
+            np_module = globals().get('np') or __import__('numpy')
+            cv_module = globals().get('cv2') or __import__('cv2')
+            raw_image = np_module.asarray(frame)
+            if (
+                    getattr(raw_image, 'ndim', 0) < 3 or
+                    int(raw_image.shape[2] or 0) < 3):
+                return None
+            normalized_image = np_module.ascontiguousarray(
+                raw_image[:, :, :3]
+            )
+            if normalized_image.dtype != np_module.uint8:
+                normalized_image = np_module.clip(
+                    normalized_image, 0, 255
+                ).astype(np_module.uint8)
+            lab_image = cv_module.cvtColor(
+                normalized_image, cv_module.COLOR_BGR2LAB
+            ).astype(np_module.float64)
+            seedling_points = np_module.asarray(
+                [(float(record['x']), float(record['y']))
+                 for record in seedling_records],
+                dtype=np_module.float64,
+            )
+            terrain_points = np_module.asarray(
+                [(float(record['x']), float(record['y']))
+                 for record in terrain_records_for_crop],
+                dtype=np_module.float64,
+            )
+        except BaseException:
+            return None
+
+        neighbour_scales = []
+        for left_index in range(len(seedling_points)):
+            for right_index in range(left_index + 1, len(seedling_points)):
+                delta_x = abs(
+                    float(seedling_points[right_index][0]) -
+                    float(seedling_points[left_index][0])
+                )
+                delta_y = abs(
+                    float(seedling_points[right_index][1]) -
+                    float(seedling_points[left_index][1])
+                )
+                if (
+                        7.0 <= delta_y <= 30.0 and
+                        17.0 <= delta_x <= 48.0 and
+                        1.20 <= delta_x / max(0.001, delta_y) <= 3.20):
+                    neighbour_scales.append((delta_x, delta_y))
+        if len(neighbour_scales) < 12:
+            return None
+        try:
+            scale_x, scale_y = np_module.median(
+                np_module.asarray(neighbour_scales, dtype=np_module.float64),
+                axis=0,
+            )
+            scale_x = float(scale_x)
+            scale_y = float(scale_y)
+        except BaseException:
+            return None
+        if not (16.0 <= scale_x <= 48.0 and 7.0 <= scale_y <= 30.0):
+            return None
+
+        try:
+            topology_steps = np_module.asarray(
+                [(int(left_steps), int(right_steps))
+                 for _slot_id, left_steps, right_steps in slot_layout],
+                dtype=np_module.float64,
+            )
+            left_down = np_module.asarray(
+                (-scale_x, scale_y), dtype=np_module.float64
+            )
+            right_down = np_module.asarray(
+                (scale_x, scale_y), dtype=np_module.float64
+            )
+            topology_offsets = (
+                topology_steps[:, 0:1] * left_down +
+                topology_steps[:, 1:2] * right_down
+            )
+            leaf_offset = np_module.asarray(
+                (-0.24 * scale_x, -0.53 * scale_y),
+                dtype=np_module.float64,
+            )
+        except BaseException:
+            return None
+
+        seedling_distance = max(6.0, min(8.0, 0.28 * scale_x))
+        terrain_distance = max(8.0, min(12.5, 0.43 * scale_x))
+
+        def _unique_matches(expected_points, observed_points, maximum_distance):
+            pairs = []
+            maximum_squared = float(maximum_distance) ** 2
+            for expected_index, expected_point in enumerate(expected_points):
+                for observed_index, observed_point in enumerate(observed_points):
+                    distance_squared = float(np_module.sum(
+                        (expected_point - observed_point) ** 2
+                    ))
+                    if distance_squared <= maximum_squared:
+                        pairs.append((
+                            distance_squared,
+                            int(expected_index),
+                            int(observed_index),
+                        ))
+            pairs.sort(key=lambda item: (item[0], item[1], item[2]))
+            used_expected = set()
+            used_observed = set()
+            matches = []
+            for distance_squared, expected_index, observed_index in pairs:
+                if (
+                        expected_index in used_expected or
+                        observed_index in used_observed):
+                    continue
+                used_expected.add(expected_index)
+                used_observed.add(observed_index)
+                matches.append((
+                    float(distance_squared),
+                    int(expected_index),
+                    int(observed_index),
+                ))
+            return tuple(matches)
+
+        def _outer_boundary_support(l01):
+            specs = (
+                ('a', -0.5, -0.5, 3.5, left_down, 1.0),
+                ('a', 5.5, -0.5, 3.5, left_down, -1.0),
+                ('b', -0.5, -0.5, 5.5, right_down, 1.0),
+                ('b', 3.5, -0.5, 5.5, right_down, -1.0),
+            )
+            metrics = []
+            boundary_offset = max(5.0, min(9.0, 0.24 * scale_x))
+            for axis, fixed, start, end, normal_vector, sign in specs:
+                differences = []
+                normal_length = float(np_module.linalg.norm(normal_vector))
+                if normal_length <= 0.0:
+                    return ()
+                offset = (
+                    normal_vector *
+                    (boundary_offset / normal_length) *
+                    float(sign)
+                )
+                for value in np_module.linspace(
+                        float(start) + 0.05, float(end) - 0.05, 29):
+                    if axis == 'a':
+                        point = (
+                            l01 + float(fixed) * left_down +
+                            float(value) * right_down
+                        )
+                    else:
+                        point = (
+                            l01 + float(value) * left_down +
+                            float(fixed) * right_down
+                        )
+                    inside = point + offset
+                    outside = point - offset
+                    inside_x, inside_y = (
+                        int(round(float(component))) for component in inside
+                    )
+                    outside_x, outside_y = (
+                        int(round(float(component))) for component in outside
+                    )
+                    if (
+                            min(inside_x, outside_x) < 2 or
+                            max(inside_x, outside_x) >= 426 or
+                            min(inside_y, outside_y) < 2 or
+                            max(inside_y, outside_y) >= 798):
+                        continue
+                    inside_value = np_module.median(
+                        lab_image[
+                            inside_y - 1:inside_y + 2,
+                            inside_x - 1:inside_x + 2,
+                        ].reshape(-1, 3),
+                        axis=0,
+                    )
+                    outside_value = np_module.median(
+                        lab_image[
+                            outside_y - 1:outside_y + 2,
+                            outside_x - 1:outside_x + 2,
+                        ].reshape(-1, 3),
+                        axis=0,
+                    )
+                    differences.append(float(np_module.linalg.norm(
+                        inside_value - outside_value
+                    )))
+                if len(differences) < 18:
+                    return ()
+                metrics.append(float(np_module.median(np_module.asarray(
+                    differences, dtype=np_module.float64
+                ))))
+            return tuple(metrics)
+
+        candidates = []
+        seen = set()
+        for point in seedling_points:
+            for slot_index in range(len(slot_layout)):
+                l01 = point - leaf_offset - topology_offsets[slot_index]
+                key = (
+                    int(round(float(l01[0]) * 2.0)),
+                    int(round(float(l01[1]) * 2.0)),
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                centers = l01 + topology_offsets
+                try:
+                    min_x = float(np_module.min(centers[:, 0]))
+                    max_x = float(np_module.max(centers[:, 0]))
+                    min_y = float(np_module.min(centers[:, 1]))
+                    max_y = float(np_module.max(centers[:, 1]))
+                except BaseException:
+                    continue
+                if not (
+                        min_y >= 0.12 * 800.0 and
+                        max_y <= 0.98 * 800.0 and
+                        min_x >= -0.24 * 428.0 and
+                        max_x <= 1.24 * 428.0):
+                    continue
+                seed_matches = _unique_matches(
+                    centers + leaf_offset,
+                    seedling_points,
+                    seedling_distance,
+                )
+                if len(seed_matches) < 16:
+                    continue
+                terrain_matches = _unique_matches(
+                    centers,
+                    terrain_points,
+                    terrain_distance,
+                )
+                if len(terrain_matches) < 4:
+                    continue
+                matched_seed_slots = {
+                    int(match[1]) for match in seed_matches
+                }
+                edge_coverage = (
+                    any(int(topology_steps[index][0]) == 0
+                        for index in matched_seed_slots),
+                    any(int(topology_steps[index][0]) == 5
+                        for index in matched_seed_slots),
+                    any(int(topology_steps[index][1]) == 0
+                        for index in matched_seed_slots),
+                    any(int(topology_steps[index][1]) == 3
+                        for index in matched_seed_slots),
+                )
+                if not all(edge_coverage):
+                    continue
+                boundary_metrics = _outer_boundary_support(l01)
+                if (
+                        len(boundary_metrics) != 4 or
+                        min(boundary_metrics) < 26.0):
+                    continue
+                candidates.append({
+                    'l01': l01,
+                    'centers': centers,
+                    'seed_matches': seed_matches,
+                    'terrain_matches': terrain_matches,
+                    'boundary_metrics': boundary_metrics,
+                    'edge_coverage': edge_coverage,
+                    'seed_error': sum(
+                        float(match[0]) for match in seed_matches
+                    ),
+                    'terrain_error': sum(
+                        float(match[0]) for match in terrain_matches
+                    ),
+                })
+        if not candidates:
+            return None
+
+        candidates.sort(key=lambda item: (
+            -len(item['seed_matches']),
+            -len(item['terrain_matches']),
+            -min(item['boundary_metrics']),
+            -sum(item['boundary_metrics']),
+            float(item['seed_error']),
+            float(item['terrain_error']),
+            float(item['l01'][1]),
+            float(item['l01'][0]),
+        ))
+        selected = candidates[0]
+        # A shifted lattice can overlap the same coloured board.  Require the
+        # winning seed phase to exceed every materially different phase.
+        for competitor in candidates[1:]:
+            try:
+                phase_distance = float(np_module.linalg.norm(
+                    selected['l01'] - competitor['l01']
+                ))
+            except BaseException:
+                phase_distance = 0.0
+            if phase_distance < max(3.0, 0.20 * scale_x):
+                continue
+            if len(competitor['seed_matches']) >= len(
+                    selected['seed_matches']):
+                return None
+
+        single_seedling_fn = globals().get(
+            '_empty_land_candidate_has_seedling_occupancy'
+        )
+        single_cover_fn = globals().get(
+            '_empty_land_candidate_has_crop_cover'
+        )
+        if not callable(single_seedling_fn) and not callable(single_cover_fn):
+            return None
+        for center in selected['centers']:
+            candidate_center = (
+                int(round(float(center[0]))),
+                int(round(float(center[1]))),
+            )
+            occupied = False
+            try:
+                if callable(single_seedling_fn) and bool(
+                        single_seedling_fn(
+                            normalized_image, candidate_center
+                        )):
+                    occupied = True
+                elif callable(single_cover_fn) and bool(
+                        single_cover_fn(
+                            normalized_image, candidate_center
+                        )):
+                    occupied = True
+            except BaseException:
+                occupied = False
+            if not occupied:
+                return None
+
+        slot_centers = {
+            slot_id: (
+                int(round(float(selected['centers'][slot_index][0]))),
+                int(round(float(selected['centers'][slot_index][1]))),
+            )
+            for slot_index, (
+                slot_id, _left_steps, _right_steps
+            ) in enumerate(slot_layout)
+        }
+        seed_marker_slots = tuple(
+            slot_layout[int(match[1])][0]
+            for match in selected['seed_matches']
+        )
+        terrain_slot_map = {
+            int(terrain_records_for_crop[int(match[2])]['index']):
+            str(slot_layout[int(match[1])][0])
+            for match in selected['terrain_matches']
+        }
+        return {
+            'status': 'aligned',
+            'reason': 'sparse-terrain-seedling-full-board-observation',
+            'crop_only_full_board': True,
+            'observation_only': True,
+            'slot_centers': slot_centers,
+            'matched_anchor_count': int(
+                len(selected['seed_matches']) +
+                len(selected['terrain_matches'])
+            ),
+            'unmatched_anchor_count': int(
+                max(0, len(seedling_records) - len(
+                    selected['seed_matches'])) +
+                max(0, len(terrain_records_for_crop) - len(
+                    selected['terrain_matches']))
+            ),
+            'ignored_geometry_anchor_count': 0,
+            'geometry_anchor_slots': seed_marker_slots,
+            'terrain_anchor_slot_map': terrain_slot_map,
+            'transform': {
+                'source': 'sparse-terrain-seedling-full-board-observation',
+                'normalized_l01': (
+                    round(float(selected['l01'][0]), 3),
+                    round(float(selected['l01'][1]), 3),
+                ),
+                'left_down': (
+                    round(float(left_down[0]), 3),
+                    round(float(left_down[1]), 3),
+                ),
+                'right_down': (
+                    round(float(right_down[0]), 3),
+                    round(float(right_down[1]), 3),
+                ),
+                'seed_marker_slots': seed_marker_slots,
+                'terrain_matched_slots': tuple(terrain_slot_map.values()),
+                'boundary_lab': tuple(
+                    round(float(value), 3)
+                    for value in selected['boundary_metrics']
+                ),
+            },
+        }
+
     try:
         crop_fit = _crop_geometry_fit()
         if isinstance(crop_fit, dict) and crop_fit.get('status') == 'aligned':
@@ -11385,6 +11789,14 @@ def _qqfarm_fit_dynamic_24_slot_lattice_from_geometry_anchors(
                 isinstance(seedling_fit, dict) and
                 seedling_fit.get('status') == 'aligned'):
             return seedling_fit
+    except BaseException:
+        pass
+    try:
+        sparse_seedling_fit = _sparse_terrain_seedling_full_board_fit()
+        if (
+                isinstance(sparse_seedling_fit, dict) and
+                sparse_seedling_fit.get('status') == 'aligned'):
+            return sparse_seedling_fit
     except BaseException:
         pass
 
@@ -30863,9 +31275,15 @@ def _qqfarm_capture_current_frame_24_slot_ledger(
         fit.get('crop_only_full_board') and
         fit_reason == 'mixed-seedling-platform-full-board-observation'
     )
+    sparse_terrain_seedling_full_board_observation = bool(
+        fit.get('observation_only') and
+        fit.get('crop_only_full_board') and
+        fit_reason == 'sparse-terrain-seedling-full-board-observation'
+    )
     observation_only_full_board = bool(
         cropped_full_board_observation or
-        mixed_seedling_platform_full_board_observation
+        mixed_seedling_platform_full_board_observation or
+        sparse_terrain_seedling_full_board_observation
     )
     try:
         centers = dict(fit.get('slot_centers') or {})
@@ -31442,6 +31860,9 @@ def _qqfarm_capture_current_frame_24_slot_ledger(
         'cropped_full_board_observation': bool(cropped_full_board_observation),
         'mixed_seedling_platform_full_board_observation': bool(
             mixed_seedling_platform_full_board_observation
+        ),
+        'sparse_terrain_seedling_full_board_observation': bool(
+            sparse_terrain_seedling_full_board_observation
         ),
         'slot_centers': {} if observation_only_full_board else centers,
         'complete_2x2_groups': (
@@ -33858,12 +34279,37 @@ def _note_runtime_planting_outcome(message):
 
         empty_match = regex.search(r'\u68c0\u6d4b\u5230\u3010\u7a7a\u5730\u3011\u5171\s*(\d+)\s*\u5757', text)
         if empty_match is not None and context is not None:
-            priority_fn = globals().get('_qqfarm_update_home_priority')
-            if callable(priority_fn):
-                priority_fn(
-                    context, int(empty_match.group(1)), now_ts=now_value,
-                    reason='runtime-empty-log',
+            # Native text is emitted before the wrapped detector has finished
+            # crop-cover, board-lattice and current-frame validation.  Treating
+            # the reported number as actionable state lets a false template hit
+            # arm the self-farm lock, overwrite a smaller verified queue and
+            # block friend patrol indefinitely.  Keep it as diagnostics only;
+            # _wrap_detect_empty_lands_state owns every actionable positive and
+            # zero-empty transition.
+            native_empty_count = max(0, int(empty_match.group(1)))
+            setattr(
+                context,
+                '_qqfarm_native_empty_log_claim_count',
+                native_empty_count,
+            )
+            setattr(
+                context,
+                '_qqfarm_native_empty_log_claim_ts',
+                now_value,
+            )
+            setattr(
+                context,
+                '_qqfarm_native_empty_log_claim_pending',
+                True,
+            )
+            _write(
+                'v501 native empty-land log held for visual verification '
+                'claimed=' + str(native_empty_count) + ' current=' + str(
+                    max(0, int(getattr(
+                        context, '_qqfarm_recent_empty_land_count', 0
+                    ) or 0))
                 )
+            )
 
         if context is not None and (
             '\u5df2\u5b8c\u6210\u4e70\u79cd' in text or '\u5df2\u8d2d\u4e70\u79cd\u5b50' in text
