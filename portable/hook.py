@@ -5803,10 +5803,6 @@ def _qqfarm_note_page_readiness(context, state, message):
         last_ts = float(getattr(context, '_qqfarm_page_readiness_log_ts', 0.0) or 0.0)
     except BaseException:
         last_ts = 0.0
-    try:
-        setattr(context, '_qqfarm_page_readiness_log_ts', now_ts)
-    except BaseException:
-        pass
     if str(state) == 'ready' and previous != 'ready':
         try:
             marker_fn = globals().get('_qqfarm_perf_marker')
@@ -5819,6 +5815,13 @@ def _qqfarm_note_page_readiness(context, state, message):
     # the actual diagnosis in log noise.
     if previous == str(state) and now_ts > 0.0 and last_ts > 0.0 and (now_ts - last_ts) < 15.0:
         return False
+    # Update the emission timestamp only after the debounce decision.  The old
+    # order wrote ``now_ts`` before comparing it with ``last_ts``, which made a
+    # stable loading/non-farm state suppress its own diagnostic forever.
+    try:
+        setattr(context, '_qqfarm_page_readiness_log_ts', now_ts)
+    except BaseException:
+        pass
     try:
         log_fn = globals().get('_throttled_write')
         if callable(log_fn):
@@ -5835,6 +5838,266 @@ def _qqfarm_note_page_readiness(context, state, message):
         except BaseException:
             pass
     return True
+
+
+_QQFARM_PERSISTENT_NONFARM_THRESHOLD = 3
+_QQFARM_PERSISTENT_NONFARM_COOLDOWN_SECONDS = 30.0
+_QQFARM_PERSISTENT_NONFARM_CLOSE_WAIT_SECONDS = 20.0
+
+
+def _qqfarm_request_farm_window_close(hwnd):
+    """Post one bounded WM_CLOSE to the QQ farm shell during recovery."""
+    try:
+        window = int(hwnd or 0)
+    except BaseException:
+        window = 0
+    if window <= 0:
+        return False
+    try:
+        win32gui = __import__('win32gui')
+        return bool(win32gui.PostMessage(window, 0x0010, 0, 0))
+    except BaseException:
+        pass
+    try:
+        ctypes_module = __import__('ctypes')
+        return bool(ctypes_module.windll.user32.PostMessageW(
+            ctypes_module.c_void_p(window), 0x0010, 0, 0
+        ))
+    except BaseException:
+        return False
+
+
+def _qqfarm_reset_persistent_nonfarm_surface_recovery(context, hwnd=0):
+    """Clear the bounded non-farm recovery episode after a fresh farm frame."""
+    if context is None:
+        return False
+    try:
+        old_state = getattr(
+            context, '_qqfarm_persistent_nonfarm_surface_state', None
+        )
+        old_hwnd = int(old_state.get('hwnd', 0) or 0) if isinstance(
+            old_state, dict
+        ) else 0
+        new_hwnd = int(hwnd or 0)
+        had_episode = bool(
+            isinstance(old_state, dict) and (
+                int(old_state.get('count', 0) or 0) > 0 or
+                int(old_state.get('attempts', 0) or 0) > 0 or
+                bool(old_state.get('relaunch_pending', False))
+            )
+        )
+        setattr(context, '_qqfarm_persistent_nonfarm_surface_state', {
+            'hwnd': new_hwnd,
+            'count': 0,
+            'attempts': 0,
+            'last_action_ts': 0.0,
+            'relaunch_pending': False,
+            'close_requested_ts': 0.0,
+            'close_attempts': 0,
+        })
+        if had_episode:
+            log_fn = globals().get('_throttled_write')
+            message = (
+                'v508 persistent non-farm surface recovered hwnd=' +
+                str(new_hwnd or old_hwnd)
+            )
+            if callable(log_fn):
+                log_fn('v508-persistent-nonfarm-recovered', message, 5.0)
+            else:
+                _write(message)
+        return had_episode
+    except BaseException:
+        return False
+
+
+def _qqfarm_persistent_nonfarm_surface_recovery(
+        context, hwnd, reason='non-farm'):
+    """Recover when one QQ HWND keeps yielding blank/desktop pixels.
+
+    A live title/handle is not sufficient proof that the farm surface is
+    rendered.  Keep the first response limited to cache invalidation, hidden
+    window restoration, and a fresh WGC bind.  If the same HWND still fails in
+    a later bounded episode, post one close request and let the normal QQ
+    protocol guard relaunch on the next no-window tick.  This avoids both the
+    old infinite idle loop and an unbounded close/relaunch storm.
+    """
+    if context is None:
+        return False
+    try:
+        window = int(hwnd or 0)
+    except BaseException:
+        window = 0
+    if window <= 0:
+        return False
+    try:
+        time_module = globals().get('time') or __import__('time')
+        now_value = float(time_module.monotonic())
+    except BaseException:
+        now_value = 0.0
+    try:
+        threshold = int(globals().get(
+            '_QQFARM_PERSISTENT_NONFARM_THRESHOLD', 3
+        ) or 3)
+    except BaseException:
+        threshold = 3
+    threshold = max(2, min(10, threshold))
+    try:
+        cooldown = float(globals().get(
+            '_QQFARM_PERSISTENT_NONFARM_COOLDOWN_SECONDS', 30.0
+        ) or 30.0)
+    except BaseException:
+        cooldown = 30.0
+    cooldown = max(10.0, min(180.0, cooldown))
+
+    try:
+        state = getattr(
+            context, '_qqfarm_persistent_nonfarm_surface_state', None
+        )
+        if not isinstance(state, dict) or int(state.get('hwnd', 0) or 0) != window:
+            state = {
+                'hwnd': window,
+                'count': 0,
+                'attempts': 0,
+                'last_action_ts': 0.0,
+                'relaunch_pending': False,
+                'close_requested_ts': 0.0,
+                'close_attempts': 0,
+            }
+        state['count'] = int(state.get('count', 0) or 0) + 1
+        setattr(context, '_qqfarm_persistent_nonfarm_surface_state', state)
+    except BaseException:
+        return False
+
+    if int(state.get('count', 0) or 0) < threshold:
+        return False
+    log_fn = globals().get('_throttled_write')
+    if bool(state.get('relaunch_pending', False)):
+        try:
+            close_requested_ts = float(
+                state.get('close_requested_ts', 0.0) or 0.0
+            )
+        except BaseException:
+            close_requested_ts = 0.0
+        try:
+            close_wait = float(globals().get(
+                '_QQFARM_PERSISTENT_NONFARM_CLOSE_WAIT_SECONDS', 20.0
+            ) or 20.0)
+        except BaseException:
+            close_wait = 20.0
+        close_wait = max(5.0, min(120.0, close_wait))
+        # WM_CLOSE being accepted only means it was queued.  QQ can keep the
+        # top-level mini-program HWND enumerable while its renderer drains the
+        # close request.  Do not turn that transient state into a permanent
+        # latch: after a bounded wait, release it and let the normal cooldown
+        # schedule one more bounded close/recovery attempt.
+        if (
+                close_requested_ts <= 0.0 or
+                now_value <= 0.0 or
+                (now_value - close_requested_ts) >= close_wait
+        ):
+            state['relaunch_pending'] = False
+            state['phase'] = 'close-timeout'
+            timeout_count = int(state.get('close_timeout_count', 0) or 0) + 1
+            state['close_timeout_count'] = timeout_count
+            message = (
+                'v508 persistent non-farm surface close-timeout hwnd=' +
+                str(window) + ' wait=' + str(round(close_wait, 1)) +
+                ' timeout_count=' + str(timeout_count)
+            )
+            if callable(log_fn):
+                log_fn('v508-persistent-nonfarm-close-timeout', message, 5.0)
+            else:
+                try:
+                    _write(message)
+                except BaseException:
+                    pass
+        else:
+            return False
+    try:
+        last_action = float(state.get('last_action_ts', 0.0) or 0.0)
+    except BaseException:
+        last_action = 0.0
+    if last_action > 0.0 and now_value > 0.0 and (
+            now_value - last_action < cooldown):
+        return False
+
+    try:
+        attempts = int(state.get('attempts', 0) or 0) + 1
+    except BaseException:
+        attempts = 1
+    state['attempts'] = attempts
+    state['last_action_ts'] = now_value
+    state['last_reason'] = str(reason or 'non-farm')
+
+    if attempts == 1:
+        invalidate_fn = globals().get('_qqfarm_invalidate_wgc_frame_cache')
+        if callable(invalidate_fn):
+            try:
+                invalidate_fn(str(reason or 'non-farm'))
+            except BaseException:
+                pass
+        capture_active = bool(
+            globals().get('_QQFARM_WGC_CAPTURE') is not None or
+            globals().get('_QQFARM_WGC_CONTROL') is not None or
+            int(globals().get('_QQFARM_WGC_BOUND_HWND', 0) or 0) > 0 or
+            int(globals().get('_QQFARM_LAST_FARM_HWND', 0) or 0) > 0
+        )
+        if capture_active:
+            stop_fn = globals().get('_qqfarm_stop_wgc_capture')
+            if callable(stop_fn):
+                try:
+                    stop_fn('persistent-nonfarm')
+                except BaseException:
+                    pass
+        restore_fn = globals().get('_qqfarm_restore_hidden_miniapp_taskbar_card')
+        restored = False
+        if callable(restore_fn):
+            try:
+                restored = bool(restore_fn('persistent-nonfarm'))
+            except BaseException:
+                restored = False
+        start_fn = globals().get('_qqfarm_start_wgc_capture')
+        rebound = False
+        if callable(start_fn):
+            try:
+                rebound = bool(start_fn())
+            except BaseException:
+                rebound = False
+        state['phase'] = 'rebind'
+        message = (
+            'v508 persistent non-farm surface recovery hwnd=' + str(window) +
+            ' count=' + str(int(state.get('count', 0) or 0)) +
+            ' action=rebind restore=' + str(restored) +
+            ' capture=' + str(rebound)
+        )
+        if callable(log_fn):
+            log_fn('v508-persistent-nonfarm-rebind', message, 5.0)
+        else:
+            _write(message)
+        return 'rebind'
+
+    close_fn = globals().get('_qqfarm_request_farm_window_close')
+    closed = False
+    if callable(close_fn):
+        try:
+            closed = bool(close_fn(window))
+        except BaseException:
+            closed = False
+    state['phase'] = 'close'
+    state['relaunch_pending'] = bool(closed)
+    state['close_requested_ts'] = now_value if closed else 0.0
+    state['close_attempts'] = int(state.get('close_attempts', 0) or 0) + 1
+    message = (
+        'v508 persistent non-farm surface recovery hwnd=' + str(window) +
+        ' count=' + str(int(state.get('count', 0) or 0)) +
+        ' action=close closed=' + str(closed) +
+        ' relaunch_pending=' + str(bool(closed))
+    )
+    if callable(log_fn):
+        log_fn('v508-persistent-nonfarm-close', message, 5.0)
+    else:
+        _write(message)
+    return 'close'
 
 
 def _qqfarm_maybe_request_protocol_launch(context):
@@ -5895,6 +6158,14 @@ def _qqfarm_runtime_page_readiness_gate(context, label):
             _qqfarm_maybe_request_protocol_launch(context)
         except BaseException:
             pass
+        try:
+            reset_fn = globals().get(
+                '_qqfarm_reset_persistent_nonfarm_surface_recovery'
+            )
+            if callable(reset_fn):
+                reset_fn(context, 0)
+        except BaseException:
+            pass
         return False
 
     try:
@@ -5913,6 +6184,14 @@ def _qqfarm_runtime_page_readiness_gate(context, label):
             'loading',
             'QQ\u519c\u573a\u7a97\u53e3\u52a0\u8f7d\u4e2d\uff1a\u8df3\u8fc7\u672c\u8f6e\u4e1a\u52a1\u52a8\u4f5c\uff1b\u4e0d\u8bfb\u53d6\u7b49\u7ea7\u3001\u4e0d\u79cd\u690d\u3001\u4e0d\u4e70\u79cd\u3001\u4e0d\u65bd\u80a5\u3001\u4e0d\u5de1\u89c6\u597d\u53cb',
         )
+        try:
+            recover_fn = globals().get(
+                '_qqfarm_persistent_nonfarm_surface_recovery'
+            )
+            if callable(recover_fn):
+                recover_fn(context, hwnd, 'no-frame')
+        except BaseException:
+            pass
         return False
 
     try:
@@ -5954,10 +6233,26 @@ def _qqfarm_runtime_page_readiness_gate(context, label):
             'loading',
             'QQ\u519c\u573a\u7a97\u53e3\u52a0\u8f7d\u4e2d\uff1a\u5f53\u524d\u4ec5\u6709\u6807\u9898\u6216\u975e\u519c\u573a\u753b\u9762\uff0c\u8df3\u8fc7\u672c\u8f6e\u4e1a\u52a1\u52a8\u4f5c\uff1b\u4e0d\u8bfb\u53d6\u7b49\u7ea7\u3001\u4e0d\u79cd\u690d\u3001\u4e0d\u4e70\u79cd\u3001\u4e0d\u65bd\u80a5\u3001\u4e0d\u5de1\u89c6\u597d\u53cb',
         )
+        try:
+            recover_fn = globals().get(
+                '_qqfarm_persistent_nonfarm_surface_recovery'
+            )
+            if callable(recover_fn):
+                recover_fn(context, hwnd, 'non-farm-frame')
+        except BaseException:
+            pass
         return False
 
     try:
         setattr(context, '_qqfarm_page_readiness_hwnd', int(hwnd))
+    except BaseException:
+        pass
+    try:
+        reset_fn = globals().get(
+            '_qqfarm_reset_persistent_nonfarm_surface_recovery'
+        )
+        if callable(reset_fn):
+            reset_fn(context, hwnd)
     except BaseException:
         pass
     _qqfarm_note_page_readiness(context, 'ready', 'QQ\u519c\u573a\u9875\u9762\u5df2\u5c31\u7eea\uff0c\u5141\u8bb8\u6267\u884c\u672c\u8f6e\u4e1a\u52a1\u52a8\u4f5c')
@@ -27618,6 +27913,7 @@ def _qqfarm_restore_hidden_miniapp_taskbar_card(reason=''):
         recovery_reason = str(reason or '').strip().lower()
         automatic_capture_recovery = recovery_reason in {
             'blank-surface', 'wgc-blank-surface', 'capture-recovery',
+            'persistent-nonfarm',
         }
         # The setting controls optional/manual compatibility behavior.  A
         # confirmed blank WGC session is a capture-integrity failure, so its

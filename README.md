@@ -4,7 +4,7 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.4.75-32C98A?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.4.76-32C98A?style=flat-square)](#版本与更新)
   [![Status](https://img.shields.io/badge/状态-稳定版本-17345F?style=flat-square)](#快速开始)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
@@ -249,10 +249,11 @@ CV农场助手/
 
 ## 版本与更新
 
-当前发布版本为 **v1.4.75（2026-09-20）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
+当前发布版本为 **v1.4.76（2026-09-20）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
 
 | 版本 | 面向使用者的主要更新 |
 | --- | --- |
+| **v1.4.76** | 修复同一 QQ 农场窗口持续返回非农场画面时的空巡检；增加 WGC 重绑、隐藏窗口恢复、有界关闭/重试和关闭超时解锁 |
 | **v1.4.75** | 白色标题加载壳不再进入原生业务与截图失败重启链路；同一空白 HWND 只计一次 WGC 重建并优先切换到新窗口句柄；慢启动初始化宽限期提高到 5 分钟 |
 | **v1.4.74** | 修复开始运行首次点击失效、陈旧启动状态、瞬时截图失败连环恢复，以及无窗口旧进程阻塞重新启动 |
 | **v1.4.73** | 同步 2.3.7 的 132 项作物目录与空地、好友入口、已播种土地兼容模板，修正高等级作物、模板缩放覆盖和资源映射 |
