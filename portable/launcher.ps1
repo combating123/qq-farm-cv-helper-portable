@@ -182,11 +182,89 @@ function Initialize-PortableProfile(
 
 function Get-ExistingAssistantInstanceAction(
     [int]$ExistingCount,
-    [bool]$RestartRequested = $false
+    [bool]$RestartRequested = $false,
+    [bool]$ExistingHealthy = $true
 ) {
     if ($ExistingCount -le 0) { return 'start' }
     if ($RestartRequested) { return 'restart-existing' }
+    if (!$ExistingHealthy) { return 'restart-stale' }
     return 'preserve-existing'
+}
+
+
+function Get-AssistantEffectiveAgeSeconds(
+    [object]$ProcessAgeSeconds = $null,
+    [object]$SupervisorAgeSeconds = $null
+) {
+    $ages = @()
+    foreach ($candidate in @($ProcessAgeSeconds, $SupervisorAgeSeconds)) {
+        if ($null -eq $candidate) { continue }
+        try {
+            $age = [int]$candidate
+            # The compatibility clock bridge can temporarily make the
+            # launcher's wall clock older than its own StartTime.  A negative
+            # parent age therefore means "just started", not "stale".
+            if ($age -lt 0) { $age = 0 }
+            $ages += $age
+        } catch {}
+    }
+    if ($ages.Count -eq 0) { return $null }
+    return [int](($ages | Measure-Object -Minimum).Minimum)
+}
+
+
+function Get-AssistantSupervisorAgeSeconds(
+    [System.Diagnostics.Process]$Process
+) {
+    if ($null -eq $Process) { return $null }
+    try {
+        $record = Get-CimInstance Win32_Process -Filter (
+            'ProcessId = ' + [string]$Process.Id
+        ) -ErrorAction Stop
+        $parentId = [int]$record.ParentProcessId
+        if ($parentId -le 0) { return $null }
+        $parent = Get-Process -Id $parentId -ErrorAction Stop
+        $parent.Refresh()
+        if ($parent.HasExited) { return $null }
+        $parentName = ([string]$parent.ProcessName).ToLowerInvariant()
+        if ($parentName -notin @('powershell', 'pwsh')) { return $null }
+        return [int]((Get-Date) - $parent.StartTime).TotalSeconds
+    } catch {
+        return $null
+    }
+}
+
+
+function Test-AssistantInstanceHealthy(
+    [System.Diagnostics.Process]$Process,
+    [int]$StartupGraceSeconds = 300
+) {
+    if ($null -eq $Process) { return $false }
+    try { $Process.Refresh() } catch { return $false }
+    try { if ($Process.HasExited) { return $false } } catch { return $false }
+
+    $processAgeSeconds = $null
+    try {
+        $processAgeSeconds = [int]((Get-Date) - $Process.StartTime).TotalSeconds
+    } catch {}
+    $supervisorAgeSeconds = Get-AssistantSupervisorAgeSeconds -Process $Process
+    $ageSeconds = Get-AssistantEffectiveAgeSeconds `
+        -ProcessAgeSeconds $processAgeSeconds `
+        -SupervisorAgeSeconds $supervisorAgeSeconds
+
+    $responding = $true
+    try { $responding = [bool]$Process.Responding } catch {}
+    $hasMainWindow = $false
+    try { $hasMainWindow = ([int64]$Process.MainWindowHandle -ne 0) } catch {}
+
+    # A process without a Qt window is allowed to finish its normal bootstrap
+    # grace period.  An old, non-responding or windowless process is stale and
+    # must not make a new double-click silently exit.
+    if ($hasMainWindow -and $responding) { return $true }
+    if ($null -ne $ageSeconds -and $ageSeconds -lt $StartupGraceSeconds) {
+        return $true
+    }
+    return $false
 }
 
 
@@ -268,8 +346,10 @@ function Set-AssistantProcessLimits([System.Diagnostics.Process]$Process) {
 
 function Get-AssistantExitDisposition([int]$ExitCode) {
     # The observed native failures are STATUS_ACCESS_VIOLATION (0xC0000005)
-    # and STATUS_STACK_BUFFER_OVERRUN / fail-fast (0xC0000409).
-    $recoverableCrashCodes = @(-1073741819, -1073740791)
+    # and STATUS_STACK_BUFFER_OVERRUN / fail-fast (0xC0000409).  The signed
+    # CLR exception code 0xe0434352 is also restartable when it belongs to the
+    # supervised assistant process.
+    $recoverableCrashCodes = @(-1073741819, -1073740791, -532462766)
     if ($recoverableCrashCodes -contains $ExitCode) { return 'restart' }
     return 'stop'
 }
@@ -418,12 +498,27 @@ if (Test-Path -LiteralPath $StartupClockBridgePath -PathType Leaf) {
 }
 
 # Double-clicking the shortcut while the assistant is loading used to kill the
-# still-initialising window.  The normal entry now preserves it; only an
-# explicit `launcher.ps1 -Restart` is allowed to close an existing instance.
+# still-initialising window.  Preserve a healthy/loading instance, but repair a
+# stale process whose window vanished or stopped responding.
 $existingAssistantInstances = @(Get-Process -Name 'QQFarmCVHelper' -ErrorAction SilentlyContinue)
+$existingHealthy = $true
+if ($existingAssistantInstances.Count -gt 0) {
+    $staleInstances = @(
+        $existingAssistantInstances |
+            Where-Object { !(Test-AssistantInstanceHealthy -Process $_) }
+    )
+    $existingHealthy = ($staleInstances.Count -eq 0)
+    if (!$existingHealthy) {
+        Write-WatchdogLog (
+            'existing_instance_health stale=' + ($staleInstances.Id -join ',') +
+            ' total=' + $existingAssistantInstances.Count
+        )
+    }
+}
 $existingInstanceAction = Get-ExistingAssistantInstanceAction `
     -ExistingCount $existingAssistantInstances.Count `
-    -RestartRequested ([bool]$Restart)
+    -RestartRequested ([bool]$Restart) `
+    -ExistingHealthy $existingHealthy
 if ($existingInstanceAction -eq 'preserve-existing') {
     $existingPidList = ($existingAssistantInstances.Id -join ',')
     Write-WatchdogLog (
@@ -432,10 +527,11 @@ if ($existingInstanceAction -eq 'preserve-existing') {
     )
     exit 0
 }
-if ($existingInstanceAction -eq 'restart-existing') {
+if ($existingInstanceAction -in @('restart-existing', 'restart-stale')) {
     Write-WatchdogLog (
         'existing_instance pid=' + ($existingAssistantInstances.Id -join ',') +
-        ' action=restart-existing restartRequested=True'
+        ' action=' + $existingInstanceAction +
+        ' restartRequested=' + ([bool]$Restart)
     )
     if (!(Stop-ExistingAssistantInstances)) { exit 5 }
 }

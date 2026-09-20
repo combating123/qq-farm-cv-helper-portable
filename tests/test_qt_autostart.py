@@ -1,4 +1,3 @@
-import ast
 import unittest
 from pathlib import Path
 
@@ -7,22 +6,43 @@ HOOK = ROOT / 'portable' / 'hook.py'
 
 
 def load_autostart():
-    source = HOOK.read_text(encoding='utf-8-sig')
-    tree = ast.parse(source, filename=str(HOOK))
-    names = {'_qt_runtime_already_running', '_qt_autostart_running_button'}
-    nodes = []
-    for node in tree.body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == '_QT_AUTOSTART_CLICKED'
-            for t in node.targets
-        ):
-            nodes.append(node)
-        elif isinstance(node, ast.FunctionDef) and node.name in names:
-            nodes.append(node)
-    module = ast.Module(body=nodes, type_ignores=[])
-    ast.fix_missing_locations(module)
+    lines = HOOK.read_text(encoding='utf-8-sig').splitlines()
+    names = {
+        '_QT_AUTOSTART_CLICKED',
+        '_QT_AUTOSTART_ATTEMPTS',
+        '_QT_AUTOSTART_LAST_ATTEMPT_TS',
+        '_QT_AUTOSTART_COOLDOWN_UNTIL',
+        '_QT_AUTOSTART_MAX_ATTEMPTS',
+        '_QT_AUTOSTART_RETRY_SECONDS',
+        '_QT_STARTING_STALE_SECONDS',
+        '_qt_runtime_already_running',
+        '_qt_autostart_running_button',
+    }
+    blocks = []
+    for name in names:
+        assignment = next(
+            (line for line in lines if line.startswith(name + ' =')),
+            None,
+        )
+        if assignment is not None:
+            blocks.append(assignment)
+            continue
+        marker = f'def {name}('
+        start = next(
+            (index for index, line in enumerate(lines) if line.startswith(marker)),
+            None,
+        )
+        if start is None:
+            continue
+        end = len(lines)
+        for index in range(start + 1, len(lines)):
+            line = lines[index]
+            if line and not line[0].isspace() and not line.startswith('#'):
+                end = index
+                break
+        blocks.append('\n'.join(lines[start:end]))
     namespace = {'_write': lambda *a, **k: None}
-    exec(compile(module, str(HOOK), 'exec'), namespace)
+    exec(compile('\n\n'.join(blocks), str(HOOK), 'exec'), namespace)
     return namespace
 
 

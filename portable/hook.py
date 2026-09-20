@@ -5936,6 +5936,26 @@ def _qqfarm_runtime_page_readiness_gate(context, label):
         _qqfarm_note_page_readiness(context, 'login-conflict', message)
         return False
 
+    # A window-owned frame can contain real, high-contrast pixels while still
+    # being only QQ's white title/loading shell.  The generic pixel gate above
+    # protects against all-white/all-black buffers; this scene gate separately
+    # requires the farm canvas before native OCR, planting, purchases, or friend
+    # patrols are allowed to run.
+    try:
+        scene_fn = globals().get('_qqfarm_visible_frame_has_farm_scene')
+        farm_scene_visible = bool(
+            scene_fn(frame) if callable(scene_fn) else True
+        )
+    except BaseException:
+        farm_scene_visible = False
+    if not farm_scene_visible:
+        _qqfarm_note_page_readiness(
+            context,
+            'loading',
+            'QQ\u519c\u573a\u7a97\u53e3\u52a0\u8f7d\u4e2d\uff1a\u5f53\u524d\u4ec5\u6709\u6807\u9898\u6216\u975e\u519c\u573a\u753b\u9762\uff0c\u8df3\u8fc7\u672c\u8f6e\u4e1a\u52a1\u52a8\u4f5c\uff1b\u4e0d\u8bfb\u53d6\u7b49\u7ea7\u3001\u4e0d\u79cd\u690d\u3001\u4e0d\u4e70\u79cd\u3001\u4e0d\u65bd\u80a5\u3001\u4e0d\u5de1\u89c6\u597d\u53cb',
+        )
+        return False
+
     try:
         setattr(context, '_qqfarm_page_readiness_hwnd', int(hwnd))
     except BaseException:
@@ -26905,6 +26925,8 @@ _QQFARM_WGC_REBUILD_WINDOW_SECONDS = 300.0
 _QQFARM_WGC_REBUILD_MAX_PER_WINDOW = 3
 _QQFARM_WGC_REBUILD_COOLDOWN_SECONDS = 30.0
 _QQFARM_WGC_REBUILD_BURST_COOLDOWN_SECONDS = 300.0
+_QQFARM_WGC_RECENT_BLANK_HWNDS = {}
+_QQFARM_WGC_BLANK_HWND_TTL_SECONDS = 300.0
 # GetPerformanceInfo is a cheap, read-only process-wide sample.  The guard is
 # only consulted at the WGC start/capture boundary (not on every frame copy).
 _QQFARM_KERNEL_POOL_LAST_SAMPLE_TS = 0.0
@@ -26921,6 +26943,85 @@ def _qqfarm_wgc_callback_is_current(generation):
         return bool(expected > 0 and received == expected)
     except BaseException:
         return False
+
+
+def _qqfarm_wgc_prune_blank_hwnds(now=None):
+    """Keep only blank HWND evidence inside the bounded rebuild window."""
+    try:
+        time_module = globals().get('time') or __import__('time')
+        now_value = float(
+            time_module.monotonic() if now is None else now
+        )
+    except BaseException:
+        now_value = 0.0
+    try:
+        ttl = max(5.0, float(globals().get(
+            '_QQFARM_WGC_BLANK_HWND_TTL_SECONDS', 300.0
+        ) or 300.0))
+        raw = globals().get('_QQFARM_WGC_RECENT_BLANK_HWNDS', {})
+        history = dict(raw) if isinstance(raw, dict) else {}
+        history = {
+            int(hwnd): float(timestamp)
+            for hwnd, timestamp in history.items()
+            if int(hwnd or 0) > 0 and (
+                now_value <= 0.0 or
+                now_value - float(timestamp or 0.0) < ttl
+            )
+        }
+        globals()['_QQFARM_WGC_RECENT_BLANK_HWNDS'] = history
+        return history
+    except BaseException:
+        globals()['_QQFARM_WGC_RECENT_BLANK_HWNDS'] = {}
+        return {}
+
+
+def _qqfarm_wgc_blank_hwnd_recent(hwnd, now=None):
+    try:
+        window = int(hwnd or 0)
+    except BaseException:
+        window = 0
+    if window <= 0:
+        return False
+    history = _qqfarm_wgc_prune_blank_hwnds(now=now)
+    return bool(window in history)
+
+
+def _qqfarm_wgc_mark_blank_hwnd_once(hwnd, now=None):
+    """Record one rebuild charge for a blank HWND until it changes or recovers."""
+    try:
+        window = int(hwnd or 0)
+    except BaseException:
+        window = 0
+    if window <= 0:
+        return True
+    try:
+        time_module = globals().get('time') or __import__('time')
+        now_value = float(
+            time_module.monotonic() if now is None else now
+        )
+    except BaseException:
+        now_value = 0.0
+    history = _qqfarm_wgc_prune_blank_hwnds(now=now_value)
+    if window in history:
+        return False
+    history[window] = now_value
+    globals()['_QQFARM_WGC_RECENT_BLANK_HWNDS'] = history
+    return True
+
+
+def _qqfarm_wgc_clear_blank_hwnd(hwnd=None):
+    """Release blank evidence after a real farm frame is observed."""
+    history = _qqfarm_wgc_prune_blank_hwnds()
+    try:
+        window = int(hwnd or 0)
+    except BaseException:
+        window = 0
+    if window > 0:
+        history.pop(window, None)
+    else:
+        history.clear()
+    globals()['_QQFARM_WGC_RECENT_BLANK_HWNDS'] = history
+    return True
 
 
 def _qqfarm_wgc_rebuild_allowed(reason='', now=None):
@@ -27370,6 +27471,26 @@ def _qqfarm_invalidate_wgc_frame_cache(reason=''):
 def _qqfarm_stop_wgc_capture(reason=''):
     control = globals().get('_QQFARM_WGC_CONTROL')
     capture = globals().get('_QQFARM_WGC_CAPTURE')
+    try:
+        stopped_hwnd = int(
+            globals().get('_QQFARM_WGC_BOUND_HWND', 0) or
+            globals().get('_QQFARM_LAST_FARM_HWND', 0) or 0
+        )
+    except BaseException:
+        stopped_hwnd = 0
+    charge_rebuild_budget = True
+    if str(reason or '') == 'blank-surface':
+        mark_fn = globals().get('_qqfarm_wgc_mark_blank_hwnd_once')
+        if callable(mark_fn):
+            try:
+                charge_rebuild_budget = bool(mark_fn(stopped_hwnd))
+            except BaseException:
+                charge_rebuild_budget = True
+        try:
+            if int(globals().get('_QQFARM_LAST_FARM_HWND', 0) or 0) == stopped_hwnd:
+                globals()['_QQFARM_LAST_FARM_HWND'] = 0
+        except BaseException:
+            pass
     # Invalidate callbacks before asking the native object to stop.  Keep the
     # Python references alive until stop() returns; dropping them first was the
     # original path that allowed late callbacks to outlive their owner.
@@ -27403,13 +27524,25 @@ def _qqfarm_stop_wgc_capture(reason=''):
             globals()['_QQFARM_WGC_CONTROL'] = None
         if globals().get('_QQFARM_WGC_CAPTURE') is capture:
             globals()['_QQFARM_WGC_CAPTURE'] = None
-    if reason:
+    if reason and charge_rebuild_budget:
         note_fn = globals().get('_qqfarm_wgc_note_rebuild')
         if callable(note_fn):
             try:
                 note_fn(reason)
             except BaseException:
                 pass
+    elif reason:
+        try:
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v506-wgc-blank-hwnd-dedup',
+                    'v506 WGC blank HWND already rebuilt; duplicate budget charge skipped hwnd=' +
+                    str(stopped_hwnd),
+                    10.0,
+                )
+        except BaseException:
+            pass
     if reason:
         try:
             log_fn = globals().get('_throttled_write')
@@ -27628,13 +27761,25 @@ def _qqfarm_find_farm_capture_hwnd():
         # pixels to the active Weixin automation instance.
         return 0
 
+    def _is_recent_blank(hwnd):
+        recent_fn = globals().get('_qqfarm_wgc_blank_hwnd_recent')
+        if not callable(recent_fn):
+            return False
+        try:
+            return bool(recent_fn(hwnd))
+        except BaseException:
+            return False
+
+    deferred_recent = []
     try:
         visible_fn = globals().get('_share_find_farm_window_hwnd')
         if callable(visible_fn):
             visible_hwnd = int(visible_fn() or 0)
             if visible_hwnd > 0:
-                globals()['_QQFARM_LAST_FARM_HWND'] = visible_hwnd
-                return visible_hwnd
+                if not _is_recent_blank(visible_hwnd):
+                    globals()['_QQFARM_LAST_FARM_HWND'] = visible_hwnd
+                    return visible_hwnd
+                deferred_recent.append(visible_hwnd)
     except BaseException:
         pass
 
@@ -27680,6 +27825,10 @@ def _qqfarm_find_farm_capture_hwnd():
         except BaseException:
             cached_value = 0
         if _cached_hwnd_is_usable(cached_value):
+            if _is_recent_blank(cached_value):
+                if cached_value not in deferred_recent:
+                    deferred_recent.append(cached_value)
+                continue
             globals()['_QQFARM_LAST_FARM_HWND'] = cached_value
             return cached_value
 
@@ -27700,6 +27849,7 @@ def _qqfarm_find_farm_capture_hwnd():
                 # Exact title is the primary identity.  Prefer a real visible
                 # farm-sized surface, but retain minimized/hidden candidates.
                 score = (
+                    1 if _is_recent_blank(hwnd) else 0,
                     0 if title == '\u0051\u0051\u7ecf\u5178\u519c\u573a' else 1,
                     0 if visible and not iconic else 1,
                     abs(width - 428) + abs(height - 800),
@@ -27744,6 +27894,7 @@ def _qqfarm_find_farm_capture_hwnd():
                     width = max(0, int(rect[2] - rect[0])) if rect else 0
                     height = max(0, int(rect[3] - rect[1])) if rect else 0
                     score = (
+                        1 if _is_recent_blank(window) else 0,
                         0 if title == '\u0051\u0051\u7ecf\u5178\u519c\u573a' else 1,
                         0 if visible and not iconic else 1,
                         abs(width - 428) + abs(height - 800),
@@ -27762,6 +27913,10 @@ def _qqfarm_find_farm_capture_hwnd():
     if candidates:
         candidates.sort(key=lambda item: item[0])
         selected = int(candidates[0][1])
+        globals()['_QQFARM_LAST_FARM_HWND'] = selected
+        return selected
+    if deferred_recent:
+        selected = int(deferred_recent[0])
         globals()['_QQFARM_LAST_FARM_HWND'] = selected
         return selected
     return 0
@@ -28515,6 +28670,14 @@ def _qqfarm_capture_wgc_farm_frame(max_age=3.0):
         globals()['_QQFARM_LAST_WGC_NORMALIZED_TS'] = now_value
         globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_TS'] = timestamp
         globals()['_QQFARM_LAST_WGC_NORMALIZED_SOURCE_ID'] = source_id
+        try:
+            scene_fn = globals().get('_qqfarm_visible_frame_has_farm_scene')
+            if callable(scene_fn) and bool(scene_fn(normalized)):
+                clear_blank_fn = globals().get('_qqfarm_wgc_clear_blank_hwnd')
+                if callable(clear_blank_fn):
+                    clear_blank_fn(globals().get('_QQFARM_WGC_BOUND_HWND', 0))
+        except BaseException:
+            pass
         remember_fn = globals().get('_qqfarm_remember_good_capture_frame')
         if callable(remember_fn):
             remember_fn(normalized)
@@ -29526,28 +29689,108 @@ def _get_frame_from_bot(bot):
         )
         if qq_mode:
             visible_fn = globals().get('_qqfarm_capture_visible_farm_frame')
-            visible_frame = visible_fn() if callable(visible_fn) else None
             prepare_fn = globals().get(
                 '_qqfarm_prepare_visible_frame_for_business'
             )
-            if visible_frame is not None and callable(prepare_fn):
-                visible_frame = prepare_fn(visible_frame)
             trusted_fn = globals().get(
                 '_qqfarm_visible_capture_frame_is_trusted'
             )
-            trusted = bool(
-                visible_frame is not None and callable(trusted_fn) and
-                bool(trusted_fn(visible_frame))
-            )
             validator = globals().get('_qqfarm_visible_frame_has_farm_scene')
-            visible_valid = bool(
-                visible_frame is not None and (
-                    trusted or not callable(validator) or
-                    bool(validator(visible_frame))
+            # A QQ/WGC surface can miss one compositor tick while the window
+            # is being restored, resized, or rebound to a new HWND.  Retry the
+            # visible path once before spending the native-fallback budget;
+            # this keeps a transient blank frame from driving the bot into its
+            # restart/stop path.  The retry is deliberately bounded and does
+            # not alter the business route or GUI.
+            for visible_attempt in range(2):
+                visible_frame = None
+                try:
+                    visible_frame = (
+                        visible_fn() if callable(visible_fn) else None
+                    )
+                except BaseException as error:
+                    try:
+                        log_fn = globals().get('_throttled_write')
+                        if callable(log_fn):
+                            log_fn(
+                                'v505-visible-capture-exception',
+                                'v505 visible capture attempt=' +
+                                str(visible_attempt + 1) +
+                                ' error=' + repr(error)[:180],
+                                5.0,
+                            )
+                    except BaseException:
+                        pass
+                prepared_frame = visible_frame
+                if prepared_frame is not None and callable(prepare_fn):
+                    try:
+                        prepared_frame = prepare_fn(prepared_frame)
+                    except BaseException:
+                        prepared_frame = None
+                trusted = bool(
+                    prepared_frame is not None and callable(trusted_fn) and
+                    bool(trusted_fn(prepared_frame))
                 )
-            )
-            if visible_valid:
-                return visible_frame
+                visible_valid = bool(
+                    prepared_frame is not None and (
+                        trusted or not callable(validator) or
+                        bool(validator(prepared_frame))
+                    )
+                )
+                if visible_valid:
+                    return prepared_frame
+                if visible_attempt == 0:
+                    # Do not spend a second visible probe when the native
+                    # fallback budget is currently available.  That budget is
+                    # intentionally short-windowed: a native timeout must
+                    # suppress stacked capture attempts, otherwise one
+                    # logical frame request can consume the budget twice and
+                    # make the next request look like a new capture failure.
+                    # When native fallback is unavailable (for example while
+                    # WGC is still warming up), retain the bounded visible
+                    # retry for a transient compositor miss.
+                    retry_visible = True
+                    try:
+                        gate_fn = globals().get(
+                            '_qqfarm_native_capture_fallback_allowed'
+                        )
+                        if callable(gate_fn):
+                            fallback_allowed = bool(gate_fn())
+                            if fallback_allowed:
+                                retry_visible = False
+                            else:
+                                # ``False`` also represents an active
+                                # post-timeout cooldown.  In that case the
+                                # previous native attempt already consumed
+                                # this window; probing visible twice would
+                                # defeat the cooldown.  A zero timestamp is
+                                # the warm-up/no-fallback case where the
+                                # compositor retry is still useful.
+                                last_native = float(
+                                    globals().get(
+                                        '_QQFARM_NATIVE_CAPTURE_LAST_TS', 0.0
+                                    ) or 0.0
+                                )
+                                retry_visible = last_native <= 0.0
+                    except BaseException:
+                        retry_visible = True
+                    if not retry_visible:
+                        break
+                    try:
+                        log_fn = globals().get('_throttled_write')
+                        if callable(log_fn):
+                            log_fn(
+                                'v505-visible-capture-retry',
+                                'v505 visible capture miss; retrying once before '
+                                'native fallback',
+                                5.0,
+                            )
+                    except BaseException:
+                        pass
+                    try:
+                        __import__('time').sleep(0.08)
+                    except BaseException:
+                        pass
     except BaseException:
         pass
     gate_reserved = False
@@ -41600,6 +41843,20 @@ def _wrap_native_v225_daily_catchup_run_cycle(fn, name=''):
 
     def _wrapped(*args, **kwargs):
         context = args[0] if args else kwargs.get('self')
+        readiness_fn = globals().get('_qqfarm_runtime_page_readiness_gate')
+        if callable(readiness_fn):
+            try:
+                if not bool(readiness_fn(context, 'FarmBotCV.run_cycle')):
+                    return False
+            except BaseException as error:
+                try:
+                    _write(
+                        'v506 native run_cycle readiness gate error=' +
+                        repr(error)[:240]
+                    )
+                except BaseException:
+                    pass
+                return False
         try:
             rescue_state = globals().get('_QQFARM_PATROL_RESCUE_GLOBAL_STATE')
             if not isinstance(rescue_state, dict):
@@ -51424,7 +51681,7 @@ def _patch_daily_task_soft_retry_loaded(tag=''):
     return 0
 
 
-# ---- v33 start debounce: ignore a second Start click while initialization is still running ----
+# ---- v33/v505 start debounce: ignore overlap, but unlock a failed Start immediately ----
 try:
     _START_DEBOUNCE_PATCH_LOG_SEEN
 except BaseException:
@@ -51434,6 +51691,64 @@ try:
 except BaseException:
     _START_DEBOUNCE_PATCHED_CLASSES = set()
 _START_DEBOUNCE_SECONDS = 15.0
+
+
+def _qqfarm_start_request_has_runtime_evidence(owner):
+    """Return true when a native Start call actually created/entered runtime state."""
+    if owner is None:
+        return False
+    queue = [owner]
+    seen = set()
+    depth = 0
+    while queue and depth < 48:
+        depth += 1
+        current = queue.pop(0)
+        if current is None or isinstance(current, (str, bytes, int, float, bool)):
+            continue
+        try:
+            identity = id(current)
+            if identity in seen:
+                continue
+            seen.add(identity)
+        except BaseException:
+            pass
+        for name in ('bot_running', 'running', 'starting', '_starting', '_bot_starting'):
+            try:
+                value = getattr(current, name, None)
+                if isinstance(value, (bool, int)) and bool(value):
+                    return True
+            except BaseException:
+                pass
+        try:
+            states = getattr(current, '_instance_runtime_ui_state', None)
+            if isinstance(states, dict):
+                for state in states.values():
+                    if isinstance(state, dict) and (
+                            bool(state.get('running')) or
+                            bool(state.get('starting'))):
+                        return True
+        except BaseException:
+            pass
+        for name in (
+                'bot_thread', '_bot_thread', 'thread', '_thread',
+                'worker', '_worker', 'runtime_thread', '_runtime_thread'):
+            try:
+                candidate = getattr(current, name, None)
+                alive_fn = getattr(candidate, 'is_alive', None)
+                if callable(alive_fn) and bool(alive_fn()):
+                    return True
+            except BaseException:
+                pass
+        for name in (
+                'runtime', '_runtime', 'service', '_service', 'bot', '_bot',
+                'engine', '_engine', 'controller', '_controller'):
+            try:
+                child = getattr(current, name, None)
+                if child is not None:
+                    queue.append(child)
+            except BaseException:
+                pass
+    return False
 
 
 def _start_debounce_log(msg):
@@ -51466,7 +51781,26 @@ def _wrap_start_debounce_method(fn):
         except BaseException:
             pass
         try:
-            return fn(self, *a, **k)
+            result = fn(self, *a, **k)
+            # The native methods normally return None even on success, so the
+            # return value alone is not enough.  A failed dispatch, however,
+            # leaves no running/starting state or live worker.  Keep the
+            # debounce lease only for a real start; otherwise the next user
+            # click must be allowed to retry immediately.
+            evidence_fn = globals().get('_qqfarm_start_request_has_runtime_evidence')
+            has_evidence = bool(
+                callable(evidence_fn) and evidence_fn(self)
+            )
+            if result is False or not has_evidence:
+                try:
+                    setattr(self, '_qqfarm_last_start_request_ts', 0.0)
+                except BaseException:
+                    pass
+                _start_debounce_log(
+                    'native Start produced no runtime evidence; retry unlocked '
+                    'result=' + repr(result)
+                )
+            return result
         except BaseException:
             try: setattr(self, '_qqfarm_last_start_request_ts', 0.0)
             except BaseException: pass
@@ -62167,11 +62501,17 @@ def _patch_late_vip_modules():
     return []
 
 
-# ---- Qt front-end unlocker: enable disabled VIP controls and refresh entitlement-looking UI ----
+# ---- Qt front-end unlocker: enable disabled controls and refresh entitlement-looking UI ----
 # v6 note: do NOT import PySide6 before the app imports it. In embedded Nuitka apps,
 # importing Qt too early can stall before QApplication/main window creation. We wait until
 # PySide6.QtCore and PySide6.QtWidgets already exist in sys.modules, then patch in-place.
 _QT_AUTOSTART_CLICKED = False
+_QT_AUTOSTART_ATTEMPTS = 0
+_QT_AUTOSTART_LAST_ATTEMPT_TS = 0.0
+_QT_AUTOSTART_COOLDOWN_UNTIL = 0.0
+_QT_AUTOSTART_MAX_ATTEMPTS = 3
+_QT_AUTOSTART_RETRY_SECONDS = 1.5
+_QT_STARTING_STALE_SECONDS = 20.0
 
 
 
@@ -62215,8 +62555,59 @@ def _qt_runtime_already_running(app):
     return False
 
 
+def _qqfarm_clear_stale_qt_starting_state(app, now=None):
+    """Clear a UI ``starting`` latch after a failed native Start dispatch."""
+    if app is None:
+        return 0
+    try:
+        now_value = float(
+            (__import__('time').time() if now is None else now)
+        )
+    except BaseException:
+        return 0
+    try:
+        widgets = list(app.allWidgets())
+    except BaseException:
+        return 0
+    changed = 0
+    for widget in widgets:
+        try:
+            states = getattr(widget, '_instance_runtime_ui_state', None)
+            if not isinstance(states, dict):
+                continue
+            request_ts = float(
+                getattr(widget, '_qqfarm_last_start_request_ts', 0.0) or 0.0
+            )
+            for state in states.values():
+                if not isinstance(state, dict):
+                    continue
+                if not bool(state.get('starting')) or bool(state.get('running')):
+                    continue
+                started_at = state.get('started_at') or request_ts
+                try:
+                    started_at = float(started_at or 0.0)
+                except BaseException:
+                    started_at = 0.0
+                if started_at <= 0.0 or (now_value - started_at) < _QT_STARTING_STALE_SECONDS:
+                    continue
+                state['starting'] = False
+                if bool(state.get('stopping')):
+                    state['stopping'] = False
+                changed += 1
+        except BaseException:
+            continue
+    if changed:
+        try:
+            _write(
+                'v505 cleared stale Qt starting state count=' + str(changed)
+            )
+        except BaseException:
+            pass
+    return changed
+
+
 def _qqfarm_reenable_start_without_window(app):
-    """Keep Start clickable after Stop when the QQ mini-program window is absent."""
+    """Keep Start clickable after a failed/finished run without changing the GUI."""
     if app is None:
         return 0
     try:
@@ -62225,18 +62616,16 @@ def _qqfarm_reenable_start_without_window(app):
             return 0
     except BaseException:
         return 0
+    try:
+        _qqfarm_clear_stale_qt_starting_state(app)
+    except BaseException:
+        pass
     running_fn = globals().get('_qt_runtime_already_running')
     try:
         if callable(running_fn) and bool(running_fn(app)):
             return 0
     except BaseException:
         return 0
-    hwnd_fn = globals().get('_share_find_farm_window_hwnd')
-    try:
-        if callable(hwnd_fn) and int(hwnd_fn() or 0) > 0:
-            return 0
-    except BaseException:
-        pass
     try:
         widgets = list(app.allWidgets())
     except BaseException:
@@ -62266,14 +62655,39 @@ def _qqfarm_reenable_start_without_window(app):
 
 
 def _qt_autostart_running_button(app):
-    """Start the configured assistant once after the real main window is ready."""
+    """Start after the real main window is ready, with bounded failed-click retry."""
     global _QT_AUTOSTART_CLICKED
-    if _QT_AUTOSTART_CLICKED or app is None:
+    global _QT_AUTOSTART_ATTEMPTS
+    global _QT_AUTOSTART_LAST_ATTEMPT_TS
+    global _QT_AUTOSTART_COOLDOWN_UNTIL
+    if app is None:
         return False
+    try:
+        _qqfarm_clear_stale_qt_starting_state(app)
+    except BaseException:
+        pass
     if _qt_runtime_already_running(app):
         _QT_AUTOSTART_CLICKED = True
         _write('v102 qt autostart skipped because runtime is already running')
         return False
+    try:
+        now_value = float(__import__('time').monotonic())
+    except BaseException:
+        now_value = 0.0
+    if _QT_AUTOSTART_COOLDOWN_UNTIL > now_value:
+        return False
+    if _QT_AUTOSTART_CLICKED:
+        if _QT_AUTOSTART_ATTEMPTS >= _QT_AUTOSTART_MAX_ATTEMPTS:
+            _QT_AUTOSTART_CLICKED = False
+            _QT_AUTOSTART_COOLDOWN_UNTIL = now_value + 8.0
+            _write(
+                'v505 qt autostart retries exhausted; manual Start remains available'
+            )
+            return False
+        if (
+                _QT_AUTOSTART_LAST_ATTEMPT_TS > 0.0 and
+                (now_value - _QT_AUTOSTART_LAST_ATTEMPT_TS) < _QT_AUTOSTART_RETRY_SECONDS):
+            return False
     try:
         widgets = list(app.allWidgets())
     except BaseException:
@@ -62297,7 +62711,13 @@ def _qt_autostart_running_button(app):
                 continue
             clicker()
             _QT_AUTOSTART_CLICKED = True
-            _write('v38 qt autostart clicked exact start-running button')
+            _QT_AUTOSTART_ATTEMPTS += 1
+            _QT_AUTOSTART_LAST_ATTEMPT_TS = now_value
+            _write(
+                'v505 qt autostart clicked exact start-running button '
+                'attempt=' + str(_QT_AUTOSTART_ATTEMPTS) + '/' +
+                str(_QT_AUTOSTART_MAX_ATTEMPTS)
+            )
             return True
         except BaseException:
             continue
