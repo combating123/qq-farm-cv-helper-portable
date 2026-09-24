@@ -96,6 +96,32 @@ class QQVisibleCapturePriorityTests(unittest.TestCase):
         self.assertIs(native, capture.get_window_frame())
         self.assertEqual([True], native_calls)
 
+    def test_runtime_capture_owner_accepts_window_owned_friend_list_route(self):
+        namespace = load_functions("_qqfarm_install_visible_capture_priority")
+        visible = object()
+        native_calls = []
+
+        class Capture:
+            def get_window_frame(self):
+                native_calls.append(True)
+                return object()
+
+        capture = Capture()
+        bot = types.SimpleNamespace(screen_capture=capture)
+        rows = [{"center": (400, 300 + index * 120)} for index in range(5)]
+        namespace.update({
+            "_active_is_qq_mode": lambda: True,
+            "_qqfarm_capture_visible_farm_frame": lambda: visible,
+            "_qqfarm_prepare_visible_frame_for_business": lambda frame: frame,
+            "_qqfarm_visible_capture_frame_is_trusted": lambda _frame: False,
+            "_qqfarm_visible_frame_has_farm_scene": lambda _frame: False,
+            "_friend_list_visit_button_rows": lambda _frame: rows,
+        })
+
+        self.assertEqual(1, namespace["_qqfarm_install_visible_capture_priority"](bot))
+        self.assertIs(visible, capture.get_window_frame())
+        self.assertEqual([], native_calls)
+
 
     def test_get_frame_rejects_occluded_visible_pixels_and_uses_native(self):
         namespace = load_functions("_get_frame_from_bot")

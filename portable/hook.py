@@ -14,6 +14,18 @@ except BaseException:
 
 _HOOK_LOG_WRITE_COUNT = 0
 _HOOK_LOG_MAX_BYTES = 10 * 1024 * 1024
+_QQFARM_FRIEND_LIST_FRAME_CACHE = None
+_QQFARM_FRIEND_LIST_ROWS_CACHE = []
+_QQFARM_FRIEND_LIST_FRAME_CACHE_TS = 0.0
+
+
+def _qqfarm_clear_friend_list_frame_cache():
+    global _QQFARM_FRIEND_LIST_FRAME_CACHE
+    global _QQFARM_FRIEND_LIST_ROWS_CACHE
+    global _QQFARM_FRIEND_LIST_FRAME_CACHE_TS
+    _QQFARM_FRIEND_LIST_FRAME_CACHE = None
+    _QQFARM_FRIEND_LIST_ROWS_CACHE = []
+    _QQFARM_FRIEND_LIST_FRAME_CACHE_TS = 0.0
 
 
 def _rotate_hook_log_if_needed(path=None, max_bytes=_HOOK_LOG_MAX_BYTES):
@@ -189,6 +201,18 @@ _write('v499 visible self surface releases stale friend terminal route enabled')
 _write('v500 terminal friend-list close -> bounded verified home recovery enabled')
 _write('v501 native empty-land log requires fresh visual proof enabled')
 _write('v502 sparse-terrain seedling/platform full-board proof enabled')
+_write('v523 stop latch set before native stop + autostart dispatch gate enabled')
+_write('v525 native-v237 anonymous planting overlay enabled')
+_write('v527 native friend-list frame fallback and visit-row dispatch enabled')
+_write('v528 recent valid friend-list frame cache enabled')
+_write('v529 unified friend-entry retry gate enabled')
+_write('v530 native friend owner preflight evidence gate enabled')
+_write('v533 native friend owner home-entry recovery enabled')
+_write('v534 friend-list self-reconcile guard and cache retention enabled')
+_write('v535 native friend bridge resolver fallback enabled')
+_write('v537 pending friend-entry transition grace enabled')
+_write('v538 card-first friend-list geometry and RGB/BGR normalization enabled')
+_write('v539 friend-list capture cache and physical DPI click remap enabled')
 
 try:
     # Keep the bootstrap import set minimal.  The packaged proxy loads this
@@ -496,6 +520,14 @@ def _prepare_runtime_start_request(args, kwargs=None):
     persisted user state, and deliberately leaves `running` false until the
     native start method has successfully created its worker.
     """
+    global _QT_AUTOSTART_BLOCKED_BY_STOP
+    # The Qt timer reaches this helper through the same _start_bot slot as a
+    # user click. Do not let an automatic dispatch erase an explicit stop
+    # latch before the native start method is entered.
+    if bool(globals().get('_QT_AUTOSTART_DISPATCHING', False)) and bool(
+            globals().get('_QT_AUTOSTART_BLOCKED_BY_STOP', False)):
+        return 0
+    _QT_AUTOSTART_BLOCKED_BY_STOP = False
     changed = 0
     try:
         items = []
@@ -534,6 +566,16 @@ def _prepare_runtime_start_request(args, kwargs=None):
                     value = getattr(obj, name, None)
                     if isinstance(value, bool) and value:
                         setattr(obj, name, False)
+                        changed += 1
+                except BaseException:
+                    pass
+            for latch_name in (
+                '_qqfarm_explicit_stop_latched',
+                'qqfarm_explicit_stop_latched',
+            ):
+                try:
+                    if bool(getattr(obj, latch_name, False)):
+                        setattr(obj, latch_name, False)
                         changed += 1
                 except BaseException:
                     pass
@@ -6861,12 +6903,21 @@ def _qqfarm_home_visual_recheck_step(context, frame_state, now_ts=None):
             pass
         update_fn = globals().get('_qqfarm_update_home_priority')
         if callable(update_fn):
-            return bool(update_fn(
+            still_active = bool(update_fn(
                 context,
                 empty_count,
                 now_ts=now_value,
                 reason='fresh-confirmed-home-recheck',
             ))
+            if not still_active:
+                try:
+                    setattr(context, '_qqfarm_home_empty_land_pending', False)
+                    setattr(context, '_qqfarm_home_empty_land_remaining', 0)
+                    setattr(context, '_qqfarm_force_self_cycle_next', False)
+                    setattr(context, '_qqfarm_cycle_branch_hint', 'friend')
+                except BaseException:
+                    pass
+            return still_active
         return bool(empty_count > 0)
 
     unreadable = state in ('unknown', 'blank', 'occluded') or not fresh
@@ -8596,6 +8647,213 @@ def _qqfarm_run_strict_self_planting_cycle(context):
         return False
 
 
+def _qqfarm_home_priority_frame_observation(context, frame, now_ts=None):
+    """Convert one fresh self-pass frame into bounded home-priority evidence.
+
+    The native self routine can return ``False`` after a stale empty-land
+    candidate or an unreadable board.  That return value is not proof that the
+    home still needs planting, and it must not keep the friend route locked
+    forever.  Prefer the strict 24-slot ledger when available; otherwise keep
+    the observation explicitly unknown so the bounded recheck policy can
+    release the route after its finite review budget.
+    """
+    unknown = {
+        'state': 'unknown',
+        'fresh': False,
+        'empty_count': None,
+        'source': 'missing-frame',
+    }
+    if frame is None:
+        return unknown
+    try:
+        usable_fn = globals().get(
+            '_qqfarm_frame_is_usable_for_empty_land_detection'
+        )
+        if callable(usable_fn) and not bool(usable_fn(frame)):
+            return dict(unknown, source='unusable-frame')
+    except BaseException:
+        return dict(unknown, source='frame-check-error')
+
+    try:
+        captured_at = float(
+            now_ts if now_ts is not None else __import__('time').time()
+        )
+    except BaseException:
+        captured_at = 0.0
+
+    # The ledger is the only source allowed to prove zero empty plots.  It also
+    # provides a safe positive count when the current frame contains confirmed
+    # empty slots, avoiding the legacy per-plot title OCR loop.
+    try:
+        ledger_fn = globals().get('_qqfarm_capture_current_frame_24_slot_ledger')
+        ledger = (
+            ledger_fn(
+                frame,
+                frame_id='v536-home-priority-recheck',
+                captured_at=captured_at,
+            )
+            if callable(ledger_fn) else None
+        )
+        if isinstance(ledger, dict):
+            status = str(ledger.get('capture_status') or '').strip().lower()
+            ui_blocked = bool(ledger.get('ui_blocked', False))
+            unknown_count = int(ledger.get('unknown_count') or 0)
+            empty_count = max(0, int(ledger.get('empty_count') or 0))
+            occupied_count = max(0, int(ledger.get('occupied_count') or 0))
+            if status == 'aligned' and not ui_blocked and unknown_count == 0:
+                if occupied_count == 24 and empty_count == 0:
+                    return {
+                        'state': 'confirmed',
+                        'fresh': True,
+                        'empty_count': 0,
+                        'click_safe': bool(ledger.get('click_safe', False)),
+                        'empty_lands': [],
+                        'captured_at': ledger.get('captured_at', captured_at),
+                        'source': '24-slot-ledger-full',
+                    }
+                # Positive empty-land evidence is actionable only when the
+                # current ledger carries click-safe slot geometry.  Counts from
+                # observation-only/physical frames may prove a full board, but
+                # they never authorize a land click or a planting fallback.
+                if empty_count > 0 and bool(ledger.get('click_safe', False)):
+                    slots = ledger.get('slots')
+                    slot_centers = ledger.get('slot_centers')
+                    empty_lands = []
+                    if isinstance(slots, dict) and isinstance(slot_centers, dict):
+                        for slot_id in tuple(ledger.get('slot_ids') or ()):
+                            try:
+                                slot = slots.get(slot_id) or {}
+                                center = slot_centers.get(slot_id)
+                                if (
+                                    str(slot.get('state') or '') == 'empty' and
+                                    isinstance(center, (tuple, list)) and
+                                    len(center) >= 2
+                                ):
+                                    empty_lands.append({
+                                        'center': (
+                                            int(round(float(center[0]))),
+                                            int(round(float(center[1]))),
+                                        ),
+                                        'slot_id': str(slot_id),
+                                        '_qqfarm_24_slot_ledger_proof': True,
+                                    })
+                            except BaseException:
+                                continue
+                    if len(empty_lands) == empty_count:
+                        return {
+                            'state': 'confirmed',
+                            'fresh': True,
+                            'empty_count': empty_count,
+                            'click_safe': True,
+                            'empty_lands': empty_lands,
+                            'captured_at': ledger.get('captured_at', captured_at),
+                            'source': '24-slot-ledger-empty',
+                        }
+    except BaseException:
+        pass
+
+    # A freshly wrapped detector may already have attached a strict board state
+    # and actionable candidates to the runtime object.  Reuse that state only
+    # for a positive count; zero still requires the ledger branch above.
+    try:
+        board_state = str(getattr(
+            context, '_qqfarm_empty_land_board_gate_state', ''
+        ) or '').strip().lower()
+        recent_count = max(0, int(getattr(
+            context, '_qqfarm_recent_empty_land_count', 0
+        ) or 0))
+        if board_state == 'confirmed' and recent_count > 0:
+            return {
+                'state': 'confirmed',
+                'fresh': True,
+                'empty_count': recent_count,
+                'source': 'current-board-gate',
+            }
+    except BaseException:
+        pass
+    return {
+        'state': 'unknown',
+        'fresh': True,
+        'empty_count': None,
+        'source': 'bounded-unknown',
+    }
+
+
+def _qqfarm_reconcile_home_priority_after_self_pass(
+        context, frame, result=False, now_ts=None):
+    """Advance or release the finite home visual recheck after a no-op pass."""
+    if context is None or result is not False:
+        return False
+    try:
+        priority_fn = globals().get('_qqfarm_home_priority_active')
+        if callable(priority_fn) and not bool(priority_fn(context)):
+            return False
+    except BaseException:
+        return False
+    try:
+        observation_fn = globals().get('_qqfarm_home_priority_frame_observation')
+        observation = (
+            observation_fn(context, frame, now_ts=now_ts)
+            if callable(observation_fn) else {
+                'state': 'unknown', 'fresh': False, 'empty_count': None,
+            }
+        )
+        # Carry only current, click-safe slot evidence into the runtime object.
+        # This lets a strict positive ledger continue into planting while the
+        # bounded unknown path still skips the legacy per-plot OCR loop.
+        if isinstance(observation, dict):
+            try:
+                observed_count = max(0, int(
+                    observation.get('empty_count') or 0
+                ))
+            except BaseException:
+                observed_count = 0
+            observed_lands = list(observation.get('empty_lands') or [])
+            observed_safe = bool(observation.get('click_safe', False))
+            try:
+                evidence_ts = float(
+                    observation.get('captured_at') or
+                    (now_ts if now_ts is not None else __import__('time').time())
+                )
+            except BaseException:
+                evidence_ts = 0.0
+            if (
+                str(observation.get('state') or '').strip().lower() ==
+                'confirmed' and observed_count > 0 and observed_safe and
+                len(observed_lands) == observed_count
+            ):
+                try:
+                    setattr(context, '_qqfarm_empty_land_board_gate_state', 'confirmed')
+                    setattr(context, '_qqfarm_empty_land_board_gate_ts', evidence_ts)
+                    setattr(context, '_qqfarm_recent_empty_lands', observed_lands)
+                    setattr(context, '_qqfarm_recent_empty_land_count', observed_count)
+                    setattr(context, '_qqfarm_recent_empty_land_ts', evidence_ts)
+                    setattr(context, '_qqfarm_empty_land_scene_confirmed_full', False)
+                except BaseException:
+                    pass
+        step_fn = globals().get('_qqfarm_home_visual_recheck_step')
+        still_active = bool(
+            step_fn(context, observation, now_ts=now_ts)
+            if callable(step_fn) else True
+        )
+        released = not still_active
+        if released:
+            _write(
+                'v536 bounded home recheck released friend route after '
+                'self no-action source=' + str(
+                    observation.get('source', '')
+                    if isinstance(observation, dict) else ''
+                )
+            )
+        return released
+    except BaseException as error:
+        try:
+            _write('v536 home recheck error=' + repr(error)[:220])
+        except BaseException:
+            pass
+        return False
+
+
 def _run_home_priority_self_pass(context):
     """Run one self-farm pass while the home empty-land latch is active."""
     if not _qqfarm_home_priority_active(context):
@@ -8655,8 +8913,25 @@ def _run_home_priority_self_pass(context):
             if not callable(action):
                 return True, False
         else:
-            # Let the native unknown-scene recovery close transient overlays.  The
-            # process_friend_farm gate still prevents a friend detour.
+            # Let the native unknown-scene recovery close transient overlays,
+            # but still advance the finite visual recheck.  The old path
+            # returned here forever, leaving home priority latched and starving
+            # friend patrols after a single bad capture.
+            reconcile_fn = globals().get(
+                '_qqfarm_reconcile_home_priority_after_self_pass'
+            )
+            recheck_available = callable(reconcile_fn)
+            released = bool(
+                reconcile_fn(context, frame, result=False)
+                if recheck_available else False
+            )
+            if released:
+                return False, None
+            # Keep the bounded home recheck in charge while its finite budget
+            # is active.  Without this return, the outer cycle can immediately
+            # fall through to the friend route after an unreadable frame.
+            if recheck_available:
+                return True, False
             return False, None
 
         try:
@@ -8696,6 +8971,43 @@ def _run_home_priority_self_pass(context):
         # retaining the latch, so its backpack-first and visual verification logic
         # gets a chance to fill the confirmed empty plots.
         if visual_state is False and label == 'process_self_farm' and result is False:
+            reconcile_fn = globals().get(
+                '_qqfarm_reconcile_home_priority_after_self_pass'
+            )
+            recheck_available = callable(reconcile_fn)
+            released = bool(
+                reconcile_fn(context, frame, result=False)
+                if recheck_available else False
+            )
+            if released:
+                return False, result
+            # Never enter the legacy per-plot title OCR fallback from an
+            # unconfirmed board.  It can wait roughly thirty seconds per plot
+            # and is the direct cause of multi-minute home stalls that prevent
+            # the friend route from running.  A later fresh self pass can still
+            # re-arm planting when the board gate supplies real coordinates.
+            try:
+                board_state = str(getattr(
+                    context, '_qqfarm_empty_land_board_gate_state', ''
+                ) or '').strip().lower()
+                recent_count = max(0, int(getattr(
+                    context, '_qqfarm_recent_empty_land_count', 0
+                ) or 0))
+            except BaseException:
+                board_state, recent_count = '', 0
+            if (
+                recheck_available and
+                (board_state != 'confirmed' or recent_count <= 0)
+            ):
+                try:
+                    _write(
+                        'v536 skipped slow home planting fallback without '
+                        'confirmed empty-land proof board=' + str(board_state) +
+                        ' remaining=' + str(recent_count)
+                    )
+                except BaseException:
+                    pass
+                return True, result
             # After a verified harvest, reserve three fresh self scans for any
             # other mature plots before the direct planting fallback can run.
             # This is bounded so a stale event never blocks the planting chain.
@@ -8992,6 +9304,45 @@ def _qqfarm_dedupe_empty_land_candidates(candidates):
     ):
         deduplicated = source
     return deduplicated, discarded, [_summary(item) for item in deduplicated]
+
+
+def _qqfarm_sort_empty_land_candidates(candidates):
+    """Return empty-land candidates in stable top-to-bottom screen order.
+
+    Native template matchers and OCR backends return detections in backend
+    order, which can change with animation, thread timing, or template score.
+    The planting transaction must instead use the visible geometry: higher
+    plots first, then screen-left to screen-right within a row.  Items without
+    a usable centre remain at the end in their original relative order.
+    """
+    try:
+        items = list(candidates or [])
+    except BaseException:
+        return []
+
+    def _key(pair):
+        index, item = pair
+        try:
+            center = item.get('center') if isinstance(item, dict) else None
+            if not isinstance(center, (tuple, list)) or len(center) < 2:
+                raise ValueError('missing center')
+            x_value = float(center[0])
+            y_value = float(center[1])
+            if not (x_value == x_value and y_value == y_value):
+                raise ValueError('non-finite center')
+            # Quantize only the row comparison.  It absorbs a few pixels of
+            # capture jitter while retaining exact coordinates as tie breakers.
+            row = int(round(y_value / 6.0))
+            column = int(round(x_value / 6.0))
+            slot_id = str(item.get('slot_id') or '') if isinstance(item, dict) else ''
+            return (0, row, column, y_value, x_value, slot_id, index)
+        except BaseException:
+            return (1, 0, 0, 0.0, 0.0, '', index)
+
+    try:
+        return [item for _index, item in sorted(enumerate(items), key=_key)]
+    except BaseException:
+        return items
 
 
 def _qqfarm_dynamic_viewport_plot_anchor_candidates(
@@ -14089,6 +14440,45 @@ def _wrap_detect_empty_lands_state(fn, name=''):
                     ) or [])
             except BaseException:
                 pass
+            # A confirmed board gate is a fresh, frame-scoped source of empty
+            # plot candidates.  Do not force every candidate through the slow
+            # per-land title OCR path: on QQ that path can spend about twenty
+            # seconds per plot and treats an unreadable title as proof that the
+            # plot is occupied.  Keep the marker narrow and current so stale
+            # page coordinates cannot become click authority after navigation.
+            if board_state == 'confirmed' and isinstance(result, list):
+                try:
+                    board_confirmed_ts = __import__('time').time()
+                except BaseException:
+                    board_confirmed_ts = 0.0
+                confirmed_candidates = []
+                for item in result:
+                    if not isinstance(item, dict):
+                        continue
+                    try:
+                        center = item.get('center')
+                        if not (
+                            isinstance(center, (tuple, list)) and
+                            len(center) >= 2 and
+                            center[0] is not None and center[1] is not None
+                        ):
+                            continue
+                        crop_cover = str(item.get('crop_cover') or '').strip().lower()
+                        if crop_cover == 'strong':
+                            continue
+                        marked = dict(item)
+                        marked['_qqfarm_board_confirmed_empty_candidate'] = True
+                        marked['_qqfarm_board_confirmed_empty_candidate_ts'] = (
+                            board_confirmed_ts
+                        )
+                        marked['_qqfarm_board_confirmed_empty_candidate_source'] = (
+                            'empty-land-board-gate'
+                        )
+                        confirmed_candidates.append(marked)
+                    except BaseException:
+                        continue
+                if confirmed_candidates:
+                    result = confirmed_candidates
             try:
                 planting_proof_active = bool(getattr(
                     bot, '_qqfarm_planting_outcome_verify_active', False
@@ -14205,6 +14595,12 @@ def _wrap_detect_empty_lands_state(fn, name=''):
                     raw_lands = list(raw_lands or [])
             except BaseException:
                 raw_lands = []
+            try:
+                order_fn = globals().get('_qqfarm_sort_empty_land_candidates')
+                if callable(order_fn):
+                    raw_lands = list(order_fn(raw_lands) or [])
+            except BaseException:
+                pass
             result = raw_lands
             raw_count = len(raw_lands)
             raw_centers = []
@@ -15700,9 +16096,16 @@ def _qqfarm_find_all_quad_empty_land_groups(lands):
                                 + abs(length1 - length2) * 0.20
                                 + abs(first[2][1] - second[2][1]) * 0.15
                             )
+                            # Keep the action order deterministic in screen
+                            # space.  The old order emitted the two middle
+                            # tiles as right, left, which made the central
+                            # four-square seed appear to jump across the
+                            # board.  The canonical order is top, left, right,
+                            # bottom; callers can therefore map one 2x2 action
+                            # to the same four slots on every fresh frame.
                             accepted = (
                                 score,
-                                [anchor[1], right[1], left[1], opposite[1]],
+                                [anchor[1], left[1], right[1], opposite[1]],
                                 frozenset((anchor[0], right[0], left[0], opposite[0])),
                             )
                             break
@@ -15721,6 +16124,34 @@ def _qqfarm_find_all_quad_empty_land_groups(lands):
         )
     )
     return [item[1] for item in groups]
+
+
+def _qqfarm_order_quad_group_members(group):
+    """Normalize any four-plot group to top, left, right, bottom order."""
+    try:
+        items = list(group or [])
+    except BaseException:
+        return []
+
+    def _key(pair):
+        index, item = pair
+        try:
+            center = item.get('center') if isinstance(item, dict) else None
+            if not isinstance(center, (tuple, list)) or len(center) < 2:
+                raise ValueError('missing center')
+            x_value = float(center[0])
+            y_value = float(center[1])
+            if not (x_value == x_value and y_value == y_value):
+                raise ValueError('non-finite center')
+            return (0, int(round(y_value / 6.0)), int(round(x_value / 6.0)),
+                    y_value, x_value, index)
+        except BaseException:
+            return (1, 0, 0, 0.0, 0.0, index)
+
+    try:
+        return [item for _index, item in sorted(enumerate(items), key=_key)]
+    except BaseException:
+        return items
 
 
 def _wrap_quad_empty_land_groups(fn, name=''):
@@ -15746,7 +16177,10 @@ def _wrap_quad_empty_land_groups(fn, name=''):
                     )
                 except BaseException:
                     pass
-                return exhaustive
+                return [
+                    _qqfarm_order_quad_group_members(group)
+                    for group in exhaustive
+                ]
             try:
                 native = fn(*args, **kwargs)
             except BaseException:
@@ -15758,7 +16192,10 @@ def _wrap_quad_empty_land_groups(fn, name=''):
                 )
             except BaseException:
                 pass
-            return native
+            return [
+                _qqfarm_order_quad_group_members(group)
+                for group in list(native or [])
+            ]
 
         _wrapped.__name__ = getattr(fn, '__name__', 'quad_empty_land_groups_wrapper')
         _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
@@ -18292,9 +18729,10 @@ def _wrap_backpack_empty_land_label_fast(fn, name=''):
                 except BaseException:
                     continue
             # Live native detections can report crop_cover=none for planted plots.
-            # A recent matching candidate is preverified only when it carries the
-            # independent visual bare-soil marker; otherwise native label OCR owns
-            # the decision even when home/backpack shortcuts are active.
+            # A recent matching candidate is preverified only when it carries an
+            # independent visual bare-soil marker or a fresh, confirmed board
+            # candidate marker.  The latter is attached only after the board
+            # gate has accepted the coordinate for the current frame.
             if not pending_review:
                 try:
                     recent_lands = list(getattr(
@@ -18302,6 +18740,12 @@ def _wrap_backpack_empty_land_label_fast(fn, name=''):
                     ) or [])
                 except BaseException:
                     recent_lands = []
+                try:
+                    board_gate_confirmed = str(getattr(
+                        bot, '_qqfarm_empty_land_board_gate_state', ''
+                    ) or '').strip().lower() == 'confirmed'
+                except BaseException:
+                    board_gate_confirmed = False
                 for recent_land in recent_lands:
                     try:
                         recent_center = (
@@ -18318,7 +18762,36 @@ def _wrap_backpack_empty_land_label_fast(fn, name=''):
                             isinstance(recent_land, dict) and
                             recent_land.get('_qqfarm_visual_soil_proof')
                         )
-                        pending_review = not recent_visual_soil_proof
+                        board_confirmed_candidate = bool(
+                            isinstance(recent_land, dict) and
+                            recent_land.get(
+                                '_qqfarm_board_confirmed_empty_candidate'
+                            ) and board_gate_confirmed
+                        )
+                        if board_confirmed_candidate:
+                            try:
+                                marker_ts = float(recent_land.get(
+                                    '_qqfarm_board_confirmed_empty_candidate_ts',
+                                    0.0,
+                                ) or 0.0)
+                                if marker_ts <= 0.0:
+                                    marker_ts = float(getattr(
+                                        bot, '_qqfarm_empty_land_board_gate_ts',
+                                        0.0,
+                                    ) or getattr(
+                                        bot, '_qqfarm_recent_empty_land_ts',
+                                        0.0,
+                                    ) or 0.0)
+                                marker_age = max(
+                                    0.0,
+                                    __import__('time').time() - marker_ts,
+                                ) if marker_ts > 0.0 else 999999.0
+                            except BaseException:
+                                marker_age = 999999.0
+                            board_confirmed_candidate = bool(marker_age <= 120.0)
+                        pending_review = not (
+                            recent_visual_soil_proof or board_confirmed_candidate
+                        )
                         break
                     except BaseException:
                         continue
@@ -18329,6 +18802,63 @@ def _wrap_backpack_empty_land_label_fast(fn, name=''):
             # already passed the crop-cover filter and are persisted with their
             # centers.  Do not discard one of those fresh, matching targets just
             # because the per-land title OCR panel takes too long or fails.
+            board_confirmed_preverified = False
+            try:
+                recent_lands = list(getattr(
+                    bot, '_qqfarm_recent_empty_lands', []
+                ) or [])
+            except BaseException:
+                recent_lands = []
+            try:
+                board_gate_confirmed = str(getattr(
+                    bot, '_qqfarm_empty_land_board_gate_state', ''
+                ) or '').strip().lower() == 'confirmed'
+            except BaseException:
+                board_gate_confirmed = False
+            for recent_land in recent_lands:
+                try:
+                    recent_center = (
+                        recent_land.get('center')
+                        if isinstance(recent_land, dict) else recent_land
+                    )
+                    if not (
+                        isinstance(recent_center, (tuple, list)) and
+                        len(recent_center) >= 2
+                    ):
+                        continue
+                    dx = float(recent_center[0]) - float(land_center[0])
+                    dy = float(recent_center[1]) - float(land_center[1])
+                    if (dx * dx + dy * dy) > (42.0 * 42.0):
+                        continue
+                    if not bool(
+                        isinstance(recent_land, dict) and
+                        recent_land.get('_qqfarm_board_confirmed_empty_candidate') and
+                        board_gate_confirmed
+                    ):
+                        continue
+                    crop_cover = str(
+                        recent_land.get('crop_cover') or ''
+                    ).strip().lower()
+                    if crop_cover == 'strong':
+                        continue
+                    marker_ts = float(recent_land.get(
+                        '_qqfarm_board_confirmed_empty_candidate_ts', 0.0
+                    ) or 0.0)
+                    if marker_ts <= 0.0:
+                        marker_ts = float(getattr(
+                            bot, '_qqfarm_empty_land_board_gate_ts', 0.0
+                        ) or getattr(
+                            bot, '_qqfarm_recent_empty_land_ts', 0.0
+                        ) or 0.0)
+                    marker_age = max(
+                        0.0, __import__('time').time() - marker_ts
+                    ) if marker_ts > 0.0 else 999999.0
+                    if marker_age <= 120.0:
+                        board_confirmed_preverified = True
+                        break
+                except BaseException:
+                    continue
+
             home_priority_preverified = False
             try:
                 priority_fn = globals().get('_qqfarm_home_priority_active')
@@ -18362,10 +18892,18 @@ def _wrap_backpack_empty_land_label_fast(fn, name=''):
                         except BaseException:
                             continue
 
-            if not active and not batch_preverified and not home_priority_preverified:
+            if (
+                not active and
+                not batch_preverified and
+                not home_priority_preverified and
+                not board_confirmed_preverified
+            ):
                 return fn(*args, **kwargs)
 
-            if home_priority_preverified:
+            if board_confirmed_preverified:
+                reason = 'hook-board-confirmed-empty-land'
+                log_label = 'v531 board-confirmed candidate'
+            elif home_priority_preverified:
                 reason = 'hook-home-priority-preverified-empty-land'
                 log_label = 'v258 home-priority preverified empty land'
             elif active:
@@ -19261,6 +19799,122 @@ def _qqfarm_merge_empty_land_candidate_queues(*queues):
             merged.append(normalized)
             centers.append(center)
     return merged
+
+
+def _qqfarm_enrich_empty_land_candidates_with_proof(
+        bot, candidates, max_age_seconds=120.0):
+    """Copy fresh board/soil proof onto a native direct-land queue.
+
+    The v2.3.7 native helper sometimes rebuilds its ``direct_lands`` list from
+    centre coordinates only.  That reconstruction used to discard the proof
+    marker attached by the current-frame board gate, sending the same plot back
+    through the slow land-name OCR path.  Keep the native coordinates and copy
+    only matching, fresh proof metadata from the current bot snapshot.
+    """
+    try:
+        items = list(candidates or [])
+    except BaseException:
+        return []
+    if bot is None or not items:
+        return items
+    try:
+        board_confirmed = str(getattr(
+            bot, '_qqfarm_empty_land_board_gate_state', ''
+        ) or '').strip().lower() == 'confirmed'
+    except BaseException:
+        board_confirmed = False
+    try:
+        recent = list(getattr(bot, '_qqfarm_recent_empty_lands', []) or [])
+    except BaseException:
+        recent = []
+    if not recent:
+        return items
+    try:
+        now_value = float(__import__('time').time())
+    except BaseException:
+        now_value = 0.0
+    try:
+        max_age = max(15.0, min(600.0, float(max_age_seconds or 120.0)))
+    except BaseException:
+        max_age = 120.0
+    copied = 0
+    for index, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        try:
+            center = item.get('center')
+            if not isinstance(center, (tuple, list)) or len(center) < 2:
+                continue
+            x_value, y_value = float(center[0]), float(center[1])
+        except BaseException:
+            continue
+        best = None
+        best_distance = None
+        for recent_item in recent:
+            if not isinstance(recent_item, dict):
+                continue
+            try:
+                recent_center = recent_item.get('center')
+                if not isinstance(recent_center, (tuple, list)) or len(recent_center) < 2:
+                    continue
+                dx = x_value - float(recent_center[0])
+                dy = y_value - float(recent_center[1])
+                distance = dx * dx + dy * dy
+                if distance > 42.0 * 42.0:
+                    continue
+                strong_crop = str(
+                    recent_item.get('crop_cover') or ''
+                ).strip().lower() == 'strong'
+                if strong_crop:
+                    continue
+                has_board_proof = bool(
+                    recent_item.get('_qqfarm_board_confirmed_empty_candidate') and
+                    board_confirmed
+                )
+                has_soil_proof = bool(
+                    recent_item.get('_qqfarm_visual_soil_proof')
+                )
+                if not (has_board_proof or has_soil_proof):
+                    continue
+                marker_ts = float(recent_item.get(
+                    '_qqfarm_board_confirmed_empty_candidate_ts', 0.0
+                ) or 0.0)
+                if marker_ts <= 0.0:
+                    marker_ts = float(getattr(
+                        bot, '_qqfarm_empty_land_board_gate_ts', 0.0
+                    ) or getattr(bot, '_qqfarm_recent_empty_land_ts', 0.0) or 0.0)
+                if marker_ts > 0.0 and now_value > 0.0 and (
+                        now_value - marker_ts > max_age):
+                    continue
+                if best_distance is None or distance < best_distance:
+                    best = recent_item
+                    best_distance = distance
+            except BaseException:
+                continue
+        if best is None:
+            continue
+        enriched = dict(item)
+        for key, value in best.items():
+            if str(key).startswith('_qqfarm_') and bool(value):
+                enriched[key] = value
+        if best.get('crop_cover') and not enriched.get('crop_cover'):
+            enriched['crop_cover'] = best.get('crop_cover')
+        items[index] = enriched
+        copied += 1
+    if copied:
+        try:
+            throttled = globals().get('_throttled_write')
+            message = (
+                'v532 direct-land proof propagated count=' + str(copied) +
+                ' total=' + str(len(items))
+            )
+            if callable(throttled):
+                throttled('v532-direct-land-proof', message, 5.0)
+            else:
+                _write(message)
+        except BaseException:
+            pass
+    return items
 
 
 def _qqfarm_post_harvest_frame_candidates(frame):
@@ -21140,6 +21794,46 @@ def _wrap_planting_flow_fast(fn, name=''):
                         except BaseException:
                             pass
                         return False
+                    zero_gate_fn = globals().get(
+                        '_qqfarm_zero_empty_observation_is_actionable'
+                    )
+                    zero_actionable = bool(
+                        zero_gate_fn(
+                            bot, current_frame_board_state, fresh=True
+                        )
+                    ) if callable(zero_gate_fn) else False
+                    if (
+                            not zero_actionable and
+                            current_frame_board_state != 'unknown'
+                    ):
+                        try:
+                            held_remaining = max(
+                                1, int(getattr(
+                                    bot, '_qqfarm_home_empty_land_remaining', 0
+                                ) or 0)
+                            )
+                            setattr(bot, '_qqfarm_block_level_based_shop', True)
+                            setattr(bot, '_qqfarm_home_visual_recheck_required', True)
+                            setattr(
+                                bot, '_qqfarm_home_visual_recheck_required_ts',
+                                now_value,
+                            )
+                            setattr(bot, '_qqfarm_home_empty_land_pending', True)
+                            setattr(
+                                bot, '_qqfarm_home_empty_land_remaining',
+                                held_remaining,
+                            )
+                            setattr(bot, '_qqfarm_force_self_cycle_next', True)
+                            setattr(bot, '_qqfarm_cycle_branch_hint', 'self')
+                            _write(
+                                'v522 zero empty-land scan lacks strict board '
+                                'proof; blocked planting/shop crop=' +
+                                str(crop_name) + ' board=' +
+                                str(current_frame_board_state or 'missing')
+                            )
+                        except BaseException:
+                            pass
+                        return False
                     if current_frame_board_state == 'unknown':
                         # The detector wrapper has already classified this capture as
                         # unusable for board truth.  Its empty list is therefore not a
@@ -22301,6 +22995,80 @@ def _wrap_single_land_seed_drag(fn, name=''):
     except BaseException:
         return fn, False
 
+def _qqfarm_reconcile_backpack_priority_result(
+        bot, *, baseline_empty_count, reported_remaining,
+        attempt_started_ts):
+    """Reconcile backpack telemetry with a fresh visual empty-land proof.
+
+    Native remaining-land telemetry may be empty after a label check or stale
+    drag attempt. Only a fresh visual decrease in the confirmed empty-land
+    count proves progress. Until that proof exists, keep the home route pending
+    and hold shop/strategy fallbacks.
+    """
+    baseline = max(0, int(baseline_empty_count or 0))
+    try:
+        current = max(0, int(getattr(
+            bot, '_qqfarm_recent_empty_land_count', baseline
+        ) or 0))
+    except BaseException:
+        current = baseline
+    try:
+        current_ts = float(getattr(
+            bot, '_qqfarm_recent_empty_land_ts', 0.0
+        ) or 0.0)
+        attempt_ts = float(attempt_started_ts or 0.0)
+        fresh = bool(
+            current_ts > 0.0 and
+            attempt_ts > 0.0 and
+            current_ts >= (attempt_ts - 0.01)
+        )
+    except BaseException:
+        fresh = False
+    try:
+        board_state = str(getattr(
+            bot, '_qqfarm_empty_land_board_gate_state', 'unknown'
+        ) or 'unknown').strip().lower()
+    except BaseException:
+        board_state = 'unknown'
+    verified_drop = bool(
+        fresh and current < baseline and board_state != 'unknown'
+        and bool(getattr(
+            bot, '_qqfarm_last_planting_outcome_verified', False
+        ))
+    )
+    keep_home_pending = bool(baseline > 0 and not verified_drop)
+    if keep_home_pending:
+        for attr_name, value in (
+                ('_qqfarm_home_empty_land_pending', True),
+                ('_qqfarm_force_self_cycle_next', True),
+                ('_qqfarm_cycle_branch_hint', 'self'),
+                ('_qqfarm_backpack_inventory_scan_pending', True),
+                ('_qqfarm_block_level_based_shop', True)):
+            try:
+                setattr(bot, attr_name, value)
+            except BaseException:
+                pass
+    return {
+        'baseline_empty_count': baseline,
+        'current_empty_count': current,
+        'reported_remaining': (
+            None if reported_remaining is None else max(
+                0, int(reported_remaining or 0)
+            )
+        ),
+        'safe_remaining': (
+            baseline if keep_home_pending else (
+                None if reported_remaining is None else max(
+                    0, int(reported_remaining or 0)
+                )
+            )
+        ),
+        'fresh_visual_observation': fresh,
+        'verified_drop': verified_drop,
+        'keep_home_pending': keep_home_pending,
+    }
+
+
 def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
     """Cap repeated waits and report safe per-helper timings for the native branch."""
     try:
@@ -22353,6 +23121,22 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
             except BaseException:
                 full_input_lands = []
                 input_empty_count = 0
+            try:
+                enrich_fn = globals().get(
+                    '_qqfarm_enrich_empty_land_candidates_with_proof'
+                )
+                if callable(enrich_fn) and full_input_lands:
+                    enriched_lands = list(enrich_fn(bot, full_input_lands) or [])
+                    if len(enriched_lands) == len(full_input_lands):
+                        full_input_lands = enriched_lands
+                        if 'remain_lands' in call_kwargs:
+                            call_kwargs['remain_lands'] = list(full_input_lands)
+                        elif 'lands' in call_kwargs:
+                            call_kwargs['lands'] = list(full_input_lands)
+                        elif len(call_args) > lands_arg_index:
+                            call_args[lands_arg_index] = list(full_input_lands)
+            except BaseException:
+                pass
             try:
                 cached_empty_count = max(0, int(getattr(
                     bot, '_qqfarm_recent_empty_land_count', 0
@@ -23145,11 +23929,59 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                         ) or 'bypass').strip().lower()
                     except BaseException:
                         current_board_state = 'bypass'
-                    verified_drop = bool(
-                        fresh_after_observation and
-                        current_empty_count < baseline_empty_count and
-                        current_board_state != 'unknown'
+                    reconcile_fn = globals().get(
+                        '_qqfarm_reconcile_backpack_priority_result'
                     )
+                    if callable(reconcile_fn):
+                        reconcile_state = reconcile_fn(
+                            bot,
+                            baseline_empty_count=baseline_empty_count,
+                            reported_remaining=reported_remaining,
+                            attempt_started_ts=planting_attempt_started_ts,
+                        )
+                    else:
+                        # The packaged runtime binds this helper before the
+                        # wrapper is installed.  Keep a conservative fallback
+                        # for partial/isolated bindings: native remaining-land
+                        # telemetry is never action proof, so preserve the
+                        # caller's full target list until a fresh visual drop is
+                        # available.
+                        reconcile_state = {
+                            'baseline_empty_count': baseline_empty_count,
+                            'current_empty_count': current_empty_count,
+                            'reported_remaining': reported_remaining,
+                            'safe_remaining': baseline_empty_count,
+                            'fresh_visual_observation': fresh_after_observation,
+                            'verified_drop': False,
+                            'keep_home_pending': bool(baseline_empty_count > 0),
+                        }
+                    verified_drop = bool(reconcile_state['verified_drop'])
+                    if (
+                        reported_remaining is not None and
+                        reported_remaining < input_empty_count and
+                        not verified_drop and
+                        isinstance(result, (tuple, list)) and
+                        len(result) >= 2
+                    ):
+                        # Native telemetry may consume a candidate after only a
+                        # label/panel check. Keep every original target pending
+                        # until a fresh board proves an actual empty-slot drop.
+                        normalized = list(result)
+                        normalized[0] = False
+                        normalized[1] = list(full_input_lands)
+                        result = (
+                            tuple(normalized)
+                            if isinstance(result, tuple) else normalized
+                        )
+                        reported_remaining = input_empty_count
+                        try:
+                            _write(
+                                'v523 unverified backpack remaining restored '
+                                'reported=0 baseline=' + str(input_empty_count) +
+                                ' name=' + str(name)
+                            )
+                        except BaseException:
+                            pass
                     contradicted = bool(
                         current_empty_count > baseline_empty_count or
                         (
@@ -25389,7 +26221,10 @@ def _wechat_focus_apply_proved(owner, hwnd, result, before_state=None):
         return True
     for attr in (
             '_wechat_focus_guard_applied_hwnd',
-            'wechat_focus_guard_applied_hwnd'):
+            'wechat_focus_guard_applied_hwnd',
+            'applied_hwnd', '_applied_hwnd',
+            'focus_applied_hwnd', '_focus_applied_hwnd',
+            'last_applied_hwnd', '_last_applied_hwnd'):
         try:
             if _wechat_focus_coerce_hwnd(getattr(owner, attr, None)) == handle:
                 return True
@@ -25414,6 +26249,9 @@ def _wechat_focus_apply_proved(owner, hwnd, result, before_state=None):
         'attempted_hwnd', '_attempted_hwnd',
         '_wechat_focus_guard_attempted_hwnd',
         'wechat_focus_guard_attempted_hwnd',
+        'applied_hwnd', '_applied_hwnd',
+        'focus_applied_hwnd', '_focus_applied_hwnd',
+        'last_applied_hwnd', '_last_applied_hwnd',
     )
     pid_names = (
         'bound_pid', '_bound_pid', 'process_id', '_process_id',
@@ -25443,6 +26281,9 @@ def _wechat_focus_apply_proved(owner, hwnd, result, before_state=None):
         'attempted_hwnd', '_attempted_hwnd',
         '_wechat_focus_guard_attempted_hwnd',
         'wechat_focus_guard_attempted_hwnd',
+        'applied_hwnd', '_applied_hwnd',
+        'focus_applied_hwnd', '_focus_applied_hwnd',
+        'last_applied_hwnd', '_last_applied_hwnd',
     }
 
     def collect(value, depth=0):
@@ -25784,6 +26625,41 @@ def _wechat_focus_should_enumerate_children(candidate):
     return False
 
 
+def _qqfarm_zero_empty_observation_is_actionable(context, board_state, fresh=True):
+    """Allow zero-empty follow-up only after a strict, fresh board proof."""
+    if context is None or not bool(fresh):
+        return False
+    try:
+        state = str(board_state or '').strip().lower()
+    except BaseException:
+        state = ''
+    if state != 'confirmed':
+        return False
+    try:
+        return bool(
+            getattr(context, '_qqfarm_empty_land_scene_confirmed_full', False) and
+            not bool(getattr(context, '_qqfarm_home_visual_recheck_required', False))
+        )
+    except BaseException:
+        return False
+
+
+def _qqfarm_runtime_buy_seed_has_fresh_empty_proof(context, now_ts=None):
+    """Return true only when a buy-seed log has current visual land proof."""
+    if context is None:
+        return False
+    try:
+        count = max(0, int(getattr(context, '_qqfarm_recent_empty_land_count', 0) or 0))
+        lands = list(getattr(context, '_qqfarm_recent_empty_lands', []) or [])
+        state = str(getattr(context, '_qqfarm_empty_land_board_gate_state', '') or '').strip().lower()
+        proof_ts = float(getattr(context, '_qqfarm_recent_empty_land_ts', 0.0) or 0.0)
+        now_value = float(now_ts if now_ts is not None else __import__('time').time())
+        age = max(0.0, now_value - proof_ts) if proof_ts > 0.0 else 999999.0
+        return bool(count > 0 and lands and state == 'confirmed' and proof_ts > 0.0 and age <= 45.0)
+    except BaseException:
+        return False
+
+
 def _wechat_focus_process_name_for_hwnd(hwnd):
     try:
         import ctypes
@@ -25924,23 +26800,111 @@ def _find_wechat_hwnd():
 
 
 def _extract_xy_from_args(args, kwargs):
+    """Recover a click point from the several callable shapes used by QQ.
+
+    The compiled helpers have appeared with both flat ``(x, y)`` arguments and
+    structured point values.  Keep the old flat-argument behavior, but inspect
+    only well-known point containers so a bot/context object is never mistaken
+    for a coordinate pair.
+    """
+    def _number(value):
+        if isinstance(value, bool):
+            return None
+        if not isinstance(value, (int, float)):
+            return None
+        try:
+            candidate = float(value)
+        except BaseException:
+            return None
+        if candidate != candidate or candidate in (float('inf'), float('-inf')):
+            return None
+        if not -20 <= candidate <= 10000:
+            return None
+        return int(round(candidate))
+
+    def _pair(value, depth=0):
+        if depth > 3 or value is None or isinstance(value, (str, bytes)):
+            return None
+        if isinstance(value, dict):
+            for left, right in (
+                    ('x', 'y'),
+                    ('screen_x', 'screen_y'),
+                    ('target_x', 'target_y')):
+                if left in value and right in value:
+                    x_value = _number(value.get(left))
+                    y_value = _number(value.get(right))
+                    if x_value is not None and y_value is not None:
+                        return x_value, y_value
+            for key in ('point', 'position', 'coords', 'coordinates', 'center', 'location'):
+                if key in value:
+                    found = _pair(value.get(key), depth + 1)
+                    if found is not None:
+                        return found
+            return None
+        if isinstance(value, (tuple, list)):
+            if len(value) >= 2:
+                x_value = _number(value[0])
+                y_value = _number(value[1])
+                if x_value is not None and y_value is not None:
+                    return x_value, y_value
+            for item in value:
+                found = _pair(item, depth + 1)
+                if found is not None:
+                    return found
+            return None
+        try:
+            for left, right in (
+                    ('x', 'y'),
+                    ('screen_x', 'screen_y'),
+                    ('target_x', 'target_y')):
+                x_value = _number(getattr(value, left))
+                y_value = _number(getattr(value, right))
+                if x_value is not None and y_value is not None:
+                    return x_value, y_value
+        except BaseException:
+            pass
+        for key in ('point', 'position', 'coords', 'coordinates', 'center', 'location'):
+            try:
+                found = _pair(getattr(value, key), depth + 1)
+            except BaseException:
+                found = None
+            if found is not None:
+                return found
+        return None
+
     try:
-        for a, b in [('x', 'y'), ('screen_x', 'screen_y'), ('target_x', 'target_y')]:
-            if a in kwargs and b in kwargs:
-                return int(float(kwargs.get(a))), int(float(kwargs.get(b)))
+        mapping = kwargs if isinstance(kwargs, dict) else {}
+        for left, right in (
+                ('x', 'y'),
+                ('screen_x', 'screen_y'),
+                ('target_x', 'target_y')):
+            if left in mapping and right in mapping:
+                found = _pair((mapping.get(left), mapping.get(right)))
+                if found is not None:
+                    return found
+        for key in ('point', 'position', 'coords', 'coordinates', 'center', 'location'):
+            if key in mapping:
+                found = _pair(mapping.get(key), 1)
+                if found is not None:
+                    return found
     except BaseException:
         pass
-    vals = []
+
     try:
-        for x in args:
-            if isinstance(x, (int, float)):
-                v = float(x)
-                if -20 <= v <= 10000:
-                    vals.append(v)
+        # Structured arguments are preferred over the legacy numeric scan.
+        for item in reversed(tuple(args or ())):
+            found = _pair(item)
+            if found is not None:
+                return found
+        values = []
+        for item in tuple(args or ()):
+            value = _number(item)
+            if value is not None:
+                values.append(value)
         # Screen coordinates are normally the last two numeric args for helpers
         # like click_at_position(bot, x, y) and mouse_down_at_position(x, y).
-        if len(vals) >= 2:
-            return int(vals[-2]), int(vals[-1])
+        if len(values) >= 2:
+            return values[-2], values[-1]
     except BaseException:
         pass
     return None, None
@@ -25988,6 +26952,1404 @@ def _post_wechat_mouse(kind, x, y):
     return False
 
 
+_QQFARM_LAST_NATIVE_SURFACE_MISS_REASON = ''
+_QQFARM_LAST_NATIVE_SURFACE_MISS_DETAIL = ''
+
+
+def _qqfarm_set_native_surface_miss(reason, detail=''):
+    global _QQFARM_LAST_NATIVE_SURFACE_MISS_REASON
+    global _QQFARM_LAST_NATIVE_SURFACE_MISS_DETAIL
+    try:
+        _QQFARM_LAST_NATIVE_SURFACE_MISS_REASON = str(reason or 'unknown')
+        _QQFARM_LAST_NATIVE_SURFACE_MISS_DETAIL = str(detail or '')[:500]
+    except BaseException:
+        _QQFARM_LAST_NATIVE_SURFACE_MISS_REASON = 'unknown'
+        _QQFARM_LAST_NATIVE_SURFACE_MISS_DETAIL = ''
+
+
+def _qqfarm_click_argument_summary(args, kwargs):
+    try:
+        arg_items = list(tuple(args or ()))[:8]
+    except BaseException:
+        arg_items = []
+    try:
+        arg_types = '[' + ','.join(
+            type(item).__name__ for item in arg_items
+        ) + ']'
+    except BaseException:
+        arg_types = '[]'
+    try:
+        keys = sorted(str(key) for key in (kwargs or {}).keys())[:12]
+    except BaseException:
+        keys = []
+    return 'arg_types=' + arg_types + ' kw_keys=' + repr(keys)
+
+
+def _qqfarm_log_native_click_route_miss(
+        name, kind, args, kwargs, x=None, y=None
+):
+    try:
+        reason = str(globals().get(
+            '_QQFARM_LAST_NATIVE_SURFACE_MISS_REASON', ''
+        ) or 'native-surface-false')
+        detail = str(globals().get(
+            '_QQFARM_LAST_NATIVE_SURFACE_MISS_DETAIL', ''
+        ) or '')
+        coordinate = repr((x, y))
+        message = (
+            'v513 QQ click route miss reason=' + reason +
+            ' name=' + str(name) +
+            ' kind=' + str(kind) +
+            ' input=' + coordinate +
+            ' ' + _qqfarm_click_argument_summary(args, kwargs)
+        )
+        if detail:
+            message += ' detail=' + detail
+        logger = globals().get('_throttled_write')
+        if callable(logger):
+            logger('v513-qq-click-route-' + reason, message, 5.0)
+    except BaseException:
+        pass
+
+
+_QQFARM_LAST_NATIVE_SURFACE_ROUTE = None
+_QQFARM_STALE_NATIVE_SURFACE_ROUTE = None
+
+
+def _qqfarm_rect_tuple(value):
+    try:
+        if value is None or len(value) < 4:
+            return None
+        left, top, right, bottom = [int(value[index]) for index in range(4)]
+        if right <= left or bottom <= top:
+            return None
+        return left, top, right, bottom
+    except BaseException:
+        return None
+
+
+def _qqfarm_rect_contains(rect, point):
+    rect = _qqfarm_rect_tuple(rect)
+    try:
+        if rect is None or point is None or len(point) < 2:
+            return False
+        return bool(
+            rect[0] <= int(point[0]) < rect[2]
+            and rect[1] <= int(point[1]) < rect[3]
+        )
+    except BaseException:
+        return False
+
+
+def _qqfarm_remap_stale_screen_point(point, previous_route, current_root_rect):
+    """Map a screen point from the previous QQ window geometry to the live root.
+
+    Native helpers sometimes retain an absolute point after QQ recreates or
+    moves its window.  A point that belonged to the previous root is a useful
+    normalized anchor; a point unrelated to that root is rejected rather than
+    guessed as a client coordinate.
+    """
+    try:
+        current = _qqfarm_rect_tuple(current_root_rect)
+        if current is None or not isinstance(previous_route, dict):
+            return None
+        old = _qqfarm_rect_tuple(previous_route.get('root_rect'))
+        if old is None or point is None or len(point) < 2:
+            return None
+        source_x, source_y = int(point[0]), int(point[1])
+        def _near_old_edge(candidate, tolerance=24):
+            try:
+                return bool(
+                    old[0] - tolerance <= int(candidate[0]) < old[2] + tolerance
+                    and old[1] - tolerance <= int(candidate[1]) < old[3] + tolerance
+                )
+            except BaseException:
+                return False
+
+        if not _qqfarm_rect_contains(old, (source_x, source_y)):
+            cached = previous_route.get('input_screen_point')
+            if _qqfarm_rect_contains(old, cached):
+                try:
+                    if abs(int(cached[0]) - source_x) > 12 or abs(
+                            int(cached[1]) - source_y
+                    ) > 12:
+                        return None
+                except BaseException:
+                    return None
+                source_x, source_y = int(cached[0]), int(cached[1])
+            elif not _near_old_edge((source_x, source_y)):
+                # A rebuilt/DPI-scaled window can move a cached point a few
+                # pixels beyond the old border.  Accept only this narrow edge
+                # band and clamp to the old border; distant points remain
+                # rejected rather than guessed as a new screen coordinate.
+                return None
+            else:
+                source_x = max(old[0], min(old[2] - 1, source_x))
+                source_y = max(old[1], min(old[3] - 1, source_y))
+        old_width = max(1, old[2] - old[0])
+        old_height = max(1, old[3] - old[1])
+        x_ratio = min(1.0, max(0.0, float(source_x - old[0]) / old_width))
+        y_ratio = min(1.0, max(0.0, float(source_y - old[1]) / old_height))
+        return (
+            int(round(current[0] + x_ratio * max(0, current[2] - current[0] - 1))),
+            int(round(current[1] + y_ratio * max(0, current[3] - current[1] - 1))),
+        )
+    except BaseException:
+        return None
+
+
+def _qqfarm_collect_live_surface_candidates(
+        win32gui_module=None, title='QQ经典农场'
+):
+    """Enumerate the current QQ root and render surfaces with live geometry."""
+    try:
+        win32gui = win32gui_module or __import__('win32gui')
+    except BaseException:
+        return []
+
+    preferred = set()
+    for name in (
+            '_QQFARM_WGC_BOUND_HWND',
+            '_QQFARM_LAST_FARM_HWND',
+            '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND',
+            '_QQFARM_LAST_GOOD_CAPTURE_HWND',
+    ):
+        try:
+            value = int(globals().get(name, 0) or 0)
+            if value > 0:
+                preferred.add(value)
+        except BaseException:
+            pass
+
+    def _rect(hwnd):
+        try:
+            getter = getattr(win32gui, 'GetWindowRect', None)
+            if callable(getter):
+                raw = getter(int(hwnd))
+                result = _qqfarm_rect_tuple(raw)
+                if result is not None:
+                    return result
+        except BaseException:
+            pass
+        try:
+            raw = win32gui.GetClientRect(int(hwnd))
+            width = int(raw[2] - raw[0])
+            height = int(raw[3] - raw[1])
+            origin = win32gui.ClientToScreen(int(hwnd), (0, 0))
+            return _qqfarm_rect_tuple((
+                int(origin[0]), int(origin[1]),
+                int(origin[0]) + width, int(origin[1]) + height,
+            ))
+        except BaseException:
+            return None
+
+    def _size(hwnd, fallback_rect=None):
+        try:
+            raw = win32gui.GetClientRect(int(hwnd))
+            width = int(raw[2] - raw[0])
+            height = int(raw[3] - raw[1])
+            if width > 0 and height > 0:
+                return width, height
+        except BaseException:
+            pass
+        rect = _qqfarm_rect_tuple(fallback_rect)
+        if rect is None:
+            return 0, 0
+        return max(0, rect[2] - rect[0]), max(0, rect[3] - rect[1])
+
+    roots = []
+
+    def _root_callback(hwnd, extra):
+        try:
+            hwnd_value = int(hwnd)
+            is_window = getattr(win32gui, 'IsWindow', None)
+            if callable(is_window) and not bool(is_window(hwnd_value)):
+                return True
+            window_title = str(
+                getattr(win32gui, 'GetWindowText')(hwnd_value) or ''
+            ).strip()
+            if window_title != str(title):
+                return True
+            visible_fn = getattr(win32gui, 'IsWindowVisible', None)
+            visible = bool(visible_fn(hwnd_value)) if callable(visible_fn) else True
+            if not visible and hwnd_value not in preferred:
+                return True
+            rect = _rect(hwnd_value)
+            width, height = _size(hwnd_value, rect)
+            if rect is None or width < 300 or height < 500:
+                return True
+            roots.append({
+                'hwnd': hwnd_value,
+                'root_hwnd': hwnd_value,
+                'is_root': True,
+                'class_name': str(
+                    getattr(win32gui, 'GetClassName', lambda _h: '')(hwnd_value)
+                    or ''
+                ),
+                'class_rank': 3,
+                'visible': visible,
+                'rect': rect,
+                'width': int(width),
+                'height': int(height),
+                'preferred': bool(hwnd_value in preferred),
+            })
+        except BaseException:
+            pass
+        return True
+
+    try:
+        enum_windows = getattr(win32gui, 'EnumWindows', None)
+        if not callable(enum_windows):
+            return []
+        enum_windows(_root_callback, None)
+    except BaseException:
+        return []
+
+    render_markers = (
+        'chrome_renderwidgethosthwnd',
+        'chrome_widgetwin',
+        'intermediate d3d window',
+    )
+    candidates = []
+    for root in roots:
+        candidates.append(dict(root))
+        root_hwnd = int(root['hwnd'])
+
+        def _child_callback(hwnd, extra):
+            try:
+                hwnd_value = int(hwnd)
+                class_name = str(
+                    getattr(win32gui, 'GetClassName')(hwnd_value) or ''
+                )
+                lowered = class_name.lower()
+                if not any(marker in lowered for marker in render_markers):
+                    return True
+                visible_fn = getattr(win32gui, 'IsWindowVisible', None)
+                if callable(visible_fn) and not bool(visible_fn(hwnd_value)):
+                    return True
+                rect = _rect(hwnd_value)
+                width, height = _size(hwnd_value, rect)
+                if rect is None or width < 120 or height < 120:
+                    return True
+                class_rank = (
+                    0 if 'chrome_renderwidgethosthwnd' in lowered else
+                    1 if 'chrome_widgetwin' in lowered else 2
+                )
+                candidates.append({
+                    'hwnd': hwnd_value,
+                    'root_hwnd': root_hwnd,
+                    'is_root': False,
+                    'class_name': class_name,
+                    'class_rank': class_rank,
+                    'visible': True,
+                    'rect': rect,
+                    'width': int(width),
+                    'height': int(height),
+                    'preferred': bool(hwnd_value in preferred),
+                })
+            except BaseException:
+                pass
+            return True
+
+        try:
+            enum_children = getattr(win32gui, 'EnumChildWindows', None)
+            if callable(enum_children):
+                enum_children(root_hwnd, _child_callback, None)
+        except BaseException:
+            pass
+    return candidates
+
+
+def _qqfarm_invalidate_stale_surface_cache(candidates=None):
+    """Move a route out of the live cache when HWND/geometry was rebuilt."""
+    try:
+        route = globals().get('_QQFARM_LAST_NATIVE_SURFACE_ROUTE')
+        if not isinstance(route, dict):
+            return False
+        live = set()
+        for item in list(candidates or ()):
+            if not isinstance(item, dict):
+                continue
+            for key in ('hwnd', 'root_hwnd'):
+                try:
+                    value = int(item.get(key, 0) or 0)
+                    if value > 0:
+                        live.add(value)
+                except BaseException:
+                    pass
+        root_hwnd = int(route.get('root_hwnd', 0) or 0)
+        target_hwnd = int(route.get('target_hwnd', 0) or 0)
+        stale = bool(
+            (live and (root_hwnd not in live or target_hwnd not in live))
+        )
+        if not stale and live:
+            current_rect = None
+            for item in list(candidates or ()):
+                if isinstance(item, dict) and int(item.get('hwnd', 0) or 0) == root_hwnd:
+                    current_rect = _qqfarm_rect_tuple(item.get('rect'))
+                    break
+            old_rect = _qqfarm_rect_tuple(route.get('root_rect'))
+            stale = bool(
+                current_rect is not None and old_rect is not None
+                and current_rect != old_rect
+            )
+        if not stale:
+            return False
+        globals()['_QQFARM_STALE_NATIVE_SURFACE_ROUTE'] = dict(route)
+        globals()['_QQFARM_LAST_NATIVE_SURFACE_ROUTE'] = None
+        return True
+    except BaseException:
+        return False
+
+
+def _qqfarm_choose_live_surface(
+        candidates, input_x, input_y, frame_width=428, frame_height=800,
+        preferred_hwnds=(), previous_route=None, point_hwnd=0
+):
+    """Choose one live surface and map the input point into its client space."""
+    try:
+        items = [item for item in list(candidates or ()) if isinstance(item, dict)]
+        if not items:
+            return None
+        x_value, y_value = int(round(float(input_x))), int(round(float(input_y)))
+        frame_width = max(1, int(frame_width))
+        frame_height = max(1, int(frame_height))
+        preferred = set(int(value) for value in list(preferred_hwnds or ()) if int(value or 0) > 0)
+    except BaseException:
+        return None
+
+    roots = [item for item in items if bool(item.get('is_root'))]
+    if not roots:
+        roots = [item for item in items if int(item.get('hwnd', 0) or 0) == int(item.get('root_hwnd', -1) or -1)]
+    if not roots:
+        return None
+
+    def _area(item):
+        return max(0, int(item.get('width', 0) or 0)) * max(
+            0, int(item.get('height', 0) or 0)
+        )
+
+    def _root_for_hwnd(value):
+        try:
+            value = int(value or 0)
+        except BaseException:
+            value = 0
+        for item in items:
+            if int(item.get('hwnd', 0) or 0) == value:
+                return int(item.get('root_hwnd', value) or value)
+        return 0
+
+    point_root = _root_for_hwnd(point_hwnd)
+    containing_roots = [
+        item for item in roots
+        if _qqfarm_rect_contains(item.get('rect'), (x_value, y_value))
+    ]
+    if point_root:
+        containing_roots = [
+            item for item in roots
+            if int(item.get('hwnd', 0) or 0) == point_root
+        ] or containing_roots
+    if containing_roots:
+        root = sorted(
+            containing_roots,
+            key=lambda item: (
+                0 if int(item.get('hwnd', 0) or 0) in preferred else 1,
+                -_area(item),
+                int(item.get('hwnd', 0) or 0),
+            ),
+        )[0]
+    else:
+        preferred_roots = [
+            item for item in roots
+            if int(item.get('hwnd', 0) or 0) in preferred
+        ]
+        root = sorted(
+            preferred_roots or roots,
+            key=lambda item: (
+                0 if bool(item.get('preferred')) else 1,
+                -_area(item),
+                int(item.get('hwnd', 0) or 0),
+            ),
+        )[0]
+    root_hwnd = int(root.get('hwnd', 0) or 0)
+    root_rect = _qqfarm_rect_tuple(root.get('rect'))
+    if root_rect is None:
+        return None
+
+    surfaces = [
+        item for item in items
+        if int(item.get('root_hwnd', 0) or 0) == root_hwnd
+    ]
+    if not surfaces:
+        surfaces = [root]
+
+    def _geometry_error(item):
+        return abs(int(item.get('width', 0) or 0) - frame_width) + abs(
+            int(item.get('height', 0) or 0) - frame_height
+        )
+
+    effective_point = (x_value, y_value)
+    coordinate_space = 'screen'
+    current_containing = [
+        item for item in surfaces
+        if _qqfarm_rect_contains(item.get('rect'), effective_point)
+    ]
+    if current_containing:
+        target_candidates = current_containing
+    else:
+        target_candidates = []
+        remapped = _qqfarm_remap_stale_screen_point(
+            (x_value, y_value),
+            previous_route,
+            root_rect,
+        )
+        if remapped is not None:
+            effective_point = remapped
+            coordinate_space = 'stale-screen-remapped'
+            target_candidates = [
+                item for item in surfaces
+                if _qqfarm_rect_contains(item.get('rect'), effective_point)
+            ]
+        if not target_candidates and 0 <= x_value <= frame_width + 2 and 0 <= y_value <= frame_height + 2:
+            coordinate_space = 'frame'
+            target_candidates = surfaces
+        if not target_candidates and (
+                0 <= x_value < int(root.get('width', 0) or 0)
+                and 0 <= y_value < int(root.get('height', 0) or 0)
+        ):
+            coordinate_space = 'root-client'
+            target_candidates = surfaces
+        if not target_candidates:
+            return None
+
+    target = sorted(
+        target_candidates,
+        key=lambda item: (
+            0 if int(item.get('hwnd', 0) or 0) == int(point_hwnd or 0) else 1,
+            0 if not bool(item.get('is_root')) else 1,
+            int(item.get('class_rank', 3)),
+            _geometry_error(item),
+            -_area(item),
+            int(item.get('hwnd', 0) or 0),
+        ),
+    )[0]
+    target_rect = _qqfarm_rect_tuple(target.get('rect'))
+    if target_rect is None:
+        return None
+    target_width = max(1, int(target.get('width', 0) or (target_rect[2] - target_rect[0])))
+    target_height = max(1, int(target.get('height', 0) or (target_rect[3] - target_rect[1])))
+
+    if coordinate_space == 'frame':
+        client_x = int(round(x_value * target_width / max(1, frame_width)))
+        client_y = int(round(y_value * target_height / max(1, frame_height)))
+        effective_point = (
+            int(target_rect[0] + client_x), int(target_rect[1] + client_y)
+        )
+    elif coordinate_space == 'root-client':
+        effective_point = (
+            int(root_rect[0] + x_value), int(root_rect[1] + y_value)
+        )
+    client_x = max(0, min(target_width - 1, int(effective_point[0] - target_rect[0])))
+    client_y = max(0, min(target_height - 1, int(effective_point[1] - target_rect[1])))
+    return {
+        'root_hwnd': root_hwnd,
+        'target_hwnd': int(target.get('hwnd', 0) or 0),
+        'root_rect': root_rect,
+        'target_rect': target_rect,
+        'root_width': int(root.get('width', 0) or 0),
+        'root_height': int(root.get('height', 0) or 0),
+        'target_width': target_width,
+        'target_height': target_height,
+        'screen_point': (int(effective_point[0]), int(effective_point[1])),
+        'client_point': (client_x, client_y),
+        'coordinate_space': coordinate_space,
+        'frame_size': (frame_width, frame_height),
+        'input_screen_point': (x_value, y_value),
+    }
+
+
+def _qqfarm_frame_progress_signature(frame):
+    """Build a coarse, animation-tolerant signature for a fresh action probe."""
+    try:
+        if frame is None:
+            return None
+        array = __import__('numpy').asarray(frame)
+        shape = getattr(array, 'shape', None)
+        if shape is None or len(shape) < 2 or int(shape[0]) < 40 or int(shape[1]) < 40:
+            return None
+        sample = array[::max(1, int(shape[0]) // 40), ::max(1, int(shape[1]) // 32)]
+        if getattr(sample, 'ndim', 0) >= 3:
+            sample = sample[:, :, :3]
+        quantized = (__import__('numpy').asarray(sample, dtype='uint8') & 0xF0).tobytes()
+        digest = __import__('hashlib').sha256(quantized).hexdigest()[:24]
+        return ('frame-v1', int(shape[1]), int(shape[0]), digest)
+    except BaseException:
+        return None
+
+
+def _qqfarm_confirm_click_progress(
+        before_frame, after_frame, before_signature=None, after_signature=None,
+        before_match=None, after_match=None, durable_before=None,
+        durable_after=None, explicit_success=False, before_frame_id=0,
+        after_frame_id=0,
+):
+    """Separate message delivery from fresh visual/business completion proof."""
+    result = {'confirmed': False, 'reason': 'missing-post-frame', 'fresh': False}
+    if after_frame is None:
+        return result
+    try:
+        same_identity = before_frame is after_frame
+    except BaseException:
+        same_identity = False
+    try:
+        same_id = bool(
+            int(before_frame_id or 0) > 0
+            and int(after_frame_id or 0) > 0
+            and int(before_frame_id) == int(after_frame_id)
+        )
+    except BaseException:
+        same_id = False
+    if same_identity or same_id:
+        result['reason'] = 'stale-post-frame'
+        return result
+    result['fresh'] = True
+    if bool(explicit_success):
+        result.update(confirmed=True, reason='explicit-success')
+        return result
+    try:
+        if durable_before is not None and durable_after is not None and int(
+                durable_after
+        ) > int(durable_before):
+            result.update(confirmed=True, reason='durable-counter-grew')
+            return result
+    except BaseException:
+        pass
+    if (
+            before_signature is not None
+            and after_signature is not None
+            and before_signature != after_signature
+    ):
+        result.update(confirmed=True, reason='scene-signature-changed')
+        return result
+    try:
+        if isinstance(after_match, dict) and bool(
+                after_match.get('completed') or after_match.get('success')
+                or after_match.get('feedback')
+        ):
+            result.update(confirmed=True, reason='explicit-visual-feedback')
+            return result
+    except BaseException:
+        pass
+    try:
+        if isinstance(before_match, dict) and bool(before_match.get('matched')) and isinstance(
+                after_match, dict
+        ) and not bool(after_match.get('matched')):
+            result['reason'] = 'button-gone-without-progress'
+        else:
+            result['reason'] = 'no-progress'
+    except BaseException:
+        result['reason'] = 'no-progress'
+    return result
+
+
+def _qqfarm_record_unconfirmed_click(context, snapshot=None, now=None, reason=''):
+    """Restore transactional friend state and arm a bounded no-progress cooldown."""
+    if context is None:
+        return False
+    try:
+        if isinstance(snapshot, dict):
+            for field_name, value in snapshot.items():
+                try:
+                    setattr(context, field_name, value)
+                except BaseException:
+                    pass
+        if now is None:
+            now = float(__import__('time').monotonic())
+        now = float(now)
+        try:
+            retry_count = max(0, int(getattr(
+                context, '_qqfarm_friend_action_confirmation_retries', 0
+            ) or 0))
+        except BaseException:
+            retry_count = 0
+        cooldown = 14.0 if retry_count <= 0 else 30.0
+        setattr(context, '_qqfarm_friend_action_confirmation_retries', retry_count + 1)
+        setattr(context, '_qqfarm_friend_action_confirmation_pending', True)
+        setattr(context, '_qqfarm_friend_action_confirmation_reason', str(reason or 'no-progress'))
+        setattr(context, '_qqfarm_friend_action_cooldown_until', now + cooldown)
+        writer = globals().get('_write')
+        if callable(writer):
+            writer(
+                'v516 friend action unconfirmed; cursor preserved reason=' +
+                str(reason or 'no-progress') + ' cooldown=' + ('%.1f' % cooldown)
+            )
+    except BaseException:
+        return False
+    return False
+
+
+def _qqfarm_same_page_recovery_needed(
+        context, previous_no_progress, card_signature, durable_before,
+        threshold=3):
+    """Return whether a repeated unchanged friend card needs a fresh capture."""
+    if context is None or not isinstance(previous_no_progress, dict):
+        return False
+    try:
+        previous_signature = previous_no_progress.get('signature')
+        if (
+                not bool(previous_no_progress.get('unconfirmed'))
+                or previous_signature is None
+                or card_signature is None
+                or previous_signature != card_signature
+        ):
+            try:
+                setattr(context, '_qqfarm_friend_same_page_count', 0)
+            except BaseException:
+                pass
+            return False
+        previous_baseline = max(0, int(
+            previous_no_progress.get('durable_before', 0) or 0
+        ))
+        current_baseline = max(0, int(durable_before or 0))
+        if current_baseline > previous_baseline:
+            try:
+                setattr(context, '_qqfarm_friend_same_page_count', 0)
+            except BaseException:
+                pass
+            return False
+        count = max(0, int(
+            previous_no_progress.get('same_page_count', 0) or 0
+        )) + 1
+        previous_no_progress['same_page_count'] = count
+        setattr(context, '_qqfarm_friend_same_page_count', count)
+        return bool(count >= max(2, int(threshold or 3)))
+    except BaseException:
+        return False
+
+
+def _qqfarm_arm_same_page_recovery(
+        context, cursor_before, previous_no_progress, card_signature,
+        durable_before, threshold=3):
+    """Release a bounded same-page stall without advancing the friend cursor."""
+    try:
+        if not _qqfarm_same_page_recovery_needed(
+                context, previous_no_progress, card_signature, durable_before,
+                threshold=threshold):
+            return False
+        for field_name, value in (cursor_before or {}).items():
+            try:
+                setattr(context, field_name, value)
+            except BaseException:
+                pass
+        for field_name, value in (
+                ('_qqfarm_native_friend_help_action_pending', False),
+                ('_qqfarm_friend_action_confirmation_pending', False),
+                ('_qqfarm_friend_action_confirmation_retries', 0),
+                ('_qqfarm_friend_action_confirmation_reason',
+                 'same-page-stall-recovery'),
+                ('_qqfarm_friend_action_cooldown_until', 0.0),
+                ('_qqfarm_friend_native_action_unverified', False),
+                ('_qqfarm_native_friend_help_no_progress_guard', None),
+        ):
+            try:
+                setattr(context, field_name, value)
+            except BaseException:
+                pass
+        try:
+            recovery_count = max(0, int(getattr(
+                context, '_qqfarm_friend_same_page_recovery_count', 0
+            ) or 0)) + 1
+            setattr(
+                context, '_qqfarm_friend_same_page_recovery_count',
+                recovery_count,
+            )
+        except BaseException:
+            recovery_count = 1
+        invalidate_fn = globals().get('_qqfarm_invalidate_wgc_frame_cache')
+        if callable(invalidate_fn):
+            try:
+                invalidate_fn('friend-same-page-stall')
+            except BaseException:
+                pass
+        write_fn = globals().get('_write')
+        if callable(write_fn):
+            write_fn(
+                'v526 friend same-page stall recovery armed count=' +
+                str(recovery_count) + ' cursor=' + str((cursor_before or {}).get(
+                    '_qqfarm_friend_list_visit_cursor', 0
+                )) + ' signature=' + repr(card_signature)[:180]
+            )
+        return True
+    except BaseException:
+        return False
+
+
+def _qqfarm_rebase_surface_candidates_to_physical(
+        candidates, physical_hwnd, physical_rect
+):
+    """Rebase logical HWND geometry onto the current PrintWindow surface.
+
+    ``GetWindowRect`` can be DPI-virtualized while the PrintWindow bitmap and
+    posted mouse messages use physical pixels. Keep the candidate hierarchy,
+    but transform the matching root and render children into the physical
+    rectangle captured for the current frame.
+    """
+    try:
+        items = [
+            dict(item) for item in list(candidates or ())
+            if isinstance(item, dict)
+        ]
+        physical = _qqfarm_rect_tuple(physical_rect)
+        window = int(physical_hwnd or 0)
+        if not items or physical is None or window <= 0:
+            return items, False
+        matching = [
+            item for item in items
+            if int(item.get('hwnd', 0) or 0) == window or
+            int(item.get('root_hwnd', 0) or 0) == window
+        ]
+        if not matching:
+            return items, False
+        root_hwnd = int(matching[0].get('root_hwnd', window) or window)
+        root_item = next(
+            (
+                item for item in items
+                if int(item.get('hwnd', 0) or 0) == root_hwnd and
+                bool(item.get('is_root'))
+            ),
+            None,
+        )
+        if root_item is None:
+            root_item = next(
+                (
+                    item for item in items
+                    if int(item.get('hwnd', 0) or 0) == root_hwnd
+                ),
+                None,
+            )
+        old_root = _qqfarm_rect_tuple(
+            root_item.get('rect') if isinstance(root_item, dict) else None
+        )
+        if old_root is None:
+            return items, False
+        old_width = max(1, old_root[2] - old_root[0])
+        old_height = max(1, old_root[3] - old_root[1])
+        new_width = max(1, physical[2] - physical[0])
+        new_height = max(1, physical[3] - physical[1])
+
+        def _map_rect(value):
+            rect = _qqfarm_rect_tuple(value)
+            if rect is None:
+                return physical
+            left_ratio = float(rect[0] - old_root[0]) / old_width
+            top_ratio = float(rect[1] - old_root[1]) / old_height
+            right_ratio = float(rect[2] - old_root[0]) / old_width
+            bottom_ratio = float(rect[3] - old_root[1]) / old_height
+            left_ratio = max(-0.25, min(1.25, left_ratio))
+            top_ratio = max(-0.25, min(1.25, top_ratio))
+            right_ratio = max(-0.25, min(1.25, right_ratio))
+            bottom_ratio = max(-0.25, min(1.25, bottom_ratio))
+            mapped = (
+                int(round(physical[0] + left_ratio * new_width)),
+                int(round(physical[1] + top_ratio * new_height)),
+                int(round(physical[0] + right_ratio * new_width)),
+                int(round(physical[1] + bottom_ratio * new_height)),
+            )
+            left = max(physical[0], min(physical[2] - 1, mapped[0]))
+            top = max(physical[1], min(physical[3] - 1, mapped[1]))
+            right = max(left + 1, min(physical[2], mapped[2]))
+            bottom = max(top + 1, min(physical[3], mapped[3]))
+            return left, top, right, bottom
+
+        changed = False
+        for item in items:
+            if int(item.get('root_hwnd', 0) or 0) != root_hwnd:
+                continue
+            old_rect = _qqfarm_rect_tuple(item.get('rect'))
+            mapped = (
+                physical
+                if int(item.get('hwnd', 0) or 0) == root_hwnd
+                else _map_rect(old_rect)
+            )
+            item['rect'] = mapped
+            item['width'] = int(mapped[2] - mapped[0])
+            item['height'] = int(mapped[3] - mapped[1])
+            item['physical_geometry'] = True
+            changed = changed or old_rect != mapped
+        return items, bool(changed)
+    except BaseException:
+        return list(candidates or ()), False
+
+
+def _qqfarm_resolve_live_surface_click(
+        kind, input_x, input_y, frame_width=428, frame_height=800,
+        win32gui_module=None
+):
+    """Resolve a click against the current root/render HWND set."""
+    try:
+        win32gui = win32gui_module or __import__('win32gui')
+        candidates = _qqfarm_collect_live_surface_candidates(win32gui, 'QQ经典农场')
+        if not candidates:
+            return None
+        _qqfarm_invalidate_stale_surface_cache(candidates)
+        preferred = []
+        for name in (
+                '_QQFARM_WGC_BOUND_HWND',
+                '_QQFARM_LAST_FARM_HWND',
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND',
+                '_QQFARM_LAST_GOOD_CAPTURE_HWND',
+        ):
+            try:
+                value = int(globals().get(name, 0) or 0)
+                if value > 0 and value not in preferred:
+                    preferred.append(value)
+            except BaseException:
+                pass
+        point_hwnd = 0
+        try:
+            point_fn = getattr(win32gui, 'WindowFromPoint', None)
+            if callable(point_fn):
+                point_hwnd = int(point_fn((int(input_x), int(input_y))) or 0)
+        except BaseException:
+            point_hwnd = 0
+        previous = globals().get('_QQFARM_LAST_NATIVE_SURFACE_ROUTE')
+        if not isinstance(previous, dict):
+            previous = globals().get('_QQFARM_STALE_NATIVE_SURFACE_ROUTE')
+        physical_geometry_evidence = False
+        physical_source_rect = None
+        # A PrintWindow retry owns a physical screen rectangle even when the
+        # later native click helper still returns the old DPI-virtualized
+        # absolute point.  Use the current frame provenance to rebase the
+        # live HWND candidates, then let the normal stale-route mapper convert
+        # the old logical point into that physical surface.  This is bounded
+        # by both a fresh PrintWindow token and a point that belongs either to
+        # the previous logical route or to the physical frame itself; it is
+        # deliberately not a generic "scale every click" fallback.
+        try:
+            physical_frame_id = int(globals().get(
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID', 0
+            ) or 0)
+            physical_rect = _qqfarm_rect_tuple(globals().get(
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_RECT'
+            ))
+            physical_hwnd = int(globals().get(
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND', 0
+            ) or 0)
+            if physical_frame_id > 0 and physical_rect is not None:
+                old_width = max(1, physical_rect[2] - physical_rect[0])
+                old_height = max(1, physical_rect[3] - physical_rect[1])
+                old_ratio = float(old_width) / float(old_height)
+                current_roots = [
+                    item for item in list(candidates or ())
+                    if isinstance(item, dict) and bool(item.get('is_root'))
+                ]
+                compatible_root = any(
+                    0.35 <= old_ratio <= 0.70 and
+                    abs(
+                        (float(max(1, int(item.get('width', 0) or 0))) /
+                         float(max(1, int(item.get('height', 0) or 0)))) -
+                        old_ratio
+                    ) <= 0.18
+                    for item in current_roots
+                )
+                edge_tolerance = 24
+                near_physical_frame = bool(
+                    physical_rect[0] - edge_tolerance <= int(input_x) <=
+                    physical_rect[2] + edge_tolerance and
+                    physical_rect[1] - edge_tolerance <= int(input_y) <=
+                    physical_rect[3] + edge_tolerance
+                )
+                previous_rect = _qqfarm_rect_tuple(
+                    previous.get('root_rect')
+                    if isinstance(previous, dict) else None
+                )
+                point_in_previous = bool(
+                    previous_rect is not None and
+                    _qqfarm_rect_contains(
+                        previous_rect, (int(input_x), int(input_y))
+                    )
+                )
+                if compatible_root and (near_physical_frame or point_in_previous):
+                    if near_physical_frame:
+                        previous = {
+                            'root_hwnd': physical_hwnd,
+                            'target_hwnd': physical_hwnd,
+                            'root_rect': physical_rect,
+                            'target_rect': physical_rect,
+                            'input_screen_point': (int(input_x), int(input_y)),
+                            'coordinate_space': 'physical-printwindow',
+                        }
+                    else:
+                        # Preserve the old logical source rectangle.  The
+                        # current candidates are rebased below, so the stale
+                        # mapper can calculate the same relative point in the
+                        # physical window rather than treating the old point
+                        # as a client coordinate.
+                        physical_source_rect = previous_rect
+                    rebase_fn = globals().get(
+                        '_qqfarm_rebase_surface_candidates_to_physical'
+                    )
+                    if callable(rebase_fn):
+                        rebased, rebased_ok = rebase_fn(
+                            candidates, physical_hwnd, physical_rect
+                        )
+                        if rebased_ok:
+                            candidates = rebased
+                            physical_geometry_evidence = True
+                    if near_physical_frame or physical_source_rect is not None:
+                        physical_geometry_evidence = bool(
+                            physical_geometry_evidence or near_physical_frame
+                        )
+        except BaseException:
+            physical_geometry_evidence = False
+        route = _qqfarm_choose_live_surface(
+            candidates,
+            input_x,
+            input_y,
+            frame_width=frame_width,
+            frame_height=frame_height,
+            preferred_hwnds=preferred,
+            previous_route=previous,
+            point_hwnd=point_hwnd,
+        )
+        if isinstance(route, dict) and physical_geometry_evidence:
+            route = dict(route)
+            route['coordinate_space'] = 'physical-printwindow-remapped'
+            route['physical_geometry_evidence'] = True
+            try:
+                logger = globals().get('_throttled_write')
+                message = (
+                    'v532 physical PrintWindow geometry remapped stale click '
+                    'input=' + repr((int(input_x), int(input_y))) +
+                    ' old=' + repr(previous.get('root_rect')) +
+                    ' new=' + repr(route.get('root_rect')) +
+                    ' target=' + str(route.get('target_hwnd', 0)) +
+                    ' client=' + repr(route.get('client_point'))
+                )
+                if callable(logger):
+                    logger('v532-physical-click-remap', message, 2.0)
+                else:
+                    _write(message)
+            except BaseException:
+                pass
+        return route
+    except BaseException:
+        return None
+
+
+def _qqfarm_post_native_surface_mouse(kind, x, y):
+    """Route a native QQ click to the current farm render surface.
+
+    The compiled QQ click helper receives screen coordinates, while the
+    capture/visual paths use a normalized 428x800 frame.  QQ can also rebuild
+    its top-level window and leave a Chrome render child or D3D surface with a
+    different origin/height.  Resolve the live root on every action, prefer
+    the current WGC-bound root, and post to the render child instead of the
+    stale multi-instance background target.
+    """
+    _qqfarm_set_native_surface_miss('pending')
+    try:
+        input_x = int(round(float(x)))
+        input_y = int(round(float(y)))
+    except BaseException:
+        _qqfarm_set_native_surface_miss(
+            'missing-coordinates', 'input=' + repr((x, y))
+        )
+        return False
+    try:
+        win32gui = __import__('win32gui')
+    except BaseException:
+        _qqfarm_set_native_surface_miss('win32gui-unavailable')
+        return False
+
+    # Use the latest normalized frame dimensions when available.  This keeps
+    # the frame-coordinate fallback correct after a DPI/resize transition.
+    frame_width, frame_height = 428, 800
+    for frame_name in (
+            '_QQFARM_LAST_WGC_NORMALIZED_FRAME',
+            '_QQFARM_WGC_FRAME',
+            '_QQFARM_LAST_GOOD_CAPTURE_FRAME'):
+        try:
+            frame = globals().get(frame_name)
+            shape = getattr(frame, 'shape', None)
+            if shape is not None and len(shape) >= 2:
+                candidate_height = int(shape[0])
+                candidate_width = int(shape[1])
+                if candidate_width >= 120 and candidate_height >= 120:
+                    frame_width, frame_height = candidate_width, candidate_height
+                    break
+        except BaseException:
+            pass
+
+    resolver = globals().get('_qqfarm_resolve_live_surface_click')
+    if callable(resolver):
+        route = resolver(
+            kind, input_x, input_y,
+            frame_width=frame_width, frame_height=frame_height,
+            win32gui_module=win32gui,
+        )
+        if not isinstance(route, dict):
+            _qqfarm_set_native_surface_miss(
+                'live-surface-resolution-failed',
+                'input=' + repr((input_x, input_y)),
+            )
+            return False
+        try:
+            target_hwnd = int(route.get('target_hwnd', 0) or 0)
+            target_x, target_y = route.get('client_point', (None, None))
+            target_x, target_y = int(target_x), int(target_y)
+            if target_hwnd <= 0 or target_x < 0 or target_y < 0:
+                raise ValueError('invalid resolved target')
+            lparam = ((target_y & 0xffff) << 16) | (target_x & 0xffff)
+
+            def _resolved_post(message, wparam):
+                value = win32gui.PostMessage(
+                    target_hwnd, int(message), int(wparam), int(lparam)
+                )
+                return value is not False
+
+            kind_text = str(kind or 'click').lower()
+            if kind_text == 'down':
+                delivered = _resolved_post(0x0200, 0) and _resolved_post(0x0201, 0x0001)
+            elif kind_text == 'up':
+                delivered = _resolved_post(0x0202, 0)
+            else:
+                delivered = (
+                    _resolved_post(0x0200, 0) and
+                    _resolved_post(0x0201, 0x0001) and
+                    _resolved_post(0x0202, 0)
+                )
+            globals()['_QQFARM_LAST_NATIVE_SURFACE_ROUTE'] = dict(route)
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v516-live-surface-click',
+                    'v516 live surface click kind=' + kind_text +
+                    ' input=' + repr((input_x, input_y)) +
+                    ' space=' + str(route.get('coordinate_space', '')) +
+                    ' root=' + str(route.get('root_hwnd', 0)) +
+                    ' target=' + str(target_hwnd) +
+                    ' client=' + repr((target_x, target_y)) +
+                    ' delivered=' + repr(bool(delivered)),
+                    1.0,
+                )
+            if delivered:
+                _qqfarm_set_native_surface_miss('')
+                return True
+            _qqfarm_set_native_surface_miss(
+                'post-failed', 'target=' + str(target_hwnd)
+            )
+            return False
+        except BaseException as exc:
+            _qqfarm_set_native_surface_miss(
+                'resolved-route-invalid', repr(exc)[:300]
+            )
+            return False
+
+    preferred_order = []
+    seen_preferred = set()
+    for name in (
+            '_QQFARM_WGC_BOUND_HWND',
+            '_QQFARM_LAST_FARM_HWND',
+            '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND',
+            '_QQFARM_LAST_GOOD_CAPTURE_HWND'):
+        try:
+            value = int(globals().get(name, 0) or 0)
+        except BaseException:
+            value = 0
+        if value > 0 and value not in seen_preferred:
+            seen_preferred.add(value)
+            preferred_order.append(value)
+    preferred_rank = {
+        value: index for index, value in enumerate(preferred_order)
+    }
+
+    def _get_rect(hwnd):
+        try:
+            getter = getattr(win32gui, 'GetWindowRect', None)
+            if callable(getter):
+                raw = getter(int(hwnd))
+                if isinstance(raw, (tuple, list)) and len(raw) >= 4:
+                    left, top, right, bottom = [int(raw[index]) for index in range(4)]
+                    if right > left and bottom > top:
+                        return left, top, right, bottom
+        except BaseException:
+            pass
+        try:
+            raw = win32gui.GetClientRect(int(hwnd))
+            width = int(raw[2] - raw[0])
+            height = int(raw[3] - raw[1])
+            origin = win32gui.ClientToScreen(int(hwnd), (0, 0))
+            return (
+                int(origin[0]), int(origin[1]),
+                int(origin[0]) + width, int(origin[1]) + height,
+            )
+        except BaseException:
+            return None
+
+    def _get_size(hwnd):
+        try:
+            raw = win32gui.GetClientRect(int(hwnd))
+            width = int(raw[2] - raw[0])
+            height = int(raw[3] - raw[1])
+            if width > 0 and height > 0:
+                return width, height
+        except BaseException:
+            pass
+        rect = _get_rect(hwnd)
+        if rect is None:
+            return 0, 0
+        return max(0, int(rect[2] - rect[0])), max(0, int(rect[3] - rect[1]))
+
+    def _contains(rect, px, py):
+        try:
+            return bool(
+                rect is not None and
+                int(rect[0]) <= int(px) < int(rect[2]) and
+                int(rect[1]) <= int(py) < int(rect[3])
+            )
+        except BaseException:
+            return False
+
+    roots = []
+
+    def _root_cb(hwnd, extra):
+        try:
+            hwnd_value = int(hwnd)
+            is_window = getattr(win32gui, 'IsWindow', None)
+            if callable(is_window) and not bool(is_window(hwnd_value)):
+                return True
+            title = str(win32gui.GetWindowText(hwnd_value) or '').strip()
+            if title != '\u0051\u0051\u7ecf\u5178\u519c\u573a':
+                return True
+            visible = bool(win32gui.IsWindowVisible(hwnd_value))
+            if not visible and hwnd_value not in preferred_rank:
+                return True
+            rect = _get_rect(hwnd_value)
+            width, height = _get_size(hwnd_value)
+            if rect is None or width < 300 or height < 500:
+                return True
+            roots.append({
+                'hwnd': hwnd_value,
+                'rect': rect,
+                'width': width,
+                'height': height,
+                'visible': visible,
+                'preferred': preferred_rank.get(
+                    hwnd_value, len(preferred_order) + 1
+                ),
+            })
+        except BaseException:
+            pass
+        return True
+
+    try:
+        win32gui.EnumWindows(_root_cb, None)
+    except BaseException:
+        _qqfarm_set_native_surface_miss('root-enumeration-failed')
+        return False
+    if not roots:
+        _qqfarm_set_native_surface_miss('no-root', 'preferred=' + repr(preferred_order))
+        return False
+
+    # A native screen point identifies the current root directly.  For frame
+    # or root-client coordinates there is no screen hit, so the WGC-bound root
+    # preference remains authoritative.
+    root_contains = any(_contains(item.get('rect'), input_x, input_y) for item in roots)
+    roots.sort(
+        key=lambda item: (
+            0 if root_contains and _contains(item.get('rect'), input_x, input_y) else 1,
+            int(item.get('preferred', len(preferred_order) + 1)),
+            -int(item.get('width', 0) * item.get('height', 0)),
+            int(item.get('hwnd', 0)),
+        )
+    )
+    root = roots[0]
+    root_hwnd = int(root['hwnd'])
+
+    surfaces = [{
+        'hwnd': root_hwnd,
+        'root': root_hwnd,
+        'rect': root.get('rect'),
+        'width': int(root.get('width', 0)),
+        'height': int(root.get('height', 0)),
+        'class_rank': 3,
+        'visible': bool(root.get('visible')),
+    }]
+    render_markers = (
+        'chrome_renderwidgethosthwnd',
+        'chrome_widgetwin',
+        'intermediate d3d window',
+    )
+
+    def _child_cb(hwnd, extra):
+        try:
+            hwnd_value = int(hwnd)
+            class_name = str(win32gui.GetClassName(hwnd_value) or '').lower()
+            if not any(marker in class_name for marker in render_markers):
+                return True
+            width, height = _get_size(hwnd_value)
+            rect = _get_rect(hwnd_value)
+            if rect is None or width < 120 or height < 120:
+                return True
+            if 'chrome_renderwidgethosthwnd' in class_name:
+                class_rank = 0
+            elif 'chrome_widgetwin' in class_name:
+                class_rank = 1
+            else:
+                class_rank = 2
+            surfaces.append({
+                'hwnd': hwnd_value,
+                'root': root_hwnd,
+                'rect': rect,
+                'width': width,
+                'height': height,
+                'class_rank': class_rank,
+                'visible': bool(win32gui.IsWindowVisible(hwnd_value)),
+            })
+        except BaseException:
+            pass
+        return True
+
+    try:
+        win32gui.EnumChildWindows(root_hwnd, _child_cb, None)
+    except BaseException:
+        pass
+
+    screen_point_inside = any(
+        _contains(item.get('rect'), input_x, input_y) for item in surfaces
+    )
+    # Native helpers normally pass absolute screen pixels.  A few builds pass
+    # the normalized capture point instead; recognize that only when the point
+    # is not already inside a live window rectangle.
+    frame_point = bool(
+        not screen_point_inside and
+        0 <= input_x <= int(frame_width) + 2 and
+        0 <= input_y <= int(frame_height) + 2
+    )
+    root_client_point = bool(
+        not screen_point_inside and not frame_point and
+        0 <= input_x < int(root.get('width', 0)) and
+        0 <= input_y < int(root.get('height', 0))
+    )
+
+    def _surface_key(item):
+        inside = _contains(item.get('rect'), input_x, input_y)
+        geometry_error = abs(int(item.get('width', 0)) - int(frame_width)) + abs(
+            int(item.get('height', 0)) - int(frame_height)
+        )
+        return (
+            0 if screen_point_inside and inside else 1,
+            int(item.get('class_rank', 3)),
+            int(geometry_error),
+            0 if item.get('visible') else 1,
+            -int(item.get('width', 0) * item.get('height', 0)),
+            int(item.get('hwnd', 0)),
+        )
+
+    surfaces.sort(key=_surface_key)
+    target = surfaces[0]
+    target_hwnd = int(target['hwnd'])
+    target_width = max(1, int(target['width']))
+    target_height = max(1, int(target['height']))
+
+    try:
+        if screen_point_inside:
+            target_point = win32gui.ScreenToClient(
+                target_hwnd, (input_x, input_y)
+            )
+            target_x, target_y = int(target_point[0]), int(target_point[1])
+            coordinate_space = 'screen'
+        elif frame_point:
+            scaler = globals().get('_friend_guard_scale_point_to_client')
+            if callable(scaler):
+                target_x, target_y = scaler(
+                    input_x, input_y, frame_width, frame_height,
+                    target_width, target_height,
+                )
+            else:
+                target_x = int(round(input_x * target_width / max(1, frame_width)))
+                target_y = int(round(input_y * target_height / max(1, frame_height)))
+            coordinate_space = 'frame'
+        elif root_client_point:
+            screen_point = win32gui.ClientToScreen(
+                root_hwnd, (input_x, input_y)
+            )
+            target_point = win32gui.ScreenToClient(target_hwnd, screen_point)
+            target_x, target_y = int(target_point[0]), int(target_point[1])
+            coordinate_space = 'root-client'
+        else:
+            _qqfarm_set_native_surface_miss(
+                'invalid-space',
+                'input=' + repr((input_x, input_y)) +
+                ' frame=' + repr((frame_width, frame_height)) +
+                ' root=' + repr((root.get('width', 0), root.get('height', 0)))
+            )
+            return False
+    except BaseException:
+        _qqfarm_set_native_surface_miss('coordinate-map-failed')
+        return False
+
+    if not (0 <= int(target_x) < target_width and 0 <= int(target_y) < target_height):
+        _qqfarm_set_native_surface_miss(
+            'target-out-of-bounds',
+            'space=' + str(coordinate_space) +
+            ' target=' + repr((target_x, target_y)) +
+            ' size=' + repr((target_width, target_height))
+        )
+        return False
+    target_x = max(0, min(target_width - 1, int(target_x)))
+    target_y = max(0, min(target_height - 1, int(target_y)))
+    lparam = ((target_y & 0xffff) << 16) | (target_x & 0xffff)
+
+    def _post(message, wparam):
+        try:
+            result = win32gui.PostMessage(
+                target_hwnd, int(message), int(wparam), int(lparam)
+            )
+            return result is not False
+        except BaseException:
+            return False
+
+    kind_text = str(kind or 'click').lower()
+    if kind_text == 'down':
+        delivered = _post(0x0200, 0) and _post(0x0201, 0x0001)
+    elif kind_text == 'up':
+        delivered = _post(0x0202, 0)
+    else:
+        delivered = (
+            _post(0x0200, 0) and
+            _post(0x0201, 0x0001) and
+            _post(0x0202, 0)
+        )
+    try:
+        log_fn = globals().get('_throttled_write')
+        if callable(log_fn):
+            log_fn(
+                'v512-native-qq-surface-click',
+                'v512 native QQ surface click kind=' + kind_text +
+                ' input=' + repr((input_x, input_y)) +
+                ' space=' + coordinate_space +
+                ' root=' + str(root_hwnd) +
+                ' target=' + str(target_hwnd) +
+                ' target_rect=' + repr(target.get('rect')) +
+                ' client=' + repr((target_x, target_y)) +
+                ' delivered=' + repr(bool(delivered)),
+                1.0,
+            )
+    except BaseException:
+        pass
+    if not delivered:
+        _qqfarm_set_native_surface_miss(
+            'post-failed',
+            'root=' + str(root_hwnd) + ' target=' + str(target_hwnd) +
+            ' space=' + str(coordinate_space)
+        )
+        return False
+    _qqfarm_set_native_surface_miss('')
+    return bool(delivered)
+
+
 def _wrap_mouse_action_func(fn, name):
     if getattr(fn, '__qqfarm_wechat_mouse_wrapped__', False):
         return fn, False
@@ -25997,17 +28359,56 @@ def _wrap_mouse_action_func(fn, name):
                 return _stop_gate_return(name)
         except BaseException:
             pass
+        # Resolve the action kind before selecting the platform route.  QQ
+        # now uses the same wrapper for its live render-surface fallback, so
+        # ``kind`` must not be initialized only inside the Weixin branch.
+        lname = str(name).lower()
+        kind = 'click'
+        if 'mouse_down' in lname:
+            kind = 'down'
+        elif 'mouse_up' in lname:
+            kind = 'up'
         try:
             if _active_is_weixin_mode() and _wechat_focus_enabled():
                 x, y = _extract_xy_from_args(a, k)
-                lname = str(name).lower()
-                kind = 'click'
-                if 'mouse_down' in lname:
-                    kind = 'down'
-                elif 'mouse_up' in lname:
-                    kind = 'up'
                 if _post_wechat_mouse(kind, x, y):
                     return True
+            # QQ's compiled multi-instance helper can report a background
+            # failure even though the live farm surface is present.  Route the
+            # same native coordinates through the current render child before
+            # falling back to that stale helper.
+            if not _active_is_weixin_mode():
+                x, y = _extract_xy_from_args(a, k)
+                if x is None or y is None:
+                    _qqfarm_set_native_surface_miss(
+                        'missing-coordinates', 'input=' + repr((x, y))
+                    )
+                    _qqfarm_log_native_click_route_miss(
+                        name, kind, a, k, x, y
+                    )
+                elif _qqfarm_post_native_surface_mouse(kind, x, y):
+                    try:
+                        _throttled_write(
+                            'v515-qq-click-wrapper-' + str(name),
+                            'v515 QQ click wrapper route source=' + str(name) +
+                            ' kind=' + str(kind) +
+                            ' input=' + repr((x, y)),
+                            1.0,
+                        )
+                    except BaseException:
+                        pass
+                    try:
+                        _runtime_info_once(
+                            'qq-native-surface-click',
+                            '\u0051\u0051\u539f\u751f\u70b9\u51fb\uff1a\u5df2\u8def\u7531\u5f53\u524d\u519c\u573a\u6e32\u67d3\u9762\u53d1\u9001\u3002',
+                        )
+                    except BaseException:
+                        pass
+                    return True
+                else:
+                    _qqfarm_log_native_click_route_miss(
+                        name, kind, a, k, x, y
+                    )
         except BaseException as e:
             try: _write('wechat mouse wrapper fallback ' + str(name) + ' ' + repr(e))
             except BaseException: pass
@@ -26016,9 +28417,121 @@ def _wrap_mouse_action_func(fn, name):
         _wrapped.__name__ = getattr(fn, '__name__', 'wechat_mouse_wrapper')
         _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
         _wrapped.__qqfarm_wechat_mouse_wrapped__ = True
+        _wrapped.__qqfarm_wechat_mouse_orig__ = fn
     except BaseException:
         pass
     return _wrapped, True
+
+
+_QQFARM_MOUSE_ALIAS_NAMES = (
+    'click_at_position', 'mouse_down_at_position', 'mouse_up_at_position'
+)
+_QQFARM_MOUSE_ALIAS_PATCH_LOG_SEEN = set()
+
+
+def _qqfarm_patch_click_aliases_for_module(module, tag=''):
+    """Rebind imported aliases that still point at an old click callable."""
+    if module is None:
+        return 0
+    try:
+        module_name = str(getattr(module, '__name__', '') or '')
+    except BaseException:
+        module_name = ''
+    if not (
+            module_name == 'bot' or
+            module_name.startswith('bot.') or
+            module_name.startswith('bot_application')
+    ):
+        return 0
+    targets = [(module, module_name)]
+    try:
+        for class_name, obj in list(vars(module).items())[:500]:
+            if isinstance(obj, type):
+                targets.append((obj, module_name + '.' + str(class_name)))
+    except BaseException:
+        pass
+
+    original_ids = set()
+    changed = 0
+    # Wrap canonical names first and remember both the original and wrapper
+    # identities.  A ``from ... import click_at_position as alias`` binding
+    # still points at the original object after the canonical attribute changes.
+    for obj, prefix in list(targets):
+        for name in _QQFARM_MOUSE_ALIAS_NAMES:
+            try:
+                old = getattr(obj, name, None)
+                if not callable(old):
+                    continue
+                original = getattr(
+                    old, '__qqfarm_wechat_mouse_orig__', old
+                )
+                original_ids.add(id(original))
+                original_ids.add(id(old))
+                new, ok = _wrap_mouse_action_func(old, prefix + '.' + name)
+                if ok:
+                    setattr(obj, name, new)
+                    original_ids.add(id(new))
+                    changed += 1
+            except BaseException:
+                pass
+
+    if not original_ids:
+        return changed
+    for obj, prefix in list(targets):
+        try:
+            items = list(vars(obj).items())
+        except BaseException:
+            continue
+        for name, old in items:
+            name = str(name)
+            if name.startswith('__') or isinstance(old, type) or not callable(old):
+                continue
+            try:
+                function_name = str(getattr(old, '__name__', '') or '')
+                if (
+                        id(old) not in original_ids and
+                        function_name not in _QQFARM_MOUSE_ALIAS_NAMES
+                ):
+                    continue
+                new, ok = _wrap_mouse_action_func(old, prefix + '.' + name)
+                if ok:
+                    setattr(obj, name, new)
+                    changed += 1
+            except BaseException:
+                pass
+    return changed
+
+
+def _qqfarm_patch_click_aliases_loaded(tag=''):
+    changed = []
+    try:
+        for module_name, module in list(sys.modules.items()):
+            if module is None:
+                continue
+            count = _qqfarm_patch_click_aliases_for_module(module, tag)
+            if count:
+                changed.append(str(module_name) + ':' + str(count))
+    except BaseException as e:
+        try:
+            _throttled_write(
+                'v514-click-alias-scan-error',
+                'v514 click alias scan error ' + repr(e),
+                30.0,
+            )
+        except BaseException:
+            pass
+    if changed:
+        signature = ', '.join(changed[:80])
+        if signature not in _QQFARM_MOUSE_ALIAS_PATCH_LOG_SEEN:
+            _QQFARM_MOUSE_ALIAS_PATCH_LOG_SEEN.add(signature)
+            try:
+                _write(
+                    'v514 QQ click alias bridge patched ' +
+                    str(tag) + ' ' + signature
+                )
+            except BaseException:
+                pass
+    return changed
 
 
 def _patch_wechat_focus_loaded(tag=''):
@@ -26100,6 +28613,17 @@ def _patch_wechat_focus_loaded(tag=''):
     except BaseException as e:
         try: _write('wechat focus patch error ' + repr(e))
         except BaseException: pass
+    try:
+        _qqfarm_patch_click_aliases_loaded(tag)
+    except BaseException as e:
+        try:
+            _throttled_write(
+                'v514-click-alias-bridge-error',
+                'v514 click alias bridge error ' + repr(e),
+                30.0,
+            )
+        except BaseException:
+            pass
     if changed:
         sig = ', '.join(changed[:80])
         if sig not in _WECHAT_FOCUS_PATCH_LOG_SEEN:
@@ -29879,16 +32403,41 @@ def _qqfarm_install_visible_capture_priority(context):
                             visible is not None and callable(trusted_fn) and
                             bool(trusted_fn(visible))
                         )
+                        friend_list_route = False
+                        if visible is not None and not trusted:
+                            rows_fn = globals().get('_friend_list_visit_button_rows')
+                            try:
+                                visible_rows = (
+                                    rows_fn(visible) if callable(rows_fn) else []
+                                )
+                                friend_list_route = bool(
+                                    len(list(visible_rows or [])) >= 3
+                                )
+                            except BaseException:
+                                friend_list_route = False
                         validator = globals().get(
                             '_qqfarm_visible_frame_has_farm_scene'
                         )
                         visible_valid = bool(
                             visible is not None and (
-                                trusted or not callable(validator) or
+                                friend_list_route or trusted or not callable(validator) or
                                 bool(validator(visible))
                             )
                         )
                         if visible_valid:
+                            if friend_list_route:
+                                try:
+                                    log_fn = globals().get('_throttled_write')
+                                    if callable(log_fn):
+                                        log_fn(
+                                            'v520-capture-owner-friend-list-route',
+                                            'v520 capture owner accepted window-owned '
+                                            'friend-list route rows=' +
+                                            str(len(visible_rows or [])),
+                                            2.0,
+                                        )
+                                except BaseException:
+                                    pass
                             return visible
                 except BaseException:
                     pass
@@ -30027,13 +32576,48 @@ def _get_frame_from_bot(bot):
                     prepared_frame is not None and callable(trusted_fn) and
                     bool(trusted_fn(prepared_frame))
                 )
+                friend_list_route = False
+                if prepared_frame is not None and not trusted:
+                    rows_fn = globals().get('_friend_list_visit_button_rows')
+                    try:
+                        visible_rows = (
+                            rows_fn(prepared_frame) if callable(rows_fn) else []
+                        )
+                        friend_list_route = bool(
+                            len(list(visible_rows or [])) >= 3
+                        )
+                    except BaseException:
+                        friend_list_route = False
                 visible_valid = bool(
                     prepared_frame is not None and (
-                        trusted or not callable(validator) or
+                        friend_list_route or trusted or not callable(validator) or
                         bool(validator(prepared_frame))
                     )
                 )
                 if visible_valid:
+                    if friend_list_route:
+                        cache_fn = globals().get(
+                            '_qqfarm_remember_friend_list_frame'
+                        )
+                        if callable(cache_fn):
+                            try:
+                                cache_fn(
+                                    bot, prepared_frame,
+                                    list(visible_rows or []),
+                                )
+                            except BaseException:
+                                pass
+                        try:
+                            log_fn = globals().get('_throttled_write')
+                            if callable(log_fn):
+                                log_fn(
+                                    'v520-frame-from-bot-friend-list-route',
+                                    'v520 frame-from-bot accepted window-owned friend-list '
+                                    'route rows=' + str(len(visible_rows or [])),
+                                    2.0,
+                                )
+                        except BaseException:
+                            pass
                     return prepared_frame
                 if visible_attempt == 0:
                     # Do not spend a second visible probe when the native
@@ -30559,16 +33143,76 @@ def _qqfarm_capture_visible_farm_frame(prefer_desktop=False, allow_overlay=False
                     bool(allow_overlay) or not callable(validator) or
                     bool(validator(printwindow_frame))
                 )
-                if valid_printwindow:
+                # A friend list intentionally has no farm canvas, so the
+                # generic farm-scene validator rejects it.  Prefer the same
+                # window-owned pixels over ImageGrab when the frame contains
+                # a complete, ordered multi-row friend surface.  Falling
+                # through to a desktop crop here is what let an occluded or
+                # rebuilt QQ window be mistaken for a friend list and then
+                # enter the repeated close/relaunch path.
+                friend_list_route_frame = False
+                if not valid_printwindow and not bool(allow_overlay):
+                    rows_fn = globals().get('_friend_list_visit_button_rows')
+                    try:
+                        route_rows = rows_fn(printwindow_frame) if callable(rows_fn) else []
+                        friend_list_route_frame = bool(
+                            len(list(route_rows or [])) >= 3
+                        )
+                    except BaseException:
+                        friend_list_route_frame = False
+                if valid_printwindow or friend_list_route_frame:
+                    if friend_list_route_frame:
+                        # v539: the window-owned capture is the strongest
+                        # friend-list evidence, but the native owner may ask
+                        # for its next frame a few milliseconds later and get
+                        # a compositor blank. Retain this validated frame
+                        # before returning so rows=0 cannot reopen/close the
+                        # list or fall back to the stale top-area click.
+                        try:
+                            active_context = globals().get(
+                                '_ACTIVE_RUN_CYCLE_CONTEXT'
+                            )
+                            remember_fn = globals().get(
+                                '_qqfarm_remember_friend_list_frame'
+                            )
+                            remembered = bool(
+                                callable(remember_fn) and
+                                active_context is not None and
+                                remember_fn(
+                                    active_context,
+                                    printwindow_frame,
+                                    list(route_rows or []),
+                                )
+                            )
+                            log_fn = globals().get('_throttled_write')
+                            if callable(log_fn):
+                                log_fn(
+                                    'v539-printwindow-friend-list-cache',
+                                    'v539 remembered window-owned friend-list '
+                                    'frame for native owner rows=' +
+                                    str(len(route_rows or [])) +
+                                    ' remembered=' + repr(remembered),
+                                    2.0,
+                                )
+                        except BaseException:
+                            pass
                     try:
                         log_fn = globals().get('_throttled_write')
                         if callable(log_fn):
-                            log_fn(
-                                'v414-strict-printwindow-frame',
-                                'v414 strict physical retry used raw PrintWindow frame; '
-                                'full-board ledger remains observation-only',
-                                2.0,
-                            )
+                            if friend_list_route_frame:
+                                log_fn(
+                                    'v520-printwindow-friend-list-route',
+                                    'v520 window-owned PrintWindow friend-list route '
+                                    'accepted rows=' + str(len(route_rows or [])),
+                                    2.0,
+                                )
+                            else:
+                                log_fn(
+                                    'v414-strict-printwindow-frame',
+                                    'v414 strict physical retry used raw PrintWindow frame; '
+                                    'full-board ledger remains observation-only',
+                                    2.0,
+                                )
                     except BaseException:
                         pass
                     try:
@@ -35461,8 +38105,14 @@ def _note_runtime_planting_outcome(message):
         if context is not None and (
             '\u5df2\u5b8c\u6210\u4e70\u79cd' in text or '\u5df2\u8d2d\u4e70\u79cd\u5b50' in text
         ):
+            proof_fn = globals().get(
+                '_qqfarm_runtime_buy_seed_has_fresh_empty_proof'
+            )
+            has_proof = bool(
+                proof_fn(context, now_ts=now_value)
+            ) if callable(proof_fn) else False
             priority_fn = globals().get('_qqfarm_update_home_priority')
-            if callable(priority_fn):
+            if has_proof and callable(priority_fn):
                 priority_fn(
                     context,
                     max(1, int(getattr(
@@ -35470,6 +38120,11 @@ def _note_runtime_planting_outcome(message):
                     ) or 1)),
                     now_ts=now_value,
                     reason='runtime-buy-seed-complete',
+                )
+            elif not has_proof:
+                _write(
+                    'v522 ignored native buy-seed completion without fresh '
+                    'empty-land proof'
                 )
 
         if context is not None and '\u5bb6\u91cc\u5df2\u65e0\u53ef\u6267\u884c\u7684\u4efb\u52a1' in text:
@@ -39677,6 +42332,12 @@ def _friend_chain_begin_dispatch(context):
                 setattr(
                     context, '_qqfarm_friend_next_entry_pending_identity', None
                 )
+                setattr(
+                    context, '_qqfarm_friend_next_entry_cooldown_until', 0.0
+                )
+                setattr(
+                    context, '_qqfarm_friend_next_entry_retry_count', 0
+                )
                 # A compiled troublemaker call may have been deferred by the
                 # previous friend chain.  Preserve its callable and arguments
                 # across redispatches until a real counter increment confirms it.
@@ -39951,40 +42612,187 @@ def _wrap_friend_next_entry_func(fn, name=''):
                 context = context_fn(args, kwargs) if callable(context_fn) else None
             except BaseException:
                 context = None
+
+            def _call_frame():
+                candidate = None
+                try:
+                    values = list(args or ()) + list((kwargs or {}).values())
+                    for value in reversed(values):
+                        if value is None or value is context:
+                            continue
+                        if getattr(value, 'shape', None) is not None:
+                            candidate = value
+                            break
+                except BaseException:
+                    candidate = None
+                return candidate
+
+            def _capture_frame():
+                try:
+                    capture_fn = globals().get('_get_frame_from_bot')
+                    return capture_fn(context) if callable(capture_fn) else None
+                except BaseException:
+                    return None
+
+            def _friend_identity(frame_value):
+                if frame_value is None:
+                    return None
+                try:
+                    state_fn = globals().get('_friend_guard_friend_ui_state')
+                    if callable(state_fn) and state_fn(frame_value) is not True:
+                        return None
+                    identity_fn = globals().get('_qqfarm_friend_navigation_identity')
+                    return identity_fn(frame_value) if callable(identity_fn) else None
+                except BaseException:
+                    return None
+
+            def _identity_changed(identity_value, frame_value):
+                try:
+                    changed_fn = globals().get(
+                        '_qqfarm_friend_navigation_identity_changed'
+                    )
+                    if callable(changed_fn):
+                        return changed_fn(identity_value, frame_value)
+                except BaseException:
+                    pass
+                current_value = _friend_identity(frame_value)
+                if identity_value is None or current_value is None:
+                    return None
+                return bool(identity_value != current_value)
+
+            def _now():
+                try:
+                    now_fn = globals().get('_friend_guard_poll_now')
+                    return float(
+                        now_fn() if callable(now_fn)
+                        else __import__('time').monotonic()
+                    )
+                except BaseException:
+                    return 0.0
+
+            candidate_frame = _call_frame()
+            if candidate_frame is None and context is not None:
+                candidate_frame = _capture_frame()
+            current_identity = _friend_identity(candidate_frame)
+
+            # A successful message delivery is only a pending navigation.  Do
+            # not send the same bottom-card click every patrol while QQ still
+            # renders the same selected friend.
+            if context is not None:
+                try:
+                    pending_identity = getattr(
+                        context, '_qqfarm_friend_next_entry_pending_identity', None
+                    )
+                    cooldown_until = float(getattr(
+                        context, '_qqfarm_friend_next_entry_cooldown_until', 0.0
+                    ) or 0.0)
+                    retry_count = max(0, int(getattr(
+                        context, '_qqfarm_friend_next_entry_retry_count', 0
+                    ) or 0))
+                except BaseException:
+                    pending_identity = None
+                    cooldown_until = 0.0
+                    retry_count = 0
+                if pending_identity is not None and current_identity is not None:
+                    changed = _identity_changed(pending_identity, candidate_frame)
+                    if changed is True:
+                        try:
+                            setattr(context, '_qqfarm_friend_next_entry_pending_identity', None)
+                            setattr(context, '_qqfarm_friend_next_entry_cooldown_until', 0.0)
+                            setattr(context, '_qqfarm_friend_next_entry_retry_count', 0)
+                        except BaseException:
+                            pass
+                    elif changed is False and cooldown_until > _now():
+                        try:
+                            log_fn = globals().get('_throttled_write')
+                            if callable(log_fn):
+                                log_fn(
+                                    'v518-bottom-entry-confirmation-cooldown',
+                                    'v518 bottom friend navigation awaiting fresh card; '
+                                    'repeated click suppressed remaining=' +
+                                    ('%.1f' % max(0.0, cooldown_until - _now())),
+                                    4.0,
+                                )
+                        except BaseException:
+                            pass
+                        return True
+                    elif changed is False and retry_count >= 2:
+                        try:
+                            setattr(context, '_qqfarm_friend_next_entry_pending_identity', None)
+                            setattr(context, '_qqfarm_friend_next_entry_cooldown_until', 0.0)
+                            setattr(context, '_qqfarm_friend_next_entry_retry_count', 0)
+                            log_fn = globals().get('_write')
+                            if callable(log_fn):
+                                log_fn(
+                                    'v518 bottom friend navigation remained unchanged '
+                                    'after bounded retries; releasing to home recovery'
+                                )
+                        except BaseException:
+                            pass
+                        return False
+
             result = fn(*args, **kwargs)
             if result:
-                if context is not None:
+                if context is None:
+                    return result
+                before_identity = current_identity
+                confirmed = False
+                sleep_fn = globals().get('_friend_guard_sleep')
+                for poll in range(6):
+                    post_frame = _capture_frame()
+                    if (
+                        before_identity is not None
+                        and post_frame is not None
+                        and _identity_changed(before_identity, post_frame) is True
+                    ):
+                        confirmed = True
+                        break
+                    if poll < 5:
+                        try:
+                            if callable(sleep_fn):
+                                sleep_fn(min(0.22, 0.08 + (0.02 * poll)))
+                        except BaseException:
+                            pass
+                if confirmed:
                     try:
-                        setattr(
-                            context,
-                            '_qqfarm_friend_next_entry_pending_identity',
-                            None,
-                        )
+                        setattr(context, '_qqfarm_friend_next_entry_pending_identity', None)
+                        setattr(context, '_qqfarm_friend_next_entry_cooldown_until', 0.0)
+                        setattr(context, '_qqfarm_friend_next_entry_retry_count', 0)
                     except BaseException:
                         pass
-                return result
+                    return result
+
+                try:
+                    retry_count = max(0, int(getattr(
+                        context, '_qqfarm_friend_next_entry_retry_count', 0
+                    ) or 0)) + 1
+                    cooldown = 14.0 if retry_count <= 1 else 30.0
+                    setattr(
+                        context, '_qqfarm_friend_next_entry_pending_identity',
+                        before_identity,
+                    )
+                    setattr(context, '_qqfarm_friend_next_entry_retry_count', retry_count)
+                    setattr(
+                        context, '_qqfarm_friend_next_entry_cooldown_until',
+                        _now() + cooldown,
+                    )
+                    log_fn = globals().get('_write')
+                    if callable(log_fn):
+                        log_fn(
+                            'v518 bottom friend navigation unconfirmed; current '
+                            'card preserved retry=' + str(retry_count) + '/2 cooldown=' +
+                            ('%.1f' % cooldown)
+                        )
+                except BaseException:
+                    retry_count = 1
+                return bool(retry_count < 2)
             if context is None:
                 return result
 
-            candidate_frame = None
-            try:
-                values = list(args or ()) + list((kwargs or {}).values())
-                for value in reversed(values):
-                    if value is None or value is context:
-                        continue
-                    if getattr(value, 'shape', None) is not None:
-                        candidate_frame = value
-                        break
-            except BaseException:
-                candidate_frame = None
-            if candidate_frame is None:
-                try:
-                    capture_fn = globals().get('_get_frame_from_bot')
-                    if callable(capture_fn):
-                        candidate_frame = capture_fn(context)
-                except BaseException:
-                    candidate_frame = None
-
+            # Reuse the fresh frame collected before the native call.  The
+            # miss-recovery route only needs to decide whether the current
+            # surface is a friend farm; capturing it again adds latency and
+            # can pair the pending identity with a different animation frame.
             try:
                 state_fn = globals().get('_friend_guard_friend_ui_state')
                 friend_state = (
@@ -40098,6 +42906,35 @@ def _wrap_friend_next_entry_func(fn, name=''):
         return fn, False
 
 
+def _qqfarm_friend_entry_retry_gate_active(context, now_ts=None):
+    """Block all home friend-entry variants during one failed transition window."""
+    try:
+        if context is None:
+            return False
+        now_fn = globals().get('_friend_watchdog_now')
+        current = float(
+            now_ts if now_ts is not None else (
+                now_fn() if callable(now_fn) else __import__('time').time()
+            )
+        )
+        retry_after = float(getattr(
+            context, '_qqfarm_friend_entry_retry_after_ts', 0.0
+        ) or 0.0)
+        if retry_after <= current:
+            return False
+        log_fn = globals().get('_throttled_write')
+        if callable(log_fn):
+            log_fn(
+                'v529-friend-entry-retry-gate',
+                'v529 friend entry retry gate active remaining=' +
+                ('%.1f' % max(0.0, retry_after - current)) + 's; suppressing all entry variants',
+                4.0,
+            )
+        return True
+    except BaseException:
+        return False
+
+
 def _wrap_friend_entry_verified_func(fn, name=''):
     """Reject native home-entry acknowledgements until a fresh friend surface exists."""
     try:
@@ -40122,25 +42959,28 @@ def _wrap_friend_entry_verified_func(fn, name=''):
                 )
             except BaseException:
                 now_ts = 0.0
-            if is_direct_help and context is not None:
-                try:
-                    cooldown_until = float(getattr(
-                        context, '_qqfarm_friend_direct_entry_cooldown_until', 0.0
-                    ) or 0.0)
-                except BaseException:
-                    cooldown_until = 0.0
-                if cooldown_until > now_ts:
-                    try:
-                        log_fn = globals().get('_write')
-                        if callable(log_fn):
-                            log_fn(
-                                'v357 direct friend entry cooldown active; native '
-                                'click suppressed remaining=' +
-                                ('%.1f' % max(0.0, cooldown_until - now_ts)) + 's'
-                            )
-                    except BaseException:
-                        pass
+            if context is not None:
+                if _qqfarm_friend_entry_retry_gate_active(context, now_ts=now_ts):
                     return False
+                if is_direct_help:
+                    try:
+                        cooldown_until = float(getattr(
+                            context, '_qqfarm_friend_direct_entry_cooldown_until', 0.0
+                        ) or 0.0)
+                    except BaseException:
+                        cooldown_until = 0.0
+                    if cooldown_until > now_ts:
+                        try:
+                            log_fn = globals().get('_write')
+                            if callable(log_fn):
+                                log_fn(
+                                    'v357 direct friend entry cooldown active; native '
+                                    'click suppressed remaining=' +
+                                    ('%.1f' % max(0.0, cooldown_until - now_ts)) + 's'
+                                )
+                        except BaseException:
+                            pass
+                        return False
 
             result = fn(*args, **kwargs)
             if not result:
@@ -40197,25 +43037,34 @@ def _wrap_friend_entry_verified_func(fn, name=''):
                     setattr(context, '_qqfarm_friend_chain_pending', False)
                 except BaseException:
                     pass
-                if is_direct_help:
-                    try:
-                        cooldown_seconds = float(getattr(
-                            context,
-                            'friend_direct_entry_false_positive_cooldown_seconds',
-                            30.0,
-                        ) or 30.0)
-                    except BaseException:
-                        cooldown_seconds = 30.0
-                    cooldown_seconds = max(8.0, min(180.0, cooldown_seconds))
-                    try:
+                try:
+                    cooldown_seconds = float(getattr(
+                        context,
+                        'friend_direct_entry_false_positive_cooldown_seconds',
+                        30.0,
+                    ) or 30.0)
+                except BaseException:
+                    cooldown_seconds = 30.0
+                cooldown_seconds = max(8.0, min(180.0, cooldown_seconds))
+                try:
+                    # A failed transition blocks both compiled entry variants.
+                    # Otherwise the next patrol can immediately fall through
+                    # from the direct request card to the friend icon and click
+                    # the same unchanged home surface again.
+                    setattr(
+                        context,
+                        '_qqfarm_friend_entry_retry_after_ts',
+                        float(now_ts) + cooldown_seconds,
+                    )
+                    if is_direct_help:
                         setattr(context, '_qqfarm_friend_entry_prefer_icon', True)
                         setattr(
                             context,
                             '_qqfarm_friend_direct_entry_cooldown_until',
                             now_ts + cooldown_seconds,
                         )
-                    except BaseException:
-                        pass
+                except BaseException:
+                    pass
                 try:
                     log_fn = globals().get('_write')
                     if callable(log_fn):
@@ -40238,6 +43087,7 @@ def _wrap_friend_entry_verified_func(fn, name=''):
                 if is_direct_help:
                     setattr(context, '_qqfarm_friend_entry_prefer_icon', False)
                     setattr(context, '_qqfarm_friend_direct_entry_cooldown_until', 0.0)
+                setattr(context, '_qqfarm_friend_entry_retry_after_ts', 0.0)
             except BaseException:
                 pass
             try:
@@ -44329,117 +47179,240 @@ def _friend_guard_screen_point_owned_by_farm(screen_x, screen_y):
 def _friend_guard_post_client_click(
     frame_x, frame_y, frame_width=428, frame_height=800
 ):
-    """Post a click to the DPI-aware QQ farm render surface."""
+    """Post a click to the currently captured QQ farm surface.
+
+    The capture surface is not guaranteed to be the top-level client area:
+    recent QQ builds expose a shorter Chrome/D3D child surface below a title
+    strip.  Resolve the current capture root first, then choose the render
+    surface whose aspect ratio matches the actual frame before mapping the
+    point.  A successful return now means all mouse messages were accepted.
+    """
+    resolver = globals().get('_qqfarm_resolve_live_surface_click')
+    if callable(resolver):
+        try:
+            win32gui = __import__('win32gui')
+            route = resolver(
+                'click', frame_x, frame_y,
+                frame_width=frame_width, frame_height=frame_height,
+                win32gui_module=win32gui,
+            )
+            if not isinstance(route, dict):
+                return False
+            target_hwnd = int(route.get('target_hwnd', 0) or 0)
+            target_x, target_y = route.get('client_point', (None, None))
+            target_x, target_y = int(target_x), int(target_y)
+            if target_hwnd <= 0 or target_x < 0 or target_y < 0:
+                return False
+            lparam = ((target_y & 0xffff) << 16) | (target_x & 0xffff)
+
+            def _live_post(message, wparam):
+                value = win32gui.PostMessage(
+                    target_hwnd, int(message), int(wparam), int(lparam)
+                )
+                return value is not False
+
+            delivered = (
+                _live_post(0x0200, 0) and
+                _live_post(0x0201, 0x0001) and
+                _live_post(0x0202, 0)
+            )
+            if delivered:
+                globals()['_QQFARM_LAST_NATIVE_SURFACE_ROUTE'] = dict(route)
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v516-friend-live-surface-click',
+                    'v516 friend live surface click root=' +
+                    str(route.get('root_hwnd', 0)) +
+                    ' target=' + str(target_hwnd) +
+                    ' space=' + str(route.get('coordinate_space', '')) +
+                    ' client=' + repr((target_x, target_y)) +
+                    ' delivered=' + repr(bool(delivered)),
+                    1.0,
+                )
+            return bool(delivered)
+        except BaseException:
+            return False
+
+    def _preferred_hwnds():
+        values = []
+        seen = set()
+        for name in (
+                '_QQFARM_WGC_BOUND_HWND',
+                '_QQFARM_LAST_FARM_HWND',
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND',
+        ):
+            try:
+                value = int(globals().get(name, 0) or 0)
+            except BaseException:
+                value = 0
+            if value > 0 and value not in seen:
+                seen.add(value)
+                values.append(value)
+        return values
+
+    preferred_order = _preferred_hwnds()
+    preferred_ranks = {
+        int(value): int(index) for index, value in enumerate(preferred_order)
+    }
+
+    def _surface_score(width, height, class_rank):
+        try:
+            source_ratio = float(frame_width) / max(1.0, float(frame_height))
+            surface_ratio = float(width) / max(1.0, float(height))
+            aspect_error = abs(surface_ratio - source_ratio)
+            dimension_error = abs(int(width) - int(frame_width)) + abs(
+                int(height) - int(frame_height)
+            )
+            return (
+                float(aspect_error),
+                int(dimension_error),
+                int(class_rank),
+                -int(width * height),
+            )
+        except BaseException:
+            return (999.0, 999999, int(class_rank), 0)
+
+    def _post_message(win32gui_module, hwnd, message, wparam, lparam):
+        try:
+            result = win32gui_module.PostMessage(
+                int(hwnd), int(message), int(wparam), int(lparam)
+            )
+            # pywin32 commonly returns None on success; an explicit False is
+            # the only non-exception failure signal.
+            return result is not False
+        except BaseException:
+            return False
+
     try:
         win32gui = __import__('win32gui')
+        preferred = set(preferred_order)
         candidates = []
 
         def _cb(hwnd, extra):
             try:
-                if not win32gui.IsWindowVisible(hwnd):
+                if hasattr(win32gui, 'IsWindow') and not win32gui.IsWindow(hwnd):
                     return True
-                if str(win32gui.GetWindowText(hwnd) or '').strip() != '\u0051\u0051\u7ecf\u5178\u519c\u573a':
+                visible = bool(win32gui.IsWindowVisible(hwnd))
+                if not visible and int(hwnd) not in preferred:
+                    return True
+                if str(win32gui.GetWindowText(hwnd) or '').strip() != (
+                        '\u0051\u0051\u7ecf\u5178\u519c\u573a'):
                     return True
                 rect = win32gui.GetClientRect(hwnd)
                 width = int(rect[2] - rect[0])
                 height = int(rect[3] - rect[1])
                 if width < 300 or height < 500:
                     return True
-                scale_x = float(width) / max(1.0, float(frame_width))
-                scale_y = float(height) / max(1.0, float(frame_height))
-                candidates.append((abs(scale_x - scale_y), -width * height, int(hwnd), width, height))
+                candidates.append((
+                    preferred_ranks.get(int(hwnd), len(preferred_order) + 1),
+                    _surface_score(width, height, 2),
+                    int(hwnd),
+                    width,
+                    height,
+                ))
             except BaseException:
                 pass
             return True
 
         win32gui.EnumWindows(_cb, None)
         if candidates:
-            candidates.sort(key=lambda item: (item[0], item[1]))
-            _, _, root_hwnd, client_width, client_height = candidates[0]
-            client_x, client_y = _friend_guard_scale_point_to_client(
-                frame_x, frame_y, frame_width, frame_height,
-                client_width, client_height,
+            candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+            _, _, root_hwnd, root_width, root_height = candidates[0]
+
+            # The root client and its render child can have different heights
+            # (for example 448x834 vs 448x795).  Build one surface list and
+            # select the geometry that matches the actual captured frame.
+            surfaces = [(root_hwnd, root_width, root_height, 2)]
+            render_markers = (
+                'chrome_renderwidgethosthwnd',
+                'chrome_widgetwin',
+                'intermediate d3d window',
             )
-            screen_point = win32gui.ClientToScreen(root_hwnd, (client_x, client_y))
-            target_hwnd = int(win32gui.WindowFromPoint(screen_point) or 0)
-            if not target_hwnd or (
-                target_hwnd != root_hwnd
-                and not win32gui.IsChild(root_hwnd, target_hwnd)
-            ):
-                # The assistant window can cover the visible QQ farm surface.
-                # WindowFromPoint then returns the assistant instead of QQ's
-                # Chrome render child, and posting to the top-level Chrome shell
-                # is not accepted by every QQ/WebView build.  Resolve the child
-                # from the farm HWND itself so occlusion never changes the input
-                # destination.
-                render_candidates = []
 
-                def _child_cb(hwnd, extra):
-                    try:
-                        if not win32gui.IsWindowVisible(hwnd):
-                            return True
-                        class_name = str(win32gui.GetClassName(hwnd) or '').lower()
-                        if not any(marker in class_name for marker in (
-                                'chrome_renderwidgethosthwnd',
-                                'chrome_widgetwin',
-                                'intermediate d3d window')):
-                            return True
-                        child_rect = win32gui.GetClientRect(hwnd)
-                        child_width = int(child_rect[2] - child_rect[0])
-                        child_height = int(child_rect[3] - child_rect[1])
-                        if child_width < 120 or child_height < 120:
-                            return True
-                        child_point = win32gui.ScreenToClient(hwnd, screen_point)
-                        if not (
-                                0 <= int(child_point[0]) < child_width
-                                and 0 <= int(child_point[1]) < child_height):
-                            return True
-                        class_rank = 0 if 'chrome_renderwidgethosthwnd' in class_name else 1
-                        render_candidates.append((
-                            class_rank,
-                            abs(child_width - client_width) + abs(child_height - client_height),
-                            -child_width * child_height,
-                            int(hwnd),
-                        ))
-                    except BaseException:
-                        pass
-                    return True
-
+            def _child_cb(hwnd, extra):
                 try:
-                    win32gui.EnumChildWindows(root_hwnd, _child_cb, None)
-                except BaseException:
-                    render_candidates = []
-                if render_candidates:
-                    render_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
-                    target_hwnd = int(render_candidates[0][3])
-                else:
-                    target_hwnd = root_hwnd
-            if target_hwnd != root_hwnd:
-                try:
-                    log_fn = globals().get('_throttled_write')
-                    if callable(log_fn):
-                        log_fn(
-                            'v490-client-render-child',
-                            'v490 client click routed to QQ render child root=' +
-                            str(root_hwnd) + ' target=' + str(target_hwnd) +
-                            ' point=' + repr((client_x, client_y)),
-                            4.0,
-                        )
+                    if not bool(win32gui.IsWindowVisible(hwnd)):
+                        return True
+                    class_name = str(win32gui.GetClassName(hwnd) or '').lower()
+                    if not any(marker in class_name for marker in render_markers):
+                        return True
+                    child_rect = win32gui.GetClientRect(hwnd)
+                    child_width = int(child_rect[2] - child_rect[0])
+                    child_height = int(child_rect[3] - child_rect[1])
+                    if child_width < 120 or child_height < 120:
+                        return True
+                    surfaces.append((
+                        int(hwnd),
+                        child_width,
+                        child_height,
+                        0 if 'chrome_renderwidgethosthwnd' in class_name else 1,
+                    ))
                 except BaseException:
                     pass
-            target_point = win32gui.ScreenToClient(target_hwnd, screen_point)
-            lparam = ((int(target_point[1]) & 0xffff) << 16) | (int(target_point[0]) & 0xffff)
-            win32gui.PostMessage(target_hwnd, 0x0200, 0, lparam)
-            win32gui.PostMessage(target_hwnd, 0x0201, 0x0001, lparam)
-            win32gui.PostMessage(target_hwnd, 0x0202, 0, lparam)
-            return True
+                return True
+
+            try:
+                win32gui.EnumChildWindows(root_hwnd, _child_cb, None)
+            except BaseException:
+                pass
+
+            surfaces.sort(
+                key=lambda item: _surface_score(item[1], item[2], item[3])
+            )
+            target_hwnd, target_width, target_height, target_rank = surfaces[0]
+            client_x, client_y = _friend_guard_scale_point_to_client(
+                frame_x, frame_y, frame_width, frame_height,
+                target_width, target_height,
+            )
+            screen_point = win32gui.ClientToScreen(
+                target_hwnd, (client_x, client_y)
+            )
+            target_point = (client_x, client_y)
+            try:
+                converted = win32gui.ScreenToClient(target_hwnd, screen_point)
+                if isinstance(converted, (tuple, list)) and len(converted) >= 2:
+                    target_point = (int(converted[0]), int(converted[1]))
+            except BaseException:
+                pass
+            target_x, target_y = int(target_point[0]), int(target_point[1])
+            target_x = max(0, min(int(target_width) - 1, target_x))
+            target_y = max(0, min(int(target_height) - 1, target_y))
+            lparam = ((target_y & 0xffff) << 16) | (target_x & 0xffff)
+            delivered = (
+                _post_message(win32gui, target_hwnd, 0x0200, 0, lparam)
+                and _post_message(win32gui, target_hwnd, 0x0201, 0x0001, lparam)
+                and _post_message(win32gui, target_hwnd, 0x0202, 0, lparam)
+            )
+            try:
+                log_fn = globals().get('_throttled_write')
+                if callable(log_fn):
+                    log_fn(
+                        'v491-friend-click-geometry',
+                        'v491 friend client click root=' + str(root_hwnd) +
+                        ' target=' + str(target_hwnd) +
+                        ' frame=' + str(int(frame_width)) + 'x' +
+                        str(int(frame_height)) +
+                        ' surface=' + str(int(target_width)) + 'x' +
+                        str(int(target_height)) +
+                        ' point=' + repr((target_x, target_y)) +
+                        ' preferred=' + repr(int(root_hwnd) in preferred) +
+                        ' delivered=' + repr(bool(delivered)),
+                        4.0,
+                    )
+            except BaseException:
+                pass
+            return bool(delivered)
     except BaseException:
         pass
+
+    # ctypes fallback for stripped installations without pywin32.
     try:
         import ctypes
         user32 = ctypes.windll.user32
         candidates = []
         enum_proc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+        preferred = set(preferred_order)
 
         class RECT(ctypes.Structure):
             _fields_ = [
@@ -44452,11 +47425,13 @@ def _friend_guard_post_client_click(
 
         def _cb(hwnd, lparam):
             try:
-                if not user32.IsWindowVisible(hwnd):
+                window = int(hwnd)
+                if not user32.IsWindowVisible(hwnd) and window not in preferred:
                     return True
                 title_buf = ctypes.create_unicode_buffer(256)
                 user32.GetWindowTextW(hwnd, title_buf, 255)
-                if str(title_buf.value or '').strip() != '\u0051\u0051\u7ecf\u5178\u519c\u573a':
+                if str(title_buf.value or '').strip() != (
+                        '\u0051\u0051\u7ecf\u5178\u519c\u573a'):
                     return True
                 rect = RECT()
                 if not user32.GetClientRect(hwnd, ctypes.byref(rect)):
@@ -44464,9 +47439,11 @@ def _friend_guard_post_client_click(
                 width = int(rect.right - rect.left)
                 height = int(rect.bottom - rect.top)
                 if width >= 300 and height >= 500:
-                    scale_x = float(width) / max(1.0, float(frame_width))
-                    scale_y = float(height) / max(1.0, float(frame_height))
-                    candidates.append((abs(scale_x - scale_y), -width * height, int(hwnd), width, height))
+                    candidates.append((
+                        preferred_ranks.get(window, len(preferred_order) + 1),
+                        _surface_score(width, height, 2),
+                        window, width, height,
+                    ))
             except BaseException:
                 pass
             return True
@@ -44474,84 +47451,76 @@ def _friend_guard_post_client_click(
         user32.EnumWindows(enum_proc(_cb), 0)
         if not candidates:
             return False
-        candidates.sort(key=lambda item: (item[0], item[1]))
-        _, _, root_hwnd, client_width, client_height = candidates[0]
+        candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+        _, _, root_hwnd, root_width, root_height = candidates[0]
+
+        surfaces = [(root_hwnd, root_width, root_height, 2)]
+        child_enum_proc = ctypes.WINFUNCTYPE(
+            ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p
+        )
+
+        def _child_cb(hwnd, lparam):
+            try:
+                window = int(hwnd)
+                if not user32.IsWindowVisible(hwnd):
+                    return True
+                class_buf = ctypes.create_unicode_buffer(256)
+                user32.GetClassNameW(hwnd, class_buf, 255)
+                class_name = str(class_buf.value or '').lower()
+                if not any(marker in class_name for marker in (
+                        'chrome_renderwidgethosthwnd',
+                        'chrome_widgetwin',
+                        'intermediate d3d window',
+                )):
+                    return True
+                rect = RECT()
+                if not user32.GetClientRect(hwnd, ctypes.byref(rect)):
+                    return True
+                width = int(rect.right - rect.left)
+                height = int(rect.bottom - rect.top)
+                if width >= 120 and height >= 120:
+                    surfaces.append((
+                        window, width, height,
+                        0 if 'chrome_renderwidgethosthwnd' in class_name else 1,
+                    ))
+            except BaseException:
+                pass
+            return True
+
+        try:
+            user32.EnumChildWindows(
+                ctypes.c_void_p(root_hwnd), child_enum_proc(_child_cb), 0
+            )
+        except BaseException:
+            pass
+        surfaces.sort(
+            key=lambda item: _surface_score(item[1], item[2], item[3])
+        )
+        target_hwnd, target_width, target_height, _target_rank = surfaces[0]
         client_x, client_y = _friend_guard_scale_point_to_client(
             frame_x, frame_y, frame_width, frame_height,
-            client_width, client_height,
+            target_width, target_height,
         )
-        screen_point = POINT(int(client_x), int(client_y))
-        if not user32.ClientToScreen(ctypes.c_void_p(root_hwnd), ctypes.byref(screen_point)):
+        point = POINT(int(client_x), int(client_y))
+        if not user32.ClientToScreen(
+                ctypes.c_void_p(target_hwnd), ctypes.byref(point)):
             return False
-        target_hwnd = int(user32.WindowFromPoint(screen_point) or 0)
-        if not target_hwnd or (
-            target_hwnd != root_hwnd
-            and not user32.IsChild(ctypes.c_void_p(root_hwnd), ctypes.c_void_p(target_hwnd))
-        ):
-            render_candidates = []
-            child_enum_proc = ctypes.WINFUNCTYPE(
-                ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p
-            )
-
-            def _child_cb(hwnd, lparam):
-                try:
-                    if not user32.IsWindowVisible(hwnd):
-                        return True
-                    class_buf = ctypes.create_unicode_buffer(256)
-                    user32.GetClassNameW(hwnd, class_buf, 255)
-                    class_name = str(class_buf.value or '').lower()
-                    if not any(marker in class_name for marker in (
-                            'chrome_renderwidgethosthwnd',
-                            'chrome_widgetwin',
-                            'intermediate d3d window')):
-                        return True
-                    child_rect = RECT()
-                    if not user32.GetClientRect(hwnd, ctypes.byref(child_rect)):
-                        return True
-                    child_width = int(child_rect.right - child_rect.left)
-                    child_height = int(child_rect.bottom - child_rect.top)
-                    if child_width < 120 or child_height < 120:
-                        return True
-                    child_point = POINT(int(screen_point.x), int(screen_point.y))
-                    if not user32.ScreenToClient(hwnd, ctypes.byref(child_point)):
-                        return True
-                    if not (
-                            0 <= int(child_point.x) < child_width
-                            and 0 <= int(child_point.y) < child_height):
-                        return True
-                    class_rank = 0 if 'chrome_renderwidgethosthwnd' in class_name else 1
-                    render_candidates.append((
-                        class_rank,
-                        abs(child_width - client_width) + abs(child_height - client_height),
-                        -child_width * child_height,
-                        int(hwnd),
-                    ))
-                except BaseException:
-                    pass
-                return True
-
-            try:
-                user32.EnumChildWindows(
-                    ctypes.c_void_p(root_hwnd), child_enum_proc(_child_cb), 0
-                )
-            except BaseException:
-                render_candidates = []
-            if render_candidates:
-                render_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
-                target_hwnd = int(render_candidates[0][3])
-            else:
-                target_hwnd = root_hwnd
-        client_point = POINT(int(screen_point.x), int(screen_point.y))
-        if not user32.ScreenToClient(ctypes.c_void_p(target_hwnd), ctypes.byref(client_point)):
-            return False
-        lparam = ((int(client_point.y) & 0xffff) << 16) | (int(client_point.x) & 0xffff)
-        user32.PostMessageW(ctypes.c_void_p(target_hwnd), 0x0200, 0, lparam)
-        down_ok = user32.PostMessageW(ctypes.c_void_p(target_hwnd), 0x0201, 0x0001, lparam)
-        up_ok = user32.PostMessageW(ctypes.c_void_p(target_hwnd), 0x0202, 0, lparam)
+        target_point = POINT(int(client_x), int(client_y))
+        if user32.ScreenToClient(
+                ctypes.c_void_p(target_hwnd), ctypes.byref(point)):
+            target_point = point
+        lparam = (
+            (int(target_point.y) & 0xffff) << 16
+        ) | (int(target_point.x) & 0xffff)
+        down_ok = bool(user32.PostMessageW(
+            ctypes.c_void_p(target_hwnd), 0x0201, 0x0001, lparam
+        ))
+        up_ok = bool(user32.PostMessageW(
+            ctypes.c_void_p(target_hwnd), 0x0202, 0, lparam
+        ))
         return bool(down_ok and up_ok)
     except BaseException:
         return False
-
 def _friend_guard_frame_to_screen(
     frame_x, frame_y, frame_width=428, frame_height=800
 ):
@@ -44885,6 +47854,29 @@ def _friend_list_visit_button_rows(frame):
         if height < 120 or width < 120:
             return []
         bgr = arr[:, :, :3]
+
+        # v538: card-style QQ friend lists are the authoritative geometry for
+        # the current portrait skin.  The legacy green-component detector can
+        # mistake the search field or decorative controls for visit rows, so it
+        # must not run first.  Capture owners normally provide BGR ndarrays,
+        # while a few older/native paths can hand this helper an RGB-backed
+        # PIL/ndarray frame; try both channel orders before the legacy fallback.
+        card_rows_fn = globals().get('_friend_list_card_rows')
+        if callable(card_rows_fn):
+            card_frames = [bgr]
+            try:
+                flipped = np.ascontiguousarray(bgr[:, :, ::-1])
+                card_frames.append(flipped)
+            except BaseException:
+                pass
+            for card_frame in card_frames:
+                try:
+                    card_rows = list(card_rows_fn(card_frame) or [])
+                except BaseException:
+                    card_rows = []
+                if len(card_rows) >= 3:
+                    return card_rows
+
         hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
         mask = cv2.inRange(
             hsv,
@@ -44985,13 +47977,177 @@ def _friend_list_visit_button_rows(frame):
         # v487: current card-style friend lists no longer expose the old green
         # visit buttons.  Replace a lone decorative component with the complete
         # card-derived row set, never append it to the new rows.
-        card_rows_fn = globals().get('_friend_list_card_rows')
         card_rows = card_rows_fn(frame) if callable(card_rows_fn) else []
         if len(card_rows) >= 3 and _friend_list_row_geometry_is_plausible(card_rows):
             return card_rows
         return []
     except BaseException:
         return []
+
+
+def _qqfarm_resolve_friend_list_frame(context, owner_frame=None):
+    """Return the strongest fresh full-frame friend-list evidence.
+
+    The native friend owner can pass a stale crop, mask, or a compositor blank
+    while the window-owned capture already contains the readable list.  Keep
+    the owner frame as the first candidate, then ask the normal fresh capture
+    path for one replacement.  A candidate is accepted only when the ordered
+    visit-row detector sees at least three rows.
+    """
+    rows_fn = globals().get('_friend_list_visit_button_rows')
+    if not callable(rows_fn):
+        return None, []
+    candidates = []
+    time_module = __import__('time')
+
+    def _remember(frame, rows):
+        global _QQFARM_FRIEND_LIST_FRAME_CACHE
+        global _QQFARM_FRIEND_LIST_ROWS_CACHE
+        global _QQFARM_FRIEND_LIST_FRAME_CACHE_TS
+        try:
+            _QQFARM_FRIEND_LIST_FRAME_CACHE = frame
+            _QQFARM_FRIEND_LIST_ROWS_CACHE = list(rows)
+            _QQFARM_FRIEND_LIST_FRAME_CACHE_TS = float(
+                time_module.monotonic()
+            )
+            if context is not None:
+                setattr(context, '_qqfarm_friend_list_frame_cache', frame)
+                setattr(context, '_qqfarm_friend_list_rows_cache', list(rows))
+                setattr(
+                    context,
+                    '_qqfarm_friend_list_frame_cache_ts',
+                    float(time_module.monotonic()),
+                )
+                # A friend list is a valid route surface, not a self-farm
+                # canvas.  Preserve that fact across the native capture gate so
+                # the next owner call can dispatch rows instead of releasing
+                # the route as a stale self page.
+                setattr(context, '_qqfarm_live_scene_hint', 'friend-list')
+                setattr(context, '_qqfarm_native_friend_surface_state', 'friend-list')
+                setattr(
+                    context,
+                    '_qqfarm_friend_list_surface_seen_ts',
+                    float(time_module.monotonic()),
+                )
+        except BaseException:
+            pass
+
+    def _cached():
+        global _QQFARM_FRIEND_LIST_FRAME_CACHE
+        global _QQFARM_FRIEND_LIST_ROWS_CACHE
+        global _QQFARM_FRIEND_LIST_FRAME_CACHE_TS
+        try:
+            cached = getattr(context, '_qqfarm_friend_list_frame_cache', None)
+            cached_ts = float(getattr(
+                context, '_qqfarm_friend_list_frame_cache_ts', 0.0
+            ) or 0.0)
+            if cached is None:
+                cached = _QQFARM_FRIEND_LIST_FRAME_CACHE
+                cached_ts = float(_QQFARM_FRIEND_LIST_FRAME_CACHE_TS or 0.0)
+            age = float(time_module.monotonic()) - cached_ts
+            if cached is None or cached_ts <= 0.0 or age < 0.0 or age > 6.0:
+                return None, []
+            hint = str(getattr(
+                context, '_qqfarm_live_scene_hint', ''
+            ) or '').strip().lower()
+            list_seen_ts = float(getattr(
+                context, '_qqfarm_friend_list_surface_seen_ts', 0.0
+            ) or 0.0)
+            list_seen_age = float(time_module.monotonic()) - list_seen_ts
+            recent_list_surface = bool(
+                list_seen_ts > 0.0
+                and 0.0 <= list_seen_age <= 6.0
+            )
+            if hint in ('home', 'self', 'self-farm') and not bool(
+                getattr(context, '_qqfarm_friend_entry_pending', False)
+            ) and not recent_list_surface:
+                return None, []
+            cached_rows = list(getattr(
+                context, '_qqfarm_friend_list_rows_cache', []
+            ) or [])
+            if len(cached_rows) < 3:
+                cached_rows = list(_QQFARM_FRIEND_LIST_ROWS_CACHE or [])
+            if len(cached_rows) >= 3:
+                return cached, cached_rows
+        except BaseException:
+            pass
+        return None, []
+
+    if owner_frame is not None:
+        candidates.append(owner_frame)
+    for candidate in candidates:
+        try:
+            rows = list(rows_fn(candidate) or [])
+        except BaseException:
+            rows = []
+        if len(rows) >= 3:
+            _remember(candidate, rows)
+            return candidate, rows
+    capture_fn = globals().get('_get_frame_from_bot')
+    if callable(capture_fn):
+        try:
+            fresh = capture_fn(context)
+        except TypeError:
+            try:
+                fresh = capture_fn()
+            except BaseException:
+                fresh = None
+        except BaseException:
+            fresh = None
+        if fresh is not None:
+            try:
+                rows = list(rows_fn(fresh) or [])
+            except BaseException:
+                rows = []
+            if len(rows) >= 3:
+                _remember(fresh, rows)
+                return fresh, rows
+    cached_frame, cached_rows = _cached()
+    if cached_frame is not None:
+        log_fn = globals().get('_throttled_write')
+        if callable(log_fn):
+            try:
+                log_fn(
+                    'v528-friend-list-frame-cache',
+                    'v528 reused recent valid friend-list frame after transient blank',
+                    4.0,
+                )
+            except BaseException:
+                pass
+        return cached_frame, cached_rows
+    return None, []
+
+
+def _qqfarm_remember_friend_list_frame(context, frame, rows=None):
+    """Store a short-lived, validated list frame for one compositor miss."""
+    try:
+        if context is None or frame is None:
+            return False
+        rows_value = list(rows or [])
+        if len(rows_value) < 3:
+            return False
+        global _QQFARM_FRIEND_LIST_FRAME_CACHE
+        global _QQFARM_FRIEND_LIST_ROWS_CACHE
+        global _QQFARM_FRIEND_LIST_FRAME_CACHE_TS
+        _QQFARM_FRIEND_LIST_FRAME_CACHE = frame
+        _QQFARM_FRIEND_LIST_ROWS_CACHE = rows_value
+        _QQFARM_FRIEND_LIST_FRAME_CACHE_TS = float(
+            __import__('time').monotonic()
+        )
+        setattr(context, '_qqfarm_friend_list_frame_cache', frame)
+        setattr(context, '_qqfarm_friend_list_rows_cache', rows_value)
+        setattr(
+            context,
+            '_qqfarm_friend_list_frame_cache_ts',
+            float(__import__('time').monotonic()),
+        )
+        now_ts = float(__import__('time').monotonic())
+        setattr(context, '_qqfarm_live_scene_hint', 'friend-list')
+        setattr(context, '_qqfarm_native_friend_surface_state', 'friend-list')
+        setattr(context, '_qqfarm_friend_list_surface_seen_ts', now_ts)
+        return True
+    except BaseException:
+        return False
 
 
 def _friend_list_guard_dog_score(frame, row_y):
@@ -47163,6 +50319,21 @@ def _handle_friend_list_surface(context, frame):
                         now_ts = float(now_fn()) if callable(now_fn) else float(__import__('time').time())
                         setattr(context, '_qqfarm_friend_branch_last_ts', now_ts)
                         setattr(context, '_qqfarm_friend_entry_pending', True)
+                        # Keep a bounded marker separate from the legacy
+                        # pending flag. Older/native routes can clear the
+                        # flag while the asynchronous row transition is still
+                        # in flight; the marker prevents that transient frame
+                        # from being misclassified as self-home.
+                        setattr(
+                            context,
+                            '_qqfarm_friend_entry_transition_marker_ts',
+                            now_ts,
+                        )
+                        setattr(
+                            context,
+                            '_qqfarm_friend_entry_transition_marker_surface',
+                            'friend-list',
+                        )
                         # The click was issued from this verified friend-list frame;
                         # defer the next strict cycle to friend-entry settling.
                         setattr(context, '_qqfarm_friend_entry_verified_surface', 'friend-list')
@@ -48034,6 +51205,8 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
         except BaseException:
             direct_cooldown_until = 0.0
         direct_cooldown_active = bool(direct_cooldown_until > route_now)
+        if _qqfarm_friend_entry_retry_gate_active(context, now_ts=route_now):
+            return False
         try:
             visual_retry_after = float(getattr(
                 context, '_qqfarm_friend_visual_entry_retry_after_ts', 0.0
@@ -48152,6 +51325,8 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
                         pass
             return False, None, ''
         for method_name in method_names:
+            if _qqfarm_friend_entry_retry_gate_active(context, now_ts=route_now):
+                return False
             action = getattr(context, method_name, None)
             if not callable(action):
                 continue
@@ -48205,6 +51380,11 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
                                 '_qqfarm_friend_direct_entry_cooldown_until',
                                 float(route_now) + cooldown_seconds,
                             )
+                            setattr(
+                                context,
+                                '_qqfarm_friend_entry_retry_after_ts',
+                                float(route_now) + cooldown_seconds,
+                            )
                         except BaseException:
                             pass
                     try:
@@ -48234,6 +51414,7 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
                     if method_name == 'check_friend_help_request_entry':
                         setattr(context, '_qqfarm_friend_entry_prefer_icon', False)
                         setattr(context, '_qqfarm_friend_direct_entry_cooldown_until', 0.0)
+                    setattr(context, '_qqfarm_friend_entry_retry_after_ts', 0.0)
                 except BaseException:
                     pass
                 try:
@@ -52064,6 +55245,12 @@ def _wrap_start_debounce_method(fn):
     if getattr(fn, '__qqfarm_start_debounce_wrapped__', False):
         return fn, False
     def _wrapped(self, *a, **k):
+        if bool(globals().get('_QT_AUTOSTART_DISPATCHING', False)) and bool(
+                globals().get('_QT_AUTOSTART_BLOCKED_BY_STOP', False)):
+            _start_debounce_log(
+                'automatic Start ignored after explicit stop; manual Start required'
+            )
+            return False
         now = time.time()
         try:
             last = float(getattr(self, '_qqfarm_last_start_request_ts', 0.0) or 0.0)
@@ -52114,9 +55301,22 @@ def _wrap_stop_clears_start_debounce(fn):
     if getattr(fn, '__qqfarm_stop_clears_start_debounce_wrapped__', False):
         return fn, False
     def _wrapped(self, *a, **k):
+        global _QT_AUTOSTART_BLOCKED_BY_STOP
+        # Set this before native stop, which may take seconds while the Qt
+        # timer continues to tick. Setting it only in finally leaves a race.
+        _QT_AUTOSTART_BLOCKED_BY_STOP = True
+        try:
+            setattr(self, '_qqfarm_explicit_stop_latched', True)
+        except BaseException:
+            pass
         try:
             return fn(self, *a, **k)
         finally:
+            _QT_AUTOSTART_BLOCKED_BY_STOP = True
+            try:
+                setattr(self, '_qqfarm_explicit_stop_latched', True)
+            except BaseException:
+                pass
             try: setattr(self, '_qqfarm_last_start_request_ts', 0.0)
             except BaseException: pass
     try:
@@ -53585,11 +56785,25 @@ def _wrap_runtime_diag_method(fn, label):
                 )
                 if candidate_frame is None and callable(capture_fn):
                     candidate_frame = capture_fn(self_obj)
-                rows = (
-                    list(rows_fn(candidate_frame) or [])
-                    if callable(rows_fn) and candidate_frame is not None
-                    else []
-                )
+                resolver = globals().get('_qqfarm_resolve_friend_list_frame')
+                if callable(resolver):
+                    resolved_frame, resolved_rows = resolver(
+                        self_obj, candidate_frame
+                    )
+                else:
+                    # Keep the direct native-entry wrapper usable in reduced
+                    # bootstrap/AST-isolated runtimes where the resolver has
+                    # not been bound yet.  The local probe is the same strict
+                    # three-row gate used by the full resolver.
+                    resolved_frame = candidate_frame
+                    resolved_rows = (
+                        list(rows_fn(candidate_frame) or [])
+                        if callable(rows_fn) and candidate_frame is not None
+                        else []
+                    )
+                if resolved_frame is not None:
+                    candidate_frame = resolved_frame
+                rows = list(resolved_rows or [])
                 try:
                     diagnostic_fn = globals().get('_throttled_write')
                     if callable(diagnostic_fn):
@@ -54217,6 +57431,16 @@ def _wrap_runtime_diag_method(fn, label):
                             setattr(self_obj, '_qqfarm_friend_entry_clicked_ts', 0.0)
                             setattr(
                                 self_obj,
+                                '_qqfarm_friend_entry_transition_marker_ts',
+                                0.0,
+                            )
+                            setattr(
+                                self_obj,
+                                '_qqfarm_friend_entry_transition_marker_surface',
+                                '',
+                            )
+                            setattr(
+                                self_obj,
                                 '_qqfarm_friend_entry_extended_action_grace',
                                 True,
                             )
@@ -54245,6 +57469,16 @@ def _wrap_runtime_diag_method(fn, label):
                         try:
                             setattr(self_obj, '_qqfarm_friend_entry_pending', False)
                             setattr(self_obj, '_qqfarm_friend_entry_clicked_ts', 0.0)
+                            setattr(
+                                self_obj,
+                                '_qqfarm_friend_entry_transition_marker_ts',
+                                0.0,
+                            )
+                            setattr(
+                                self_obj,
+                                '_qqfarm_friend_entry_transition_marker_surface',
+                                '',
+                            )
                             setattr(self_obj, '_qqfarm_friend_entry_retry_count', 0)
                             setattr(self_obj, '_qqfarm_friend_entry_last_retry_ts', 0.0)
                             setattr(
@@ -55002,6 +58236,127 @@ def _patch_native_v225_crop_catalog_loaded(tag=''):
     return changed
 
 
+# v525: the 2.3.7 packaged engine does not expose a stable public class name
+# for every build.  Keep the native business implementation as the owner, but
+# install the current visual-proof/backpack guard on every matching class or
+# module-level callable that is actually loaded.
+_NATIVE_V237_OVERLAY_SEEN = set()
+
+
+def _patch_native_v237_business_overlay_for_module(module, tag=''):
+    """Overlay current planting invariants on a v2.3.7-style native module.
+
+    The packaged 2.3.7 runtime uses obfuscated module/class names, so a fixed
+    ``FarmBotCV`` lookup is insufficient.  Discovery is deliberately narrow:
+    only the planting entry points are wrapped, and wrapper markers make the
+    operation idempotent across recurring loader ticks.
+    """
+    if module is None:
+        return 0
+    try:
+        module_name = str(getattr(module, '__name__', '') or '')
+    except BaseException:
+        module_name = ''
+    if not module_name.startswith('bot.'):
+        return 0
+
+    changed = 0
+    targets = []
+    try:
+        for attr_name, value in list(vars(module).items())[:800]:
+            if isinstance(value, type):
+                targets.append((value, module_name + '.' + str(attr_name)))
+    except BaseException:
+        pass
+    targets.append((module, module_name))
+
+    target_names = (
+        '_run_backpack_seed_priority_planting',
+        '_run_planting_flow',
+    )
+    seen = set()
+    for owner, owner_label in targets:
+        for attr_name in target_names:
+            identity = (id(owner), attr_name)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            try:
+                if isinstance(owner, type):
+                    raw = None
+                    descriptor_type = ''
+                    for base in getattr(owner, '__mro__', (owner,)):
+                        if attr_name in vars(base):
+                            raw = vars(base)[attr_name]
+                            break
+                    if isinstance(raw, staticmethod):
+                        old = raw.__func__
+                        descriptor_type = 'staticmethod'
+                    elif isinstance(raw, classmethod):
+                        old = raw.__func__
+                        descriptor_type = 'classmethod'
+                    else:
+                        old = raw
+                else:
+                    descriptor_type = ''
+                    old = getattr(owner, attr_name, None)
+                if not callable(old):
+                    continue
+
+                if attr_name == '_run_backpack_seed_priority_planting':
+                    new, ok = _wrap_backpack_seed_priority_planting_fast(
+                        old, owner_label + '.' + attr_name
+                    )
+                else:
+                    new, ok = _wrap_native_v225_crop_catalog_planting_flow(
+                        old, owner_label + '.' + attr_name
+                    )
+                if not ok:
+                    continue
+                if descriptor_type == 'staticmethod':
+                    setattr(owner, attr_name, staticmethod(new))
+                elif descriptor_type == 'classmethod':
+                    setattr(owner, attr_name, classmethod(new))
+                else:
+                    setattr(owner, attr_name, new)
+                changed += 1
+            except BaseException:
+                continue
+
+    if changed:
+        signature = module_name + ':' + str(changed)
+        if signature not in _NATIVE_V237_OVERLAY_SEEN:
+            _NATIVE_V237_OVERLAY_SEEN.add(signature)
+            try:
+                _write(
+                    'v525 native-v237 planting overlay installed tag=' +
+                    str(tag) + ' module=' + module_name +
+                    ' count=' + str(changed)
+                )
+            except BaseException:
+                pass
+    return changed
+
+
+def _patch_native_v237_business_overlay_loaded(tag=''):
+    """Install the v2.3.7-compatible planting overlay on loaded bot modules."""
+    changed = []
+    try:
+        modules = list((globals().get('sys') or __import__('sys')).modules.items())
+    except BaseException:
+        modules = []
+    for module_name, module in modules:
+        try:
+            if module is None or not str(module_name or '').startswith('bot.'):
+                continue
+            count = _patch_native_v237_business_overlay_for_module(module, tag)
+            if count:
+                changed.append(str(module_name) + ':' + str(count))
+        except BaseException:
+            continue
+    return changed
+
+
 def _wrap_native_v225_full_board_planting_preflight(fn, name=''):
     """Prevent native-runtime planting from entering OCR on a proven full board."""
     if getattr(fn, '__qqfarm_native_v225_full_board_preflight_wrapped__', False):
@@ -55740,6 +59095,158 @@ def _qqfarm_reconcile_visible_self_surface(context, frame, state=None):
             state = state_fn(frame) if callable(state_fn) else None
         if state is not False:
             return False
+        # The list page intentionally has no farm canvas and is therefore
+        # classified as ``False`` by the farm-surface classifier.  A complete
+        # ordered row set is stronger evidence than that generic result; do not
+        # clear the friend route or relabel the page as self home.
+        rows_fn = globals().get('_friend_list_visit_button_rows')
+        try:
+            list_rows = list(rows_fn(frame) or []) if callable(rows_fn) else []
+        except BaseException:
+            list_rows = []
+        if len(list_rows) >= 3:
+            try:
+                remember_fn = globals().get('_qqfarm_remember_friend_list_frame')
+                if callable(remember_fn):
+                    remember_fn(context, frame, list_rows)
+                else:
+                    setattr(context, '_qqfarm_live_scene_hint', 'friend-list')
+                    setattr(
+                        context,
+                        '_qqfarm_native_friend_surface_state',
+                        'friend-list',
+                    )
+            except BaseException:
+                try:
+                    setattr(context, '_qqfarm_live_scene_hint', 'friend-list')
+                except BaseException:
+                    pass
+            try:
+                _throttled_write(
+                    'v534-friend-list-self-reconcile-guard',
+                    'v534 friend-list rows preserved; self-surface release skipped '
+                    'rows=' + str(len(list_rows)),
+                    4.0,
+                )
+            except BaseException:
+                pass
+            return False
+        # A list-row click is an asynchronous transition.  QQ/WGC can expose a
+        # short-lived blank, loading, or non-farm frame between the click and
+        # the selected friend's farm.  ``state is False`` only means that this
+        # frame is not currently classified as a friend farm; it is not proof
+        # that the user has returned home.  Releasing the pending row here
+        # immediately clears the cursor/cache and recreates the observed
+        # ``pending-row-reopen -> home entry -> row 0`` loop.
+        #
+        # Keep the transaction pending for one bounded transition grace.  The
+        # normal run-cycle entry timeout remains responsible for a genuinely
+        # failed click; this guard only prevents the native friend-owner path
+        # from converting an intermediate frame into a self-home decision.
+        try:
+            now_fn = globals().get('_friend_watchdog_now')
+            now_value = float(
+                now_fn() if callable(now_fn) else __import__('time').time()
+            )
+            timeout_value = float(getattr(
+                context, 'friend_list_entry_timeout_seconds', 8.0
+            ) or 8.0)
+            grace_seconds = max(
+                12.0,
+                min(30.0, timeout_value + 6.0),
+            )
+            pending_entry = bool(getattr(
+                context, '_qqfarm_friend_entry_pending', False
+            ))
+            if pending_entry:
+                clicked_value = float(getattr(
+                    context, '_qqfarm_friend_entry_clicked_ts', 0.0
+                ) or 0.0)
+                entry_age = (
+                    max(0.0, now_value - clicked_value)
+                    if clicked_value > 0.0 else 0.0
+                )
+                verified_surface = str(getattr(
+                    context, '_qqfarm_friend_entry_verified_surface', ''
+                ) or '').strip().lower()
+                if (
+                    verified_surface in ('friend-list', 'friend-farm')
+                    and entry_age < grace_seconds
+                ):
+                    try:
+                        _throttled_write(
+                            'v537-friend-entry-transition-grace',
+                            'v537 preserved pending friend entry during transient '
+                            'non-farm frame age=' + ('%.3f' % entry_age) +
+                            ' grace=' + ('%.3f' % grace_seconds) +
+                            ' surface=' + verified_surface,
+                            2.0,
+                        )
+                    except BaseException:
+                        pass
+                    return False
+            marker_surface = str(getattr(
+                context,
+                '_qqfarm_friend_entry_transition_marker_surface',
+                '',
+            ) or '').strip().lower()
+            marker_ts = float(getattr(
+                context,
+                '_qqfarm_friend_entry_transition_marker_ts',
+                0.0,
+            ) or 0.0)
+            marker_age = (
+                max(0.0, now_value - marker_ts)
+                if marker_ts > 0.0 else 0.0
+            )
+            if (
+                marker_surface in ('friend-list', 'friend-farm')
+                and marker_ts > 0.0
+                and marker_age < grace_seconds
+                and (
+                    pending_entry
+                    or bool(getattr(
+                        context, '_qqfarm_friend_chain_pending', False
+                    ))
+                    or bool(getattr(
+                        context, '_qqfarm_friend_cycle_seen', False
+                    ))
+                )
+            ):
+                # Re-arm the transaction after a legacy/native wrapper
+                # cleared only the old pending bit. This remains bounded
+                # by the normal transition grace and still requires a
+                # later fresh friend farm/list proof before action.
+                try:
+                    setattr(context, '_qqfarm_friend_entry_pending', True)
+                    setattr(
+                        context,
+                        '_qqfarm_friend_entry_verified_surface',
+                        marker_surface,
+                    )
+                    setattr(
+                        context, '_qqfarm_friend_entry_clicked_ts', marker_ts
+                    )
+                    setattr(context, '_qqfarm_live_scene_hint', marker_surface)
+                    setattr(context, '_qqfarm_cycle_branch_hint', 'friend')
+                except BaseException:
+                    pass
+                try:
+                    _throttled_write(
+                        'v537-friend-entry-transition-marker',
+                        'v537 re-armed friend entry marker after legacy clear '
+                        'age=' + ('%.3f' % marker_age) +
+                        ' grace=' + ('%.3f' % grace_seconds) +
+                        ' surface=' + marker_surface,
+                        2.0,
+                    )
+                except BaseException:
+                    pass
+                return False
+        except BaseException:
+            pass
+        except BaseException:
+            pass
         stale_friend_route = any(bool(getattr(context, name, False)) for name in (
             '_qqfarm_friend_guard_empty_latched',
             '_qqfarm_friend_chain_pending',
@@ -55789,6 +59296,11 @@ def _qqfarm_reconcile_visible_self_surface(context, frame, state=None):
         setattr(context, '_qqfarm_friend_entry_clicked_ts', 0.0)
         setattr(context, '_qqfarm_friend_entry_verified_surface', '')
         setattr(context, '_qqfarm_friend_entry_verified_frame_id', 0)
+        setattr(context, '_qqfarm_friend_entry_transition_marker_ts', 0.0)
+        setattr(context, '_qqfarm_friend_entry_transition_marker_surface', '')
+        clear_cache_fn = globals().get('_qqfarm_clear_friend_list_frame_cache')
+        if callable(clear_cache_fn):
+            clear_cache_fn()
         hint_fn = globals().get('_qqfarm_set_live_scene_hint')
         if callable(hint_fn):
             hint_fn(context, scene_hint='home')
@@ -55900,6 +59412,72 @@ def _qqfarm_cache_native_v225_friend_help_candidate(
         return None
 
 
+def _qqfarm_native_friend_owner_home_entry(context, frame, surface_state, rows):
+    """Enter the friend surface when the native owner starts on self home.
+
+    The native v2.3.7 owner can call ``process_friend_farm`` directly while the
+    current pixels are still the user's own farm.  In that situation there are
+    no friend-list rows to dispatch, but that is not evidence that friend work
+    is exhausted: the friend entry still has to be opened and verified.  Keep
+    this recovery bounded and let the normal post-click verifier own cooldowns.
+    """
+    try:
+        if context is None or frame is None or surface_state is not False:
+            return False
+        if rows:
+            return False
+        if bool(getattr(context, '_qqfarm_friend_entry_pending', False)):
+            return False
+        if not bool(getattr(context, 'enable_process_friend', True)):
+            return False
+        entry_fn = globals().get('_invoke_friend_branch_from_home')
+        if not callable(entry_fn):
+            return False
+
+        # v530 used the same retry field for a preflight block.  That block did
+        # not represent a failed click, so it must not suppress the first real
+        # home-to-friend attempt after the owner sees a fresh self frame.
+        now_fn = globals().get('_friend_watchdog_now')
+        now_ts = float(
+            now_fn() if callable(now_fn) else __import__('time').time()
+        )
+        retry_after = float(getattr(
+            context, '_qqfarm_friend_entry_retry_after_ts', 0.0
+        ) or 0.0)
+        preflight_gate_ts = float(getattr(
+            context, '_qqfarm_native_friend_owner_home_gate_ts', 0.0
+        ) or 0.0)
+        if (
+            retry_after > now_ts
+            and preflight_gate_ts > now_ts
+            and abs(retry_after - preflight_gate_ts) <= 1.0
+        ):
+            setattr(context, '_qqfarm_friend_entry_retry_after_ts', 0.0)
+            setattr(context, '_qqfarm_native_friend_owner_home_gate_ts', 0.0)
+            _throttled_write(
+                'v533-clear-native-home-preflight-gate',
+                'v533 cleared a preflight-only friend-entry gate before retrying '
+                'the verified self-home route',
+                4.0,
+            )
+
+        recovered = bool(entry_fn(context, frame))
+        _write(
+            'v533 native friend owner home-entry recovery result=' +
+            repr(recovered) + ' rows=' + str(len(rows))
+        )
+        return recovered
+    except BaseException as error:
+        try:
+            _write(
+                'v533 native friend owner home-entry recovery error=' +
+                repr(error)[:220]
+            )
+        except BaseException:
+            pass
+        return False
+
+
 def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
     """Install a per-call durable guard before native friend processing."""
     if not callable(fn):
@@ -55917,6 +59495,29 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
         pass
 
     def _wrapped(self, *args, **kwargs):
+        try:
+            now_monotonic = float(__import__('time').monotonic())
+            cooldown_until = float(getattr(
+                self, '_qqfarm_friend_action_cooldown_until', 0.0
+            ) or 0.0)
+            if (
+                    bool(getattr(
+                        self, '_qqfarm_friend_action_confirmation_pending', False
+                    ))
+                    and cooldown_until > now_monotonic
+            ):
+                log_fn = globals().get('_throttled_write')
+                if callable(log_fn):
+                    log_fn(
+                        'v516-friend-action-confirmation-cooldown',
+                        'v516 friend action confirmation cooldown remaining=' +
+                        ('%.1f' % max(0.0, cooldown_until - now_monotonic)),
+                        4.0,
+                    )
+                return False
+        except BaseException:
+            now_monotonic = 0.0
+
         # v489: native-v225 owns ``process_friend_farm`` in production, so the
         # generic runtime-diagnostic wrapper is intentionally not installed on
         # this method.  Dispatch the proven multi-row friend-list surface from
@@ -55959,12 +59560,39 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                     ):
                         candidate_frame = value
                         break
-            rows_fn = globals().get('_friend_list_visit_button_rows')
-            rows = (
-                list(rows_fn(candidate_frame) or [])
-                if callable(rows_fn) and candidate_frame is not None
-                else []
-            )
+            # Keep the owner bridge usable in reduced/partially-loaded
+            # runtimes as well as in the full packaged runtime.  Some
+            # bootstrap and AST-isolated callers load this wrapper before the
+            # resolver is bound; a direct global lookup would raise
+            # ``NameError`` and silently fall through to the compiled native
+            # method, recreating the old friend-page no-op.  Prefer the full
+            # resolver when present, otherwise perform the same narrow row
+            # probe locally and retain the candidate frame.
+            resolver = globals().get('_qqfarm_resolve_friend_list_frame')
+            if callable(resolver):
+                try:
+                    resolved_frame, resolved_rows = resolver(
+                        self, candidate_frame
+                    )
+                except BaseException:
+                    resolved_frame = candidate_frame
+                    rows_fn = globals().get('_friend_list_visit_button_rows')
+                    resolved_rows = (
+                        list(rows_fn(candidate_frame) or [])
+                        if callable(rows_fn) and candidate_frame is not None
+                        else []
+                    )
+            else:
+                resolved_frame = candidate_frame
+                rows_fn = globals().get('_friend_list_visit_button_rows')
+                resolved_rows = (
+                    list(rows_fn(candidate_frame) or [])
+                    if callable(rows_fn) and candidate_frame is not None
+                    else []
+                )
+            if resolved_frame is not None:
+                candidate_frame = resolved_frame
+            rows = list(resolved_rows or [])
             try:
                 diagnostic_fn = globals().get('_throttled_write')
                 if callable(diagnostic_fn):
@@ -55994,6 +59622,53 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                     if callable(state_fn) and candidate_frame is not None
                     else None
                 )
+                # A return-home icon alone is also present on stale/cropped
+                # frames and is not proof that a friend farm is active.  The
+                # native owner may proceed only when the selected friend card
+                # or a friend-specific help/steal action is visible as well.
+                if friend_surface is True and candidate_frame is not None:
+                    friend_surface_proof = False
+                    try:
+                        selected_fn = globals().get(
+                            '_friend_selected_carousel_card_bounds'
+                        )
+                        selected = (
+                            selected_fn(candidate_frame)
+                            if callable(selected_fn) else None
+                        )
+                        friend_surface_proof = isinstance(selected, dict) and bool(
+                            selected
+                        )
+                    except BaseException:
+                        friend_surface_proof = False
+                    if not friend_surface_proof:
+                        for matcher_name in (
+                            '_friend_guard_help_button_match',
+                            '_friend_guard_steal_button_match',
+                        ):
+                            matcher = globals().get(matcher_name)
+                            if not callable(matcher):
+                                continue
+                            try:
+                                action_match = matcher(candidate_frame)
+                            except BaseException:
+                                action_match = None
+                            if isinstance(action_match, dict) and bool(
+                                action_match.get('matched')
+                            ):
+                                friend_surface_proof = True
+                                break
+                    if not friend_surface_proof:
+                        friend_surface = False
+                        try:
+                            _throttled_write(
+                                'v530-native-weak-friend-surface',
+                                'v530 native friend owner rejected weak home-icon '
+                                'surface without selected card/help/steal proof',
+                                4.0,
+                            )
+                        except BaseException:
+                            pass
                 active_friend_surface = bool(friend_surface is True)
                 if not active_friend_surface and friend_surface is False:
                     reconcile_fn = globals().get(
@@ -56038,6 +59713,8 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                         return False
                     setattr(self, '_qqfarm_friend_entry_pending', False)
                     setattr(self, '_qqfarm_friend_entry_clicked_ts', 0.0)
+                    setattr(self, '_qqfarm_friend_entry_transition_marker_ts', 0.0)
+                    setattr(self, '_qqfarm_friend_entry_transition_marker_surface', '')
                     setattr(
                         self,
                         '_qqfarm_friend_entry_verified_surface',
@@ -56064,6 +59741,90 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                 except BaseException:
                     pass
             list_handler = globals().get('_handle_friend_list_surface')
+            # Native-v225 can enter this method with a stale home/cropped frame.
+            # ``rows=0`` is not evidence of an empty friend list.  Do not let
+            # the compiled implementation click stale footer coordinates when
+            # no confirmed friend surface is available.
+            if not active_friend_surface and len(rows) < 3:
+                # A confirmed self-home frame is a different case from an
+                # unknown/cropped frame: the native owner has reached the
+                # friend branch before the friend entry was opened.  Recover
+                # through the verified home-entry route instead of converting
+                # the missing rows into a 30-second gate.  The old gate caused
+                # every 12-second patrol to alternate home/friend logs without
+                # ever clicking the friend entry.
+                home_entry_fn = globals().get(
+                    '_qqfarm_native_friend_owner_home_entry'
+                )
+                if (
+                    friend_surface is False
+                    and callable(home_entry_fn)
+                ):
+                    try:
+                        if bool(home_entry_fn(self, candidate_frame, friend_surface, rows)):
+                            return True
+                    except BaseException as error:
+                        try:
+                            _write(
+                                'v533 native friend owner home-entry bridge error=' +
+                                repr(error)[:220]
+                            )
+                        except BaseException:
+                            pass
+                    # The bridge owns the verified-entry cooldown when an
+                    # actual click was attempted.  A plain no-op remains
+                    # retryable on the next normal patrol interval.
+                    try:
+                        _write(
+                            'v533 native friend owner self-home entry not yet '
+                            'verified; leaving native owner preflight retryable'
+                        )
+                    except BaseException:
+                        pass
+                    return False
+                try:
+                    now_fn = globals().get('_friend_watchdog_now')
+                    gate_now = float(
+                        now_fn() if callable(now_fn)
+                        else __import__('time').time()
+                    )
+                except BaseException:
+                    gate_now = 0.0
+                try:
+                    cooldown_seconds = float(getattr(
+                        self,
+                        'friend_direct_entry_false_positive_cooldown_seconds',
+                        30.0,
+                    ) or 30.0)
+                except BaseException:
+                    cooldown_seconds = 30.0
+                cooldown_seconds = max(8.0, min(180.0, cooldown_seconds))
+                try:
+                    setattr(
+                        self, '_qqfarm_friend_entry_retry_after_ts',
+                        gate_now + cooldown_seconds,
+                    )
+                    setattr(
+                        self,
+                        '_qqfarm_native_friend_owner_home_gate_ts',
+                        gate_now + cooldown_seconds,
+                    )
+                    setattr(self, '_qqfarm_friend_entry_pending', False)
+                    setattr(self, '_qqfarm_friend_entry_clicked_ts', 0.0)
+                except BaseException:
+                    pass
+                try:
+                    log_fn = globals().get('_write')
+                    if callable(log_fn):
+                        log_fn(
+                            'v530 native friend owner preflight blocked: no confirmed '
+                            'friend farm/list surface rows=' + str(len(rows)) +
+                            ' cooldown=' + ('%.1f' % cooldown_seconds)
+                        )
+                except BaseException:
+                    pass
+                return False
+
             if len(rows) >= 3 and callable(list_handler):
                 list_result = list_handler(self, candidate_frame)
                 write_fn = globals().get('_write')
@@ -56289,6 +60050,8 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
         before_frame = None
         before_match = None
         card_signature = None
+        before_progress_signature = None
+        before_frame_identity = 0
         try:
             capture_fn = globals().get('_qqfarm_capture_native_friend_help_frame')
             match_fn = globals().get('_friend_guard_help_button_match')
@@ -56300,6 +60063,11 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
             card_signature = signature_fn(before_frame) if (
                 before_frame is not None and callable(signature_fn)
             ) else None
+            # Friend pages contain continuous crop/weather animation.  Only
+            # the selected carousel card is stable enough to prove navigation;
+            # a whole-frame digest would turn animation into false progress.
+            before_progress_signature = card_signature
+            before_frame_identity = id(before_frame) if before_frame is not None else 0
         except BaseException:
             pass
 
@@ -56323,6 +60091,20 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
         except BaseException:
             same_page_unconfirmed = False
         if same_page_unconfirmed:
+            recovery_fn = globals().get('_qqfarm_arm_same_page_recovery')
+            recovered = bool(
+                recovery_fn(
+                    self,
+                    cursor_before,
+                    previous_no_progress,
+                    card_signature,
+                    durable_before,
+                    threshold=3,
+                )
+                if callable(recovery_fn) else False
+            )
+            if recovered:
+                return False
             try:
                 for field_name, value in cursor_before.items():
                     setattr(self, field_name, value)
@@ -56467,28 +60249,64 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
             bridge_commit = getattr(
                 self, '_qqfarm_native_friend_help_bridge_last_commit', None
             )
+            durable_after = None
+            try:
+                durable_snapshot_fn = globals().get(
+                    '_qqfarm_native_friend_help_durable_snapshot'
+                )
+                if callable(durable_snapshot_fn):
+                    durable_after = max(0, int(durable_snapshot_fn(self)))
+            except BaseException:
+                durable_after = None
             confirmed = bool(
                 isinstance(bridge_commit, dict)
                 and bool(bridge_commit.get('confirmed'))
                 and int(bridge_commit.get('count', 0) or 0) >
                 int(durable_before or 0)
             )
-            page_unchanged = bool(
-                card_signature is not None
-                and post_signature is not None
-                and card_signature == post_signature
+            post_progress_signature = post_signature
+            post_match = (
+                match_fn(post_frame)
+                if post_frame is not None and callable(match_fn)
+                else None
             )
-            if (
-                not confirmed
-                and page_unchanged
-                and isinstance(before_match, dict)
-                and bool(before_match.get('matched'))
-            ):
-                for field_name, value in cursor_before.items():
-                    try:
-                        setattr(self, field_name, value)
-                    except BaseException:
-                        pass
+            confirmation_fn = globals().get('_qqfarm_confirm_click_progress')
+            confirmation = (
+                confirmation_fn(
+                    before_frame=before_frame,
+                    after_frame=post_frame,
+                    before_signature=before_progress_signature,
+                    after_signature=post_progress_signature,
+                    before_match=before_match,
+                    after_match=post_match,
+                    durable_before=durable_before,
+                    durable_after=durable_after,
+                    explicit_success=confirmed,
+                    before_frame_id=before_frame_identity,
+                    after_frame_id=(id(post_frame) if post_frame is not None else 0),
+                )
+                if callable(confirmation_fn) else {
+                    'confirmed': bool(confirmed or (
+                        card_signature is not None
+                        and post_signature is not None
+                        and card_signature != post_signature
+                    )),
+                    'reason': 'legacy-signature-check',
+                }
+            )
+            if not bool(confirmation.get('confirmed')):
+                record_fn = globals().get('_qqfarm_record_unconfirmed_click')
+                if callable(record_fn):
+                    record_fn(
+                        self, cursor_before, now=None,
+                        reason=str(confirmation.get('reason', 'no-progress')),
+                    )
+                else:
+                    for field_name, value in cursor_before.items():
+                        try:
+                            setattr(self, field_name, value)
+                        except BaseException:
+                            pass
                 setattr(self, '_qqfarm_native_friend_help_no_progress_guard', {
                     'unconfirmed': True,
                     'signature': card_signature,
@@ -56497,17 +60315,18 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                 write_fn = globals().get('_write')
                 if callable(write_fn):
                     write_fn(
-                        'v481 friend-help no visual progress; keeping current '
+                        'v516 friend-help no visual progress; keeping current '
                         'friend cursor=' + str(cursor_before.get(
                             '_qqfarm_friend_list_visit_cursor', 0
+                        )) + ' reason=' + str(confirmation.get(
+                            'reason', 'no-progress'
                         ))
                     )
-            elif confirmed or (
-                card_signature is not None
-                and post_signature is not None
-                and card_signature != post_signature
-            ):
+            else:
                 setattr(self, '_qqfarm_native_friend_help_no_progress_guard', None)
+                setattr(self, '_qqfarm_friend_action_confirmation_pending', False)
+                setattr(self, '_qqfarm_friend_action_confirmation_retries', 0)
+                setattr(self, '_qqfarm_friend_action_cooldown_until', 0.0)
         except BaseException:
             pass
         try:
@@ -61987,6 +65806,13 @@ def _patch_loaded(tag=''):
         except BaseException:
             pass
         try:
+            # v2.3.7-style obfuscated modules may expose the planting owner
+            # through an anonymous class, so install the narrow overlay after
+            # every native module-load scan.
+            _patch_native_v237_business_overlay_loaded(tag)
+        except BaseException:
+            pass
+        try:
             # Extend only existing native template lists.  The strict visual
             # board proof remains the click authority for empty-land actions.
             _patch_native_v237_template_overlays_loaded(tag)
@@ -62802,6 +66628,8 @@ def _patch_late_vip_modules():
 # importing Qt too early can stall before QApplication/main window creation. We wait until
 # PySide6.QtCore and PySide6.QtWidgets already exist in sys.modules, then patch in-place.
 _QT_AUTOSTART_CLICKED = False
+_QT_AUTOSTART_BLOCKED_BY_STOP = False
+_QT_AUTOSTART_DISPATCHING = False
 _QT_AUTOSTART_ATTEMPTS = 0
 _QT_AUTOSTART_LAST_ATTEMPT_TS = 0.0
 _QT_AUTOSTART_COOLDOWN_UNTIL = 0.0
@@ -62953,10 +66781,30 @@ def _qqfarm_reenable_start_without_window(app):
 def _qt_autostart_running_button(app):
     """Start after the real main window is ready, with bounded failed-click retry."""
     global _QT_AUTOSTART_CLICKED
+    global _QT_AUTOSTART_BLOCKED_BY_STOP
+    global _QT_AUTOSTART_DISPATCHING
     global _QT_AUTOSTART_ATTEMPTS
     global _QT_AUTOSTART_LAST_ATTEMPT_TS
     global _QT_AUTOSTART_COOLDOWN_UNTIL
     if app is None:
+        return False
+    explicit_stop = bool(globals().get('_QT_AUTOSTART_BLOCKED_BY_STOP', False))
+    if not explicit_stop:
+        try:
+            explicit_stop = any(
+                bool(getattr(widget, '_qqfarm_explicit_stop_latched', False))
+                for widget in list(app.allWidgets())
+            )
+        except BaseException:
+            explicit_stop = False
+    if explicit_stop:
+        try:
+            _write(
+                'v522 qt autostart blocked after explicit stop; '
+                'waiting for manual Start'
+            )
+        except BaseException:
+            pass
         return False
     try:
         _qqfarm_clear_stale_qt_starting_state(app)
@@ -63005,7 +66853,11 @@ def _qt_autostart_running_button(app):
             clicker = getattr(widget, 'click', None)
             if not callable(clicker):
                 continue
-            clicker()
+            _QT_AUTOSTART_DISPATCHING = True
+            try:
+                clicker()
+            finally:
+                _QT_AUTOSTART_DISPATCHING = False
             _QT_AUTOSTART_CLICKED = True
             _QT_AUTOSTART_ATTEMPTS += 1
             _QT_AUTOSTART_LAST_ATTEMPT_TS = now_value
