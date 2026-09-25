@@ -5720,6 +5720,34 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - 代码与测试已完成，生产部署和 GitHub 提交发布在本阶段继续执行。
 - 下一动作：创建备份，部署并隐藏重启；读取新日志后提交 v1.4.99 到 `origin/main`。
 
+## 2026-09-25 11:05 +0800 - v1.5.0 RED/GREEN：未确认好友页面不得伪装成无任务
+
+### 症状与根因
+
+- 现场日志出现好友列表/转场未确认、`rows=0`、底部入口确认失败，但紧接着输出“好友农场已无可执行的任务，下一轮巡查将回家查看”，画面实际没有变化。
+- 根因是 native 好友处理函数的 `False` 返回被外层日志直接解释为“已确认好友农场无动作”；该返回也可能来自空帧、好友列表帧或转场等待，并不具备无任务证明。
+
+### RED -> GREEN
+
+- 新增 `tests/test_v542_friend_uncertain_no_action_20260925.py`，覆盖列表/转场未确认、确认好友农场无动作和日志改写；首次运行因缺少 v542 helper 失败。
+- 新增 `_qqfarm_friend_no_action_is_unconfirmed()` 与 `_rewrite_unconfirmed_friend_no_action_log()`；未确认状态保留好友链路、游标和待确认状态，输出“页面未完成确认，等待新画面后重试”，不触发好友回家终态。
+- info/warning 两条运行日志路径均接入同一改写门。
+
+### 验证与部署
+
+- v542、v537、v538、v539、v520、v533、v536 受影响组合：`22 / 22 OK`。
+- `python -m py_compile portable\hook.py`：通过。
+- `git diff --check`：通过。
+- 部署版本：`E:\CV农场助手\VERSION=1.5.0`；生产 PID `32232`，`Responding=True`。
+- 回滚备份：`E:\CV农场助手\backups\v542-uncertain-friend-no-action-1.5.0-final-20260925-110249`。
+- 源/部署 Hook 与 VERSION 哈希一致；配置、UserData、logs、GUI、既有备份和本地权益状态未覆盖。
+- v542 重启后新日志已出现启动标记，未再出现该启动段内的旧“好友农场已无可执行任务”伪终态。
+
+### 当前状态与下一动作
+
+- v1.5.0 已部署并运行；只有确认好友农场画面后才允许结束为无任务，列表/空白/转场帧会保留好友链路并等待新画面。
+- 下一动作：提交 v1.5.0 并通过本机 `127.0.0.1:10808` 代理推送 `origin/main`。
+
 ## 2026-09-23 20:39:50 +0800 — v1.4.98 RED/GREEN：卡片式好友列表坐标与 RGB/BGR 捕获兼容
 
 - 目标：修复 2026-09-23 现场“好友列表第 0 行点击成功但实际点到搜索框，随后持续停留自家/好友列表”的主线回归。

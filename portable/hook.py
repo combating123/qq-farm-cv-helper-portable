@@ -213,6 +213,7 @@ _write('v535 native friend bridge resolver fallback enabled')
 _write('v537 pending friend-entry transition grace enabled')
 _write('v538 card-first friend-list geometry and RGB/BGR normalization enabled')
 _write('v539 friend-list capture cache and physical DPI click remap enabled')
+_write('v542 uncertain friend no-action gate and retry-only logging enabled')
 
 try:
     # Keep the bootstrap import set minimal.  The packaged proxy loads this
@@ -1164,6 +1165,44 @@ def _friend_home_visual_entry_candidate(frame):
         }
     except BaseException:
         return None
+
+def _qqfarm_friend_no_action_is_unconfirmed(context):
+    """Return True when a false friend result lacks a confirmed farm surface."""
+    if context is None:
+        return False
+    try:
+        if bool(getattr(context, '_qqfarm_friend_dispatch_visual_unconfirmed', False)):
+            return True
+        if bool(getattr(context, '_qqfarm_friend_entry_pending', False)):
+            return True
+        scene = str(getattr(context, '_qqfarm_live_scene_hint', '') or '').strip().lower()
+        branch = str(getattr(context, '_qqfarm_cycle_branch_hint', '') or '').strip().lower()
+        surface = str(getattr(
+            context, '_qqfarm_native_friend_surface_state', ''
+        ) or '').strip().lower()
+        if scene in ('friend-list', 'unknown', 'blank', 'occluded', 'loading'):
+            return True
+        if branch == 'friend' and scene not in ('friend', 'friend-farm'):
+            return True
+        if branch == 'friend' and surface not in ('friend', 'friend-farm'):
+            return True
+    except BaseException:
+        return True
+    return False
+
+
+def _rewrite_unconfirmed_friend_no_action_log(message, context):
+    """Prevent an unverified friend transition from being reported as empty."""
+    text = str(message or '')
+    if not _qqfarm_friend_no_action_is_unconfirmed(context):
+        return text
+    if '好友农场已无可执行的任务' not in text:
+        return text
+    return (
+        '好友页面未完成确认，未判定为无任务；等待新画面后重试，'
+        '保留当前好友链路'
+    )
+
 
 def _friend_guard_poll_dispatch_allowed(context, now_ts=None):
     """Block empty friend loops until self-farm completion explicitly rearms them."""
@@ -53546,6 +53585,24 @@ def _wrap_friend_guard_continuous_poll_func(fn, name=''):
                             )
                         except BaseException:
                             pass
+                    elif _qqfarm_friend_no_action_is_unconfirmed(context):
+                        try:
+                            setattr(context, '_qqfarm_friend_chain_pending', True)
+                            setattr(context, '_qqfarm_friend_chain_active', True)
+                            setattr(context, '_qqfarm_friend_chain_exhausted', False)
+                            setattr(context, '_qqfarm_friend_chain_allow_home', False)
+                            setattr(context, '_qqfarm_friend_list_resume_pending', True)
+                            setattr(context, '_qqfarm_friend_guard_next_poll_ts', 0.0)
+                        except BaseException:
+                            pass
+                        try:
+                            _throttled_write(
+                                'v542-friend-no-action-unconfirmed',
+                                'v542 friend page not confirmed; preserving friend chain and retrying fresh frame',
+                                3.0,
+                            )
+                        except BaseException:
+                            pass
                     else:
                         try:
                             setattr(context, '_qqfarm_friend_chain_pending', False)
@@ -66481,6 +66538,9 @@ def _install_runtime_log_patch():
             friend_msg, friend_hit = _rewrite_pending_friend_help_log_message(
                 msg, context
             )
+            friend_msg = _rewrite_unconfirmed_friend_no_action_log(
+                friend_msg, context
+            )
             share_msg, share_hit = _rewrite_verified_share_failure_log_message(
                 friend_msg
             )
@@ -66520,6 +66580,9 @@ def _install_runtime_log_patch():
                 pass
             friend_msg, _friend_hit = _rewrite_pending_friend_help_log_message(
                 msg, context
+            )
+            friend_msg = _rewrite_unconfirmed_friend_no_action_log(
+                friend_msg, context
             )
             share_msg, _share_hit = _rewrite_verified_share_failure_log_message(
                 friend_msg
