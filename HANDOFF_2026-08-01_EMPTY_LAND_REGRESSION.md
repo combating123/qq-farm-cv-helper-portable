@@ -5779,6 +5779,30 @@ Next action: on the next real home-progress or visible home friend-request rearm
 
 - 选择性提交 `portable/hook.py`、`VERSION`、`README.md`、`CHANGELOG.md`、v544 回归测试和本交接记录，推送 `origin/main` 并创建 `v1.5.7` Release。
 
+## 2026-09-25 23:46 +0800 - v1.5.8 RED/GREEN：好友列表有效帧被旧 home 提示压制
+
+### 症状与根因
+
+- 用户截图中的好友列表已经清楚显示 5 张卡片和【拜访】按钮，但业务日志只重复输出巡检开始/结束，没有首行访问动作。
+- 同期 Hook 日志反复出现 `v539/v520 rows=5`，而 native owner 仍出现 `rows=0`；缓存解析器看到旧 `home` 场景提示后拒绝了好友列表缓存，导致有效列表没有进入有序好友处理器。
+
+### RED -> GREEN
+
+- v544 回归新增“全局列表缓存、上下文缓存缺失”和“旧 home 提示但好友链路 active”两种现场状态；后者先失败，证明旧 home 提示会压掉有效好友列表。
+- v1.5.8 放宽缓存消费门：只要缓存新鲜且好友链路仍为 active/pending，优先使用至少 3 行已验证好友卡片；只有缓存过期且没有好友链路证据时才允许回到自家恢复。
+- 受影响组合：`34 / 34 OK`；`py_compile`、`git diff --check` 通过。
+
+### 生产验证
+
+- 生产版本：`1.5.8`；备份：`E:\CV农场助手\backups\v545-friend-list-home-hint-1.5.8-20260925-234522`。
+- 源/部署 Hook：`25F678A242BCC1499305134C4DB87EEE5CBDB80E996BD7F6C54AAF9F5FC4F388`，一致；PID `32168`，`Responding=True`。
+- 重启后现场已实际推进：`23:43:21` 进入好友链路，`23:43:22` 检测到【一键偷取】并执行，证明列表不再只停留在识别层。
+- GUI、UserData、配置、每日状态和历史备份未覆盖。
+
+### 下一动作
+
+- 提交并推送 v1.5.8，创建对应 GitHub Release；继续观察多次 HWND 重建后的好友首行派发和回家转场。
+
 ## 2026-09-23 20:39:50 +0800 — v1.4.98 RED/GREEN：卡片式好友列表坐标与 RGB/BGR 捕获兼容
 
 - 目标：修复 2026-09-23 现场“好友列表第 0 行点击成功但实际点到搜索框，随后持续停留自家/好友列表”的主线回归。

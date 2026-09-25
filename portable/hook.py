@@ -48589,15 +48589,25 @@ def _qqfarm_resolve_friend_list_frame(context, owner_frame=None):
                 list_seen_ts > 0.0
                 and 0.0 <= list_seen_age <= 15.0
             )
-            if hint in ('home', 'self', 'self-farm') and not bool(
-                getattr(context, '_qqfarm_friend_entry_pending', False)
-            ) and not recent_list_surface:
-                return None, []
             cached_rows = list(getattr(
                 context, '_qqfarm_friend_list_rows_cache', []
             ) or [])
             if len(cached_rows) < 3:
                 cached_rows = list(_QQFARM_FRIEND_LIST_ROWS_CACHE or [])
+            friend_route_active = bool(
+                getattr(context, '_qqfarm_friend_entry_pending', False)
+                or getattr(context, '_qqfarm_friend_chain_active', False)
+                or getattr(context, '_qqfarm_friend_chain_pending', False)
+                or str(getattr(
+                    context, '_qqfarm_cycle_branch_hint', ''
+                ) or '').strip().lower() == 'friend'
+            )
+            if (
+                hint in ('home', 'self', 'self-farm')
+                and not recent_list_surface
+                and not friend_route_active
+            ):
+                return None, []
             if len(cached_rows) >= 3:
                 return cached, cached_rows
         except BaseException:
