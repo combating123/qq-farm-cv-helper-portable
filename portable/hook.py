@@ -214,6 +214,7 @@ _write('v537 pending friend-entry transition grace enabled')
 _write('v538 card-first friend-list geometry and RGB/BGR normalization enabled')
 _write('v539 friend-list capture cache and physical DPI click remap enabled')
 _write('v542 uncertain friend no-action gate and retry-only logging enabled')
+_write('v544 native friend-list cache release guard enabled')
 
 try:
     # Keep the bootstrap import set minimal.  The packaged proxy loads this
@@ -6227,6 +6228,13 @@ def _qqfarm_runtime_page_readiness_gate(context, label):
     except BaseException:
         hwnd = 0
     if not hwnd:
+        try:
+            # A new launch/session may reuse the same numeric HWND later.  A
+            # no-window observation is the clean boundary that re-arms the
+            # one-shot top-left anchor for the next visible farm surface.
+            globals()['_QQFARM_MINIAPP_ANCHORED_HWND'] = 0
+        except BaseException:
+            pass
         _qqfarm_note_page_readiness(
             context,
             'no-window',
@@ -6323,6 +6331,20 @@ def _qqfarm_runtime_page_readiness_gate(context, label):
         except BaseException:
             pass
         return False
+
+    try:
+        anchor_once_fn = globals().get('_qqfarm_anchor_miniapp_once')
+        if callable(anchor_once_fn) and bool(anchor_once_fn(
+                hwnd, 'page-ready'
+        )):
+            _qqfarm_note_page_readiness(
+                context,
+                'anchoring',
+                'QQ农场已显示，已固定到工作区左上角；等待新位置画面后再执行本轮业务动作',
+            )
+            return False
+    except BaseException:
+        pass
 
     try:
         setattr(context, '_qqfarm_page_readiness_hwnd', int(hwnd))
@@ -23069,11 +23091,14 @@ def _qqfarm_reconcile_backpack_priority_result(
         ) or 'unknown').strip().lower()
     except BaseException:
         board_state = 'unknown'
+    # The native planting helper may not populate the optional outcome ledger
+    # on every bound/runtime path. A fresh, confirmed board count drop is the
+    # primary proof here; requiring the secondary ledger flag made successful
+    # backpack and 1x1 fallback actions look like failures and reopened the
+    # shop/self-cycle path. Keep the unknown-board gate so a zero from an
+    # obscured or stale frame still cannot be treated as planting progress.
     verified_drop = bool(
         fresh and current < baseline and board_state != 'unknown'
-        and bool(getattr(
-            bot, '_qqfarm_last_planting_outcome_verified', False
-        ))
     )
     keep_home_pending = bool(baseline > 0 and not verified_drop)
     if keep_home_pending:
@@ -23979,20 +24004,28 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
                             attempt_started_ts=planting_attempt_started_ts,
                         )
                     else:
-                        # The packaged runtime binds this helper before the
-                        # wrapper is installed.  Keep a conservative fallback
-                        # for partial/isolated bindings: native remaining-land
-                        # telemetry is never action proof, so preserve the
-                        # caller's full target list until a fresh visual drop is
-                        # available.
+                        # The packaged runtime normally binds this helper before
+                        # the wrapper is installed.  Isolated/bound call paths
+                        # may omit that binding, so reproduce the same strict
+                        # rule locally: a fresh, non-unknown board count drop
+                        # is enough; native remaining-land telemetry alone is
+                        # still never proof.
+                        fallback_verified_drop = bool(
+                            fresh_after_observation and
+                            current_empty_count < baseline_empty_count and
+                            current_board_state != 'unknown'
+                        )
                         reconcile_state = {
                             'baseline_empty_count': baseline_empty_count,
                             'current_empty_count': current_empty_count,
                             'reported_remaining': reported_remaining,
                             'safe_remaining': baseline_empty_count,
                             'fresh_visual_observation': fresh_after_observation,
-                            'verified_drop': False,
-                            'keep_home_pending': bool(baseline_empty_count > 0),
+                            'verified_drop': fallback_verified_drop,
+                            'keep_home_pending': bool(
+                                baseline_empty_count > 0 and
+                                not fallback_verified_drop
+                            ),
                         }
                     verified_drop = bool(reconcile_state['verified_drop'])
                     if (
@@ -27080,6 +27113,48 @@ def _qqfarm_rect_contains(rect, point):
         return False
 
 
+def _qqfarm_live_surface_geometry(win32gui, hwnd):
+    """Return the current physical client rectangle and size for one HWND.
+
+    A successful PostMessage only means that Windows accepted the message.  It
+    does not prove that the LPARAM belongs to the current render surface.  QQ
+    can retain a route from the previous DPI/window geometry, so every native
+    click gets one final live client-geometry check before delivery.
+    """
+    try:
+        if win32gui is None or int(hwnd or 0) <= 0:
+            return None
+        get_client = getattr(win32gui, 'GetClientRect', None)
+        to_screen = getattr(win32gui, 'ClientToScreen', None)
+        if not callable(get_client):
+            return None
+        raw = get_client(int(hwnd))
+        if raw is None or len(raw) < 4:
+            return None
+        width = int(raw[2]) - int(raw[0])
+        height = int(raw[3]) - int(raw[1])
+        if width <= 0 or height <= 0:
+            return None
+        if callable(to_screen):
+            origin = to_screen(int(hwnd), (0, 0))
+            left, top = int(origin[0]), int(origin[1])
+        else:
+            get_window = getattr(win32gui, 'GetWindowRect', None)
+            if not callable(get_window):
+                return None
+            window_rect = _qqfarm_rect_tuple(get_window(int(hwnd)))
+            if window_rect is None:
+                return None
+            left, top = int(window_rect[0]), int(window_rect[1])
+        return {
+            'rect': (left, top, left + width, top + height),
+            'width': int(width),
+            'height': int(height),
+        }
+    except BaseException:
+        return None
+
+
 def _qqfarm_remap_stale_screen_point(point, previous_route, current_root_rect):
     """Map a screen point from the previous QQ window geometry to the live root.
 
@@ -27161,6 +27236,26 @@ def _qqfarm_collect_live_surface_candidates(
             pass
 
     def _rect(hwnd):
+        # Build a physical screen rectangle from the client surface first.
+        # QQ's DPI-aware shell can report an outer GetWindowRect in one scale
+        # while GetClientRect and posted mouse coordinates use another.  A
+        # client origin converted with ClientToScreen keeps route bounds and
+        # LPARAM coordinates in one coordinate system.
+        try:
+            client_getter = getattr(win32gui, 'GetClientRect', None)
+            client_to_screen = getattr(win32gui, 'ClientToScreen', None)
+            if callable(client_getter) and callable(client_to_screen):
+                raw_client = client_getter(int(hwnd))
+                width = int(raw_client[2] - raw_client[0])
+                height = int(raw_client[3] - raw_client[1])
+                if width > 0 and height > 0:
+                    origin = client_to_screen(int(hwnd), (0, 0))
+                    return _qqfarm_rect_tuple((
+                        int(origin[0]), int(origin[1]),
+                        int(origin[0]) + width, int(origin[1]) + height,
+                    ))
+        except BaseException:
+            pass
         try:
             getter = getattr(win32gui, 'GetWindowRect', None)
             if callable(getter):
@@ -27461,6 +27556,30 @@ def _qqfarm_choose_live_surface(
         if not target_candidates:
             return None
 
+    # Reject a render child that is mid-DPI/window rebuild when its reported
+    # client size disagrees with its screen rectangle.  Clamping such a route
+    # can deliver a message while targeting pixels outside the actual surface.
+    def _surface_geometry_consistent(item):
+        item_rect = _qqfarm_rect_tuple(item.get('rect'))
+        if item_rect is None:
+            return False
+        item_width = int(item.get('width', 0) or 0)
+        item_height = int(item.get('height', 0) or 0)
+        return bool(
+            item_width > 0 and item_height > 0 and
+            abs(item_width - (item_rect[2] - item_rect[0])) <= 4 and
+            abs(item_height - (item_rect[3] - item_rect[1])) <= 4
+        )
+
+    consistent_candidates = [
+        item for item in target_candidates
+        if _surface_geometry_consistent(item)
+    ]
+    if consistent_candidates:
+        target_candidates = consistent_candidates
+    elif any(not bool(item.get('is_root')) for item in target_candidates):
+        return None
+
     target = sorted(
         target_candidates,
         key=lambda item: (
@@ -27475,8 +27594,16 @@ def _qqfarm_choose_live_surface(
     target_rect = _qqfarm_rect_tuple(target.get('rect'))
     if target_rect is None:
         return None
-    target_width = max(1, int(target.get('width', 0) or (target_rect[2] - target_rect[0])))
-    target_height = max(1, int(target.get('height', 0) or (target_rect[3] - target_rect[1])))
+    # The screen rectangle and the client size must describe the same physical
+    # surface.  GetWindowRect is DPI-virtualized on some QQ builds while
+    # GetClientRect is physical; trusting both independently can produce a
+    # client y value outside the target window (PostMessage still reports True
+    # in that case).  Use the live screen rectangle as the single click-space
+    # authority and keep the reported dimensions consistent with it.
+    target_width = max(1, int(target_rect[2] - target_rect[0]))
+    target_height = max(1, int(target_rect[3] - target_rect[1]))
+    root_width = max(1, int(root_rect[2] - root_rect[0]))
+    root_height = max(1, int(root_rect[3] - root_rect[1]))
 
     if coordinate_space == 'frame':
         client_x = int(round(x_value * target_width / max(1, frame_width)))
@@ -27495,8 +27622,8 @@ def _qqfarm_choose_live_surface(
         'target_hwnd': int(target.get('hwnd', 0) or 0),
         'root_rect': root_rect,
         'target_rect': target_rect,
-        'root_width': int(root.get('width', 0) or 0),
-        'root_height': int(root.get('height', 0) or 0),
+        'root_width': root_width,
+        'root_height': root_height,
         'target_width': target_width,
         'target_height': target_height,
         'screen_point': (int(effective_point[0]), int(effective_point[1])),
@@ -28033,11 +28160,142 @@ def _qqfarm_post_native_surface_mouse(kind, x, y):
                 'input=' + repr((input_x, input_y)),
             )
             return False
+        # ``PostMessage`` returning True is not a click proof.  A stale route
+        # can still be accepted by Windows after QQ moved or changed DPI, and
+        # the resulting LPARAM may land below the real render surface.  Re-read
+        # the target's physical client geometry and give the resolver one clean
+        # retry after dropping the stale PrintWindow provenance.
+        geometry_fn = globals().get('_qqfarm_live_surface_geometry')
+        if callable(geometry_fn):
+            geometry_retry = 0
+            while True:
+                try:
+                    live_target = geometry_fn(
+                        win32gui,
+                        int(route.get('target_hwnd', 0) or 0),
+                    )
+                except BaseException:
+                    live_target = None
+                route_rect = _qqfarm_rect_tuple(route.get('target_rect'))
+                route_width = int(route.get('target_width', 0) or 0)
+                route_height = int(route.get('target_height', 0) or 0)
+                if route_rect is not None:
+                    route_width = route_width or int(
+                        route_rect[2] - route_rect[0]
+                    )
+                    route_height = route_height or int(
+                        route_rect[3] - route_rect[1]
+                    )
+                try:
+                    point_x, point_y = route.get(
+                        'client_point', (None, None)
+                    )
+                    point_x, point_y = int(point_x), int(point_y)
+                except BaseException:
+                    point_x, point_y = -1, -1
+                mismatch = bool(
+                    isinstance(live_target, dict) and (
+                        route_rect is None or
+                        abs(int(route_rect[0]) - int(
+                            live_target['rect'][0]
+                        )) > 4 or
+                        abs(int(route_rect[1]) - int(
+                            live_target['rect'][1]
+                        )) > 4 or
+                        abs(int(route_rect[2]) - int(
+                            live_target['rect'][2]
+                        )) > 4 or
+                        abs(int(route_rect[3]) - int(
+                            live_target['rect'][3]
+                        )) > 4 or
+                        int(route_width) != int(live_target['width']) or
+                        int(route_height) != int(live_target['height']) or
+                        point_x < 0 or point_y < 0 or
+                        point_x >= int(live_target['width']) or
+                        point_y >= int(live_target['height'])
+                    )
+                )
+                if not mismatch:
+                    break
+                if geometry_retry >= 1:
+                    _qqfarm_set_native_surface_miss(
+                        'live-geometry-mismatch',
+                        'route=' + repr({
+                            'target': route.get('target_hwnd', 0),
+                            'rect': route_rect,
+                            'size': (route_width, route_height),
+                            'point': (point_x, point_y),
+                        }) + ' live=' + repr(live_target),
+                    )
+                    return False
+                geometry_retry += 1
+                try:
+                    globals()['_QQFARM_STALE_NATIVE_SURFACE_ROUTE'] = dict(
+                        route
+                    )
+                    globals()['_QQFARM_LAST_NATIVE_SURFACE_ROUTE'] = None
+                    # The physical frame may belong to the previous window
+                    # scale.  It is safe to reacquire it later, but unsafe to
+                    # use it as a click rectangle for this live HWND.
+                    for cache_name in (
+                            '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID',
+                            '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND',
+                            '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_RECT',
+                    ):
+                        globals()[cache_name] = 0 if cache_name.endswith(
+                            ('_ID', '_HWND')
+                        ) else None
+                except BaseException:
+                    pass
+                try:
+                    route = resolver(
+                        kind, input_x, input_y,
+                        frame_width=frame_width,
+                        frame_height=frame_height,
+                        win32gui_module=win32gui,
+                    )
+                except BaseException:
+                    route = None
+                if not isinstance(route, dict):
+                    _qqfarm_set_native_surface_miss(
+                        'live-geometry-reresolve-failed',
+                        'input=' + repr((input_x, input_y)),
+                    )
+                    return False
         try:
             target_hwnd = int(route.get('target_hwnd', 0) or 0)
             target_x, target_y = route.get('client_point', (None, None))
             target_x, target_y = int(target_x), int(target_y)
-            if target_hwnd <= 0 or target_x < 0 or target_y < 0:
+            rect_value = route.get('target_rect')
+            target_rect = None
+            try:
+                if rect_value is not None and len(rect_value) >= 4:
+                    candidate_rect = tuple(int(rect_value[index]) for index in range(4))
+                    if candidate_rect[2] > candidate_rect[0] and candidate_rect[3] > candidate_rect[1]:
+                        target_rect = candidate_rect
+            except BaseException:
+                target_rect = None
+            target_width = int(route.get('target_width', 0) or 0)
+            target_height = int(route.get('target_height', 0) or 0)
+            if target_rect is not None:
+                target_width = target_width or int(target_rect[2] - target_rect[0])
+                target_height = target_height or int(target_rect[3] - target_rect[1])
+            rect_width = int(target_rect[2] - target_rect[0]) if target_rect else 0
+            rect_height = int(target_rect[3] - target_rect[1]) if target_rect else 0
+            if (
+                    target_hwnd <= 0 or
+                    target_rect is None and (target_width <= 0 or target_height <= 0) or
+                    target_width != rect_width or target_height != rect_height or
+                    target_x < 0 or target_y < 0 or
+                    target_x >= target_width or target_y >= target_height
+            ):
+                _qqfarm_set_native_surface_miss(
+                    'resolved-route-out-of-bounds',
+                    'target=' + str(target_hwnd) +
+                    ' point=' + repr((target_x, target_y)) +
+                    ' size=' + repr((target_width, target_height)) +
+                    ' rect=' + repr(target_rect),
+                )
                 raise ValueError('invalid resolved target')
             lparam = ((target_y & 0xffff) << 16) | (target_x & 0xffff)
 
@@ -28058,7 +28316,6 @@ def _qqfarm_post_native_surface_mouse(kind, x, y):
                     _resolved_post(0x0201, 0x0001) and
                     _resolved_post(0x0202, 0)
                 )
-            globals()['_QQFARM_LAST_NATIVE_SURFACE_ROUTE'] = dict(route)
             log_fn = globals().get('_throttled_write')
             if callable(log_fn):
                 log_fn(
@@ -28073,6 +28330,7 @@ def _qqfarm_post_native_surface_mouse(kind, x, y):
                     1.0,
                 )
             if delivered:
+                globals()['_QQFARM_LAST_NATIVE_SURFACE_ROUTE'] = dict(route)
                 _qqfarm_set_native_surface_miss('')
                 return True
             _qqfarm_set_native_surface_miss(
@@ -30538,6 +30796,12 @@ def _qqfarm_restore_hidden_miniapp_taskbar_card(reason=''):
         if not show_called and not position_called:
             return False
 
+        # Keep the hidden-window compatibility path deterministic: restore the
+        # current size and anchor the surface to the active work-area corner.
+        # This runs only after recovery/show, never on ordinary patrol ticks.
+        anchor_fn = globals().get('_qqfarm_anchor_miniapp_top_left')
+        anchored = bool(anchor_fn(hwnd)) if callable(anchor_fn) else False
+
         try:
             cooldown_seconds = float(globals().get(
                 '_QQFARM_HIDDEN_RESTORE_COOLDOWN_SECONDS', 2.5
@@ -30570,7 +30834,8 @@ def _qqfarm_restore_hidden_miniapp_taskbar_card(reason=''):
                 'v477-hidden-restore-' + str(reason),
                 'v477 hidden miniapp recovery restored QQ Farm HWND=' +
                 str(hwnd) + ' reason=' + str(reason) +
-                ' show=' + str(show_called) + ' pos=' + str(position_called),
+                ' show=' + str(show_called) + ' pos=' + str(position_called) +
+                ' anchor=' + str(anchored),
                 10.0,
             )
         return True
@@ -47240,7 +47505,52 @@ def _friend_guard_post_client_click(
             target_hwnd = int(route.get('target_hwnd', 0) or 0)
             target_x, target_y = route.get('client_point', (None, None))
             target_x, target_y = int(target_x), int(target_y)
-            if target_hwnd <= 0 or target_x < 0 or target_y < 0:
+            rect_value = route.get('target_rect')
+            target_rect = None
+            try:
+                if rect_value is not None and len(rect_value) >= 4:
+                    candidate_rect = tuple(int(rect_value[index]) for index in range(4))
+                    if candidate_rect[2] > candidate_rect[0] and candidate_rect[3] > candidate_rect[1]:
+                        target_rect = candidate_rect
+            except BaseException:
+                target_rect = None
+            target_width = int(route.get('target_width', 0) or 0)
+            target_height = int(route.get('target_height', 0) or 0)
+            if target_rect is not None:
+                target_width = target_width or int(target_rect[2] - target_rect[0])
+                target_height = target_height or int(target_rect[3] - target_rect[1])
+            rect_width = int(target_rect[2] - target_rect[0]) if target_rect else 0
+            rect_height = int(target_rect[3] - target_rect[1]) if target_rect else 0
+            live_client_size = None
+            try:
+                get_client_rect = getattr(win32gui, 'GetClientRect', None)
+                if callable(get_client_rect):
+                    live_rect = get_client_rect(target_hwnd)
+                    if live_rect and len(live_rect) >= 4:
+                        live_client_size = (
+                            int(live_rect[2] - live_rect[0]),
+                            int(live_rect[3] - live_rect[1]),
+                        )
+            except BaseException:
+                live_client_size = None
+            if (
+                    target_hwnd <= 0 or
+                    target_rect is None and (target_width <= 0 or target_height <= 0) or
+                    target_width != rect_width or target_height != rect_height or
+                    live_client_size is not None and live_client_size != (
+                        target_width, target_height
+                    ) or
+                    target_x < 0 or target_y < 0 or
+                    target_x >= target_width or target_y >= target_height
+            ):
+                _qqfarm_set_native_surface_miss(
+                    'friend-route-out-of-bounds',
+                    'target=' + str(target_hwnd) +
+                    ' point=' + repr((target_x, target_y)) +
+                    ' size=' + repr((target_width, target_height)) +
+                    ' rect=' + repr(target_rect) +
+                    ' live_client=' + repr(live_client_size),
+                )
                 return False
             lparam = ((target_y & 0xffff) << 16) | (target_x & 0xffff)
 
@@ -47908,6 +48218,7 @@ def _friend_list_visit_button_rows(frame):
                 card_frames.append(flipped)
             except BaseException:
                 pass
+
             for card_frame in card_frames:
                 try:
                     card_rows = list(card_rows_fn(card_frame) or [])
@@ -48024,6 +48335,183 @@ def _friend_list_visit_button_rows(frame):
         return []
 
 
+def _qqfarm_anchor_miniapp_top_left(hwnd, margin=0):
+    """Move the restored miniapp to the work-area top-left without resizing."""
+    try:
+        hwnd = int(hwnd or 0)
+        if hwnd <= 0:
+            return False
+        win32gui = __import__('win32gui')
+        rect = win32gui.GetWindowRect(hwnd)
+        if not rect or len(rect) < 4:
+            return False
+        left, top, right, bottom = [int(rect[index]) for index in range(4)]
+        width = max(1, right - left)
+        height = max(1, bottom - top)
+        work = None
+        try:
+            win32api = __import__('win32api')
+            monitor = win32api.MonitorFromWindow(hwnd, 2)
+            info = win32api.GetMonitorInfo(monitor)
+            work = tuple(int(value) for value in info.get('Work', ()))
+        except BaseException:
+            work = None
+        if not work or len(work) < 4:
+            try:
+                ctypes_module = __import__('ctypes')
+                user32 = ctypes_module.windll.user32
+                get_metrics = getattr(user32, 'GetSystemMetrics', None)
+                if callable(get_metrics):
+                    work = (0, 0, int(get_metrics(0)), int(get_metrics(1)))
+            except BaseException:
+                work = None
+        if not work or len(work) < 4:
+            return False
+        safe_margin = max(0, min(64, int(margin or 0)))
+        target_left = int(work[0]) + safe_margin
+        target_top = int(work[1]) + safe_margin
+        flags = 0x0004 | 0x0010 | 0x0040  # NOZORDER | NOACTIVATE | SHOWWINDOW
+        setter = getattr(win32gui, 'SetWindowPos', None)
+        if not callable(setter):
+            return False
+        # Native QQ coordinates may still be reported in the pre-move DPI
+        # space for one or two cycles. Preserve a remappable source route
+        # before moving the window so an input such as (1260,1066) is rebased
+        # to the new top-left surface instead of being discarded as outside
+        # the live rectangle. Prefer the actual route; otherwise synthesize
+        # the old logical rectangle from the window DPI.
+        prior_route = globals().get('_QQFARM_LAST_NATIVE_SURFACE_ROUTE')
+        if not isinstance(prior_route, dict):
+            prior_route = globals().get('_QQFARM_STALE_NATIVE_SURFACE_ROUTE')
+        if not isinstance(prior_route, dict):
+            prior_route = None
+        if prior_route is None:
+            dpi_scale = 1.0
+            try:
+                ctypes_module = __import__('ctypes')
+                user32 = ctypes_module.windll.user32
+                dpi_fn = getattr(user32, 'GetDpiForWindow', None)
+                if callable(dpi_fn):
+                    dpi_value = int(dpi_fn(hwnd) or 96)
+                    if dpi_value > 0:
+                        dpi_scale = max(1.0, min(3.0, dpi_value / 96.0))
+            except BaseException:
+                dpi_scale = 1.0
+            if dpi_scale > 1.0:
+                source_rect = tuple(
+                    int(round(float(value) * dpi_scale))
+                    for value in (left, top, right, bottom)
+                )
+            else:
+                source_rect = (left, top, right, bottom)
+            prior_route = {
+                'root_hwnd': int(hwnd),
+                'target_hwnd': int(hwnd),
+                'root_rect': source_rect,
+                'target_rect': source_rect,
+                'input_screen_point': None,
+                'coordinate_space': 'pre-anchor-logical',
+            }
+        # pywin32's SetWindowPos returns None on success, while ctypes/test
+        # shims may return a truthy BOOL.  Treat an exception or explicit
+        # False as failure; None is the normal successful pywin32 result.
+        set_result = setter(
+            hwnd, 0, target_left, target_top, width, height, flags
+        )
+        moved = set_result is not False
+        if moved:
+            globals()['_QQFARM_LAST_NATIVE_SURFACE_ROUTE'] = None
+            globals()['_QQFARM_STALE_NATIVE_SURFACE_ROUTE'] = dict(prior_route)
+            logger = globals().get('_throttled_write')
+            if callable(logger):
+                logger(
+                    'v543-miniapp-anchor',
+                    'v543 miniapp anchored top-left hwnd=' + str(hwnd) +
+                    ' rect=' + repr((target_left, target_top,
+                                     target_left + width, target_top + height)) +
+                    ' size=' + repr((width, height)),
+                    2.0,
+                )
+        return moved
+    except BaseException:
+        return False
+
+
+def _qqfarm_anchor_miniapp_once(hwnd, reason='page-ready'):
+    """Anchor a newly visible QQ Farm window once per HWND/session.
+
+    The farm window may start centered by QQ.  Position is independent from
+    the render/input coordinate system, but moving it invalidates any cached
+    absolute route and desktop frame, so the caller skips one business tick
+    and lets the next tick capture the new top-left surface.
+    """
+    try:
+        window = int(hwnd or 0)
+    except BaseException:
+        window = 0
+    if window <= 0:
+        return False
+    try:
+        anchored_hwnd = int(
+            globals().get('_QQFARM_MINIAPP_ANCHORED_HWND', 0) or 0
+        )
+    except BaseException:
+        anchored_hwnd = 0
+    if anchored_hwnd == window:
+        return False
+    anchor_fn = globals().get('_qqfarm_anchor_miniapp_top_left')
+    if not callable(anchor_fn):
+        return False
+    try:
+        moved = bool(anchor_fn(window, 0))
+    except TypeError:
+        try:
+            moved = bool(anchor_fn(window))
+        except BaseException:
+            moved = False
+    except BaseException:
+        moved = False
+    if not moved:
+        return False
+    try:
+        globals()['_QQFARM_MINIAPP_ANCHORED_HWND'] = int(window)
+        globals()['_QQFARM_MINIAPP_ANCHOR_SESSION'] = int(
+            globals().get('_QQFARM_MINIAPP_ANCHOR_SESSION', 0) or 0
+        ) + 1
+        globals()['_QQFARM_LAST_NATIVE_SURFACE_ROUTE'] = None
+        for cache_name in (
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID',
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_HWND',
+                '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_RECT',
+        ):
+            globals()[cache_name] = 0 if cache_name.endswith(
+                ('_ID', '_HWND')
+            ) else None
+    except BaseException:
+        pass
+    try:
+        invalidate_fn = globals().get('_qqfarm_invalidate_wgc_frame_cache')
+        if callable(invalidate_fn):
+            invalidate_fn('miniapp-anchor')
+    except BaseException:
+        pass
+    try:
+        logger = globals().get('_throttled_write')
+        if callable(logger):
+            logger(
+                'v543-miniapp-anchor-session',
+                'v543 miniapp anchor session=' + str(
+                    globals().get('_QQFARM_MINIAPP_ANCHOR_SESSION', 0)
+                ) + ' hwnd=' + str(window) + ' reason=' + str(
+                    reason or 'page-ready'
+                ),
+                2.0,
+            )
+    except BaseException:
+        pass
+    return True
+
+
 def _qqfarm_resolve_friend_list_frame(context, owner_frame=None):
     """Return the strongest fresh full-frame friend-list evidence.
 
@@ -48084,7 +48572,11 @@ def _qqfarm_resolve_friend_list_frame(context, owner_frame=None):
                 cached = _QQFARM_FRIEND_LIST_FRAME_CACHE
                 cached_ts = float(_QQFARM_FRIEND_LIST_FRAME_CACHE_TS or 0.0)
             age = float(time_module.monotonic()) - cached_ts
-            if cached is None or cached_ts <= 0.0 or age < 0.0 or age > 6.0:
+            # One patrol interval is 12 seconds in the portable profile. A
+            # validated list frame must survive one owner/compositor miss
+            # across that interval, but remain bounded so a stale list cannot
+            # become a permanent scene source.
+            if cached is None or cached_ts <= 0.0 or age < 0.0 or age > 15.0:
                 return None, []
             hint = str(getattr(
                 context, '_qqfarm_live_scene_hint', ''
@@ -48095,7 +48587,7 @@ def _qqfarm_resolve_friend_list_frame(context, owner_frame=None):
             list_seen_age = float(time_module.monotonic()) - list_seen_ts
             recent_list_surface = bool(
                 list_seen_ts > 0.0
-                and 0.0 <= list_seen_age <= 6.0
+                and 0.0 <= list_seen_age <= 15.0
             )
             if hint in ('home', 'self', 'self-farm') and not bool(
                 getattr(context, '_qqfarm_friend_entry_pending', False)
@@ -59318,6 +59810,44 @@ def _qqfarm_reconcile_visible_self_surface(context, frame, state=None):
         ) or '').strip().lower() in ('friend', 'friend-list')
         if not stale_friend_route:
             return False
+        # A validated friend-list frame may be followed by one compositor
+        # blank/non-farm frame while the native owner and PrintWindow paths
+        # settle.  Keep the ordered friend route alive for the same bounded
+        # cache window used by the resolver; a single blank must not clear the
+        # list cache and turn into the observed home/reopen loop.
+        try:
+            cached_rows = list(getattr(
+                context, '_qqfarm_friend_list_rows_cache', []
+            ) or [])
+            cached_ts = float(getattr(
+                context, '_qqfarm_friend_list_frame_cache_ts', 0.0
+            ) or 0.0)
+            cache_now = float(__import__('time').monotonic())
+            cache_age = (
+                max(0.0, cache_now - cached_ts)
+                if cached_ts > 0.0 else 999.0
+            )
+            if (
+                len(cached_rows) >= 3
+                and 0.0 <= cache_age <= 15.0
+                and (
+                    bool(getattr(context, '_qqfarm_friend_entry_pending', False))
+                    or bool(getattr(context, '_qqfarm_friend_chain_active', False))
+                    or str(getattr(
+                        context, '_qqfarm_live_scene_hint', ''
+                    ) or '').strip().lower() == 'friend-list'
+                )
+            ):
+                _throttled_write(
+                    'v544-friend-list-cache-release-guard',
+                    'v544 retained recent friend-list cache during transient '
+                    'blank age=' + ('%.3f' % cache_age) +
+                    ' rows=' + str(len(cached_rows)),
+                    2.0,
+                )
+                return False
+        except BaseException:
+            pass
         # A real friend farm is the only page that may keep the friend grace.
         # A self frame has no selected friend card plus action footer; do not
         # use list-row blobs as proof because home controls also occupy the

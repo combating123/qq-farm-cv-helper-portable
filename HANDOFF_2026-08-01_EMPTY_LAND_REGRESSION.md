@@ -5748,6 +5748,37 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - v1.5.0 已部署并运行；只有确认好友农场画面后才允许结束为无任务，列表/空白/转场帧会保留好友链路并等待新画面。
 - 下一动作：提交 v1.5.0 并通过本机 `127.0.0.1:10808` 代理推送 `origin/main`。
 
+## 2026-09-25 23:10 +0800 - v1.5.7 RED/GREEN：好友列表缓存保活与左上角窗口验证
+
+### 症状与根因
+
+- 生产日志仍出现 `rows=0`、随后 `v520/v539 rows=5` 的捕获竞态；空白/非农场帧还可能进入 `v499 visible self surface released`，清掉刚验证的好友列表缓存并让 native owner 下一轮重新从第 0 行开始。
+- 窗口移动到左上角不是根因：现场已经多次确认 QQ 农场窗口为 `(0,0,671,1251)`，问题在 native owner 与窗口自有 PrintWindow 帧的时序。
+
+### RED -> GREEN
+
+- 新增 `tests/test_v544_native_friend_cached_list_consumption_20260925.py`。
+- RED 复现：缓存超过原 6 秒窗口时，native owner 不消费最近有效的 5 行好友列表；空白帧会返回 `True` 并清掉好友路由。
+- GREEN：将已验证列表帧缓存窗口调整为 15 秒，覆盖一个 12 秒巡检间隔；在至少 3 行缓存仍新鲜且好友链路未结束时，`_qqfarm_reconcile_visible_self_surface()` 保留 `friend-list` 场景、待处理游标和缓存，不触发 `v499` 回家释放。
+- 定点组合验证：`29 / 29 OK`，包含 v544、v539、v543、v533、v516、v517；`py_compile` 与 `git diff --check` 通过。
+
+### 生产部署
+
+- 生产版本：`1.5.7`；备份：`E:\CV农场助手\backups\v544-release-1.5.7-20260925-230537`。
+- 源/部署 Hook：`E6D366F8B4DB0624FB3E7E47CBA19A1DF258574C4FA543B55E17B5EA91B3602D`，`3002498` bytes，一致。
+- 重启后 PID `24312`，`Responding=True`；新日志确认 `v543 miniapp anchored top-left ... rect=(0, 0, 671, 1251)`。
+- 新现场连续出现 `v539 remembered window-owned friend-list frame ... rows=5`、`v520 ... rows=5`，未观察到该段紧跟 `v499 ... returned home` 的缓存清理组合。
+- GUI、UserData、配置、本地状态、日志和历史备份均保留；配置只记录哈希，未覆盖。
+
+### 未闭环观察
+
+- 当前窗口仍有 QQ 小程序启动/捕获竞态：启动初期可能出现一次 `rows=0` 和非农场等待；代码会等待有效农场/列表帧，不应将其当成好友无任务证明。
+- 本次修复解决的是好友列表缓存断链和左上角固定后的坐标/场景保持；真实好友存在偷取或帮忙机会时，仍需以新鲜业务日志确认实际动作完成。
+
+### 下一动作
+
+- 选择性提交 `portable/hook.py`、`VERSION`、`README.md`、`CHANGELOG.md`、v544 回归测试和本交接记录，推送 `origin/main` 并创建 `v1.5.7` Release。
+
 ## 2026-09-23 20:39:50 +0800 — v1.4.98 RED/GREEN：卡片式好友列表坐标与 RGB/BGR 捕获兼容
 
 - 目标：修复 2026-09-23 现场“好友列表第 0 行点击成功但实际点到搜索框，随后持续停留自家/好友列表”的主线回归。
