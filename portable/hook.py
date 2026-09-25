@@ -14488,6 +14488,37 @@ def _wrap_detect_empty_lands_state(fn, name=''):
                 board_state = 'bypass'
                 board_rejected_centers = []
                 board_anchor_count = 0
+            # A native/template hit without a fresh confirmed board is an
+            # observation only.  Treating it as click authority is what turns
+            # clipped QQ frames into false empty plots and repeated shop/self
+            # passes.
+            try:
+                action_gate_fn = globals().get(
+                    '_qqfarm_unconfirmed_empty_candidates_are_actionable'
+                )
+                if (
+                        isinstance(result, list) and result and
+                        callable(action_gate_fn) and not action_gate_fn(
+                            bot, board_state, len(result)
+                        )
+                ):
+                    rejected_count = len(result)
+                    result = []
+                    setattr(bot, '_qqfarm_home_visual_recheck_required', True)
+                    setattr(bot, '_qqfarm_empty_land_scene_confirmed_full', False)
+                    setattr(bot, '_qqfarm_recent_empty_lands', [])
+                    setattr(bot, '_qqfarm_recent_empty_land_count', 0)
+                    setattr(bot, '_qqfarm_recent_empty_land_centers', [])
+                    setattr(bot, '_qqfarm_home_empty_land_pending', False)
+                    setattr(bot, '_qqfarm_home_empty_land_remaining', 0)
+                    setattr(bot, '_qqfarm_force_self_cycle_next', False)
+                    setattr(bot, '_qqfarm_cycle_branch_hint', '')
+                    _write(
+                        'v549 unconfirmed empty-land candidates quarantined '
+                        'count=' + str(rejected_count) + ' state=' + str(board_state)
+                    )
+            except BaseException:
+                pass
             try:
                 flat_proof_fn = globals().get(
                     '_qqfarm_attach_live_flat_empty_land_proof'
@@ -27113,6 +27144,114 @@ def _qqfarm_rect_contains(rect, point):
         return False
 
 
+def _qqfarm_home_visual_unknown_requires_defer(context, now_ts=None):
+    """Keep destructive home follow-ups out of an unverified empty-land pass."""
+    if context is None:
+        return False
+    try:
+        pending = bool(getattr(
+            context, '_qqfarm_native_empty_log_claim_pending', False
+        ))
+        claim_ts = float(getattr(
+            context, '_qqfarm_native_empty_log_claim_ts', 0.0
+        ) or 0.0)
+        now_value = float(
+            now_ts if now_ts is not None else __import__('time').time()
+        )
+        age = max(0.0, now_value - claim_ts) if claim_ts > 0.0 else 999999.0
+        board_state = str(getattr(
+            context, '_qqfarm_empty_land_board_gate_state', ''
+        ) or '').strip().lower()
+        recheck_required = bool(getattr(
+            context, '_qqfarm_home_visual_recheck_required', False
+        ))
+        recent_count = max(0, int(getattr(
+            context, '_qqfarm_recent_empty_land_count', 0
+        ) or 0))
+        return bool(
+            pending and age <= 90.0 and
+            board_state != 'confirmed' and
+            recheck_required and recent_count <= 0
+        )
+    except BaseException:
+        return False
+
+
+def _qqfarm_unconfirmed_empty_candidates_are_actionable(
+        context, board_state, candidate_count, now_ts=None):
+    """Require a current board proof before any empty-land action.
+
+    Template/OCR candidates from a clipped, stale, or partially rendered QQ
+    frame are useful diagnostics, but they are not click authority.  Keeping
+    this decision in one small helper also makes the contract testable without
+    loading the obfuscated runtime.
+    """
+    try:
+        if context is None or int(candidate_count or 0) <= 0:
+            return False
+        state = str(board_state or '').strip().lower()
+        if state != 'confirmed':
+            return False
+        if bool(getattr(context, '_qqfarm_home_visual_recheck_required', False)):
+            return False
+        proof_ts = float(getattr(
+            context, '_qqfarm_empty_land_board_gate_ts', 0.0
+        ) or 0.0)
+        now_value = float(
+            now_ts if now_ts is not None else __import__('time').time()
+        )
+        return bool(proof_ts > 0.0 and 0.0 <= now_value - proof_ts <= 45.0)
+    except BaseException:
+        return False
+
+
+def _qqfarm_self_action_should_defer(context, frame_signature, now_ts=None):
+    """Debounce a repeated one-key self action on an unchanged frame."""
+    if context is None or frame_signature is None:
+        return False
+    try:
+        now_value = float(
+            now_ts if now_ts is not None else __import__('time').time()
+        )
+        last_ts = float(getattr(
+            context, '_qqfarm_self_action_last_ts', 0.0
+        ) or 0.0)
+        last_signature = getattr(
+            context, '_qqfarm_self_action_last_frame_signature', None
+        )
+        cooldown = float(getattr(
+            context, 'self_action_confirmation_cooldown_seconds', 18.0
+        ) or 18.0)
+        cooldown = max(8.0, min(60.0, cooldown))
+        pending = bool(
+            getattr(context, '_qqfarm_home_empty_land_pending', False) or
+            getattr(context, '_qqfarm_home_visual_recheck_required', False) or
+            getattr(context, '_qqfarm_post_harvest_pending', False) or
+            getattr(context, '_qqfarm_single_harvest_planting_pending', False)
+        )
+        return bool(
+            not pending and last_ts > 0.0 and
+            0.0 <= now_value - last_ts < cooldown and
+            last_signature == frame_signature
+        )
+    except BaseException:
+        return False
+
+
+def _qqfarm_record_self_action_frame(context, frame_signature, now_ts=None):
+    if context is None or frame_signature is None:
+        return False
+    try:
+        now_value = float(
+            now_ts if now_ts is not None else __import__('time').time()
+        )
+        setattr(context, '_qqfarm_self_action_last_ts', now_value)
+        setattr(context, '_qqfarm_self_action_last_frame_signature', frame_signature)
+        return True
+    except BaseException:
+        return False
+
+
 def _qqfarm_live_surface_geometry(win32gui, hwnd):
     """Return the current physical client rectangle and size for one HWND.
 
@@ -27340,6 +27479,8 @@ def _qqfarm_collect_live_surface_candidates(
         return []
 
     render_markers = (
+        'mmuirendersubwindowhw',
+        'mmuirendersubwindow',
         'chrome_renderwidgethosthwnd',
         'chrome_widgetwin',
         'intermediate d3d window',
@@ -27366,8 +27507,10 @@ def _qqfarm_collect_live_surface_candidates(
                 if rect is None or width < 120 or height < 120:
                     return True
                 class_rank = (
-                    0 if 'chrome_renderwidgethosthwnd' in lowered else
-                    1 if 'chrome_widgetwin' in lowered else 2
+                    0 if 'mmuirendersubwindowhw' in lowered else
+                    1 if 'mmuirendersubwindow' in lowered else
+                    2 if 'chrome_renderwidgethosthwnd' in lowered else
+                    3 if 'chrome_widgetwin' in lowered else 4
                 )
                 candidates.append({
                     'hwnd': hwnd_value,
@@ -28474,6 +28617,8 @@ def _qqfarm_post_native_surface_mouse(kind, x, y):
         'visible': bool(root.get('visible')),
     }]
     render_markers = (
+        'mmuirendersubwindowhw',
+        'mmuirendersubwindow',
         'chrome_renderwidgethosthwnd',
         'chrome_widgetwin',
         'intermediate d3d window',
@@ -28489,12 +28634,16 @@ def _qqfarm_post_native_surface_mouse(kind, x, y):
             rect = _get_rect(hwnd_value)
             if rect is None or width < 120 or height < 120:
                 return True
-            if 'chrome_renderwidgethosthwnd' in class_name:
+            if 'mmuirendersubwindowhw' in class_name:
                 class_rank = 0
-            elif 'chrome_widgetwin' in class_name:
+            elif 'mmuirendersubwindow' in class_name:
                 class_rank = 1
-            else:
+            elif 'chrome_renderwidgethosthwnd' in class_name:
                 class_rank = 2
+            elif 'chrome_widgetwin' in class_name:
+                class_rank = 3
+            else:
+                class_rank = 4
             surfaces.append({
                 'hwnd': hwnd_value,
                 'root': root_hwnd,
@@ -31085,6 +31234,33 @@ def _qqfarm_start_wgc_capture():
             farm_hwnd = int(find_window_fn() or 0)
     except BaseException:
         farm_hwnd = 0
+    if capture is not None:
+        try:
+            guard_fn = globals().get('_qqfarm_prepare_capture_owner_platform')
+            owner_state = (
+                guard_fn(capture, farm_hwnd=farm_hwnd)
+                if callable(guard_fn) else {}
+            ) or {}
+            if bool(owner_state.get('cross_platform_selector')) or int(
+                    owner_state.get('changed', 0) or 0
+            ) > 0:
+                stop_fn = globals().get('_qqfarm_stop_wgc_capture')
+                if callable(stop_fn):
+                    stop_fn('platform-selector-changed')
+                globals()['_QQFARM_WGC_CAPTURE'] = None
+                globals()['_QQFARM_WGC_CONTROL'] = None
+                capture = None
+                control = None
+                log_fn = globals().get('_throttled_write')
+                if callable(log_fn):
+                    log_fn(
+                        'v548-wgc-platform-rebind',
+                        'v548 WGC discarded stale cross-platform capture '
+                        'selector platform=' + platform_name,
+                        10.0,
+                    )
+        except BaseException:
+            pass
     if capture is not None:
         bound_hwnd = int(globals().get('_QQFARM_WGC_BOUND_HWND', 0) or 0)
         if bound_hwnd > 0 and farm_hwnd > 0 and bound_hwnd != farm_hwnd:
@@ -47674,6 +47850,8 @@ def _friend_guard_post_client_click(
             # select the geometry that matches the actual captured frame.
             surfaces = [(root_hwnd, root_width, root_height, 2)]
             render_markers = (
+                'mmuirendersubwindowhw',
+                'mmuirendersubwindow',
                 'chrome_renderwidgethosthwnd',
                 'chrome_widgetwin',
                 'intermediate d3d window',
@@ -47695,7 +47873,10 @@ def _friend_guard_post_client_click(
                         int(hwnd),
                         child_width,
                         child_height,
-                        0 if 'chrome_renderwidgethosthwnd' in class_name else 1,
+                        0 if 'mmuirendersubwindowhw' in class_name else
+                        1 if 'mmuirendersubwindow' in class_name else
+                        2 if 'chrome_renderwidgethosthwnd' in class_name else
+                        3 if 'chrome_widgetwin' in class_name else 4,
                     ))
                 except BaseException:
                     pass
@@ -53305,6 +53486,55 @@ def _wrap_vip_business_func(fn, name=''):
                 )
             except BaseException:
                 dispatch_context = None
+            self_action_frame_signature = None
+            self_action_deferred = False
+            if 'process_self_farm' in lname and dispatch_context is not None:
+                try:
+                    signature_fn = globals().get(
+                        '_qqfarm_stable_full_board_frame_signature'
+                    )
+                    candidate_frame = None
+                    for value in list(a or ()) + list((k or {}).values()):
+                        if getattr(value, 'shape', None) is not None:
+                            candidate_frame = value
+                            break
+                    if candidate_frame is not None and callable(signature_fn):
+                        self_action_frame_signature = signature_fn(candidate_frame)
+                    defer_fn = globals().get('_qqfarm_self_action_should_defer')
+                    if (self_action_frame_signature is not None and
+                            callable(defer_fn) and defer_fn(
+                                dispatch_context, self_action_frame_signature
+                            )):
+                        self_action_deferred = True
+                        _throttled_write(
+                            'v549-self-action-unchanged-frame',
+                            'v549 deferred repeated self action on unchanged frame; '
+                            'waiting for fresh visual confirmation',
+                            5.0,
+                        )
+                        return False
+                except BaseException:
+                    self_action_frame_signature = None
+            if warehouse_home_entry or warehouse_sequence_entry:
+                try:
+                    context_probe = dispatch_context
+                    if context_probe is None:
+                        bot_resolver = globals().get('_business_bot_from_args')
+                        context_probe = (
+                            bot_resolver(a, k)
+                            if callable(bot_resolver) else None
+                        )
+                    defer_fn = globals().get(
+                        '_qqfarm_home_visual_unknown_requires_defer'
+                    )
+                    if callable(defer_fn) and defer_fn(context_probe):
+                        _write(
+                            'v548 deferred warehouse after unconfirmed '
+                            'native empty-land claim name=' + str(name)
+                        )
+                        return False
+                except BaseException:
+                    pass
             if 'process_friend_farm' in lname:
                 try:
                     priority_fn = globals().get('_qqfarm_home_priority_active')
@@ -53592,6 +53822,27 @@ def _wrap_vip_business_func(fn, name=''):
                 if vip_context:
                     _throttled_write('v36-vip-context-' + str(name), 'v36 vip entitlement context applied ' + str(name) + ' forced=' + str(len(vip_context)) + ' restored=' + str(restored), 30.0)
             try:
+                if (
+                        'process_self_farm' in lname and
+                        dispatch_context is not None and
+                        res is not False and
+                        self_action_frame_signature is not None
+                ):
+                    record_fn = globals().get('_qqfarm_record_self_action_frame')
+                    if callable(record_fn):
+                        record_fn(
+                            dispatch_context,
+                            self_action_frame_signature,
+                        )
+                if (
+                        'process_self_farm' in lname and
+                        dispatch_context is not None and
+                        res is not False
+                ):
+                    _write(
+                        'v549 self action dispatched; awaiting fresh frame '
+                        'before another self action'
+                    )
                 if warehouse_sequence_entry:
                     _VIP_WAREHOUSE_LAST_SEQUENCE_CLASS = _warehouse_classify_result(res)
                     _VIP_WAREHOUSE_LAST_SEQUENCE_TS = time.time()

@@ -5826,3 +5826,13 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - 配置 SHA-256 仍为 `4F2370E0A94A940C80DBFE93E5F41B3A2A15A2BBEC5751721BD24F0545B7B728`；GUI、UserData、配置、日志和历史备份未覆盖。
 - 新启动段确认 Hook 加载和左上角锚定 `rect=(0, 0, 642, 1200)`；观察期内未出现真实多行好友列表，v547 的自然现场命中继续等待对应页面状态。
 - 下一动作：选择性提交并推送 `main`，创建 `v1.5.10` GitHub Release。
+
+
+## 2026-09-26 04:38:00 +0800 — v1.5.12 RED/GREEN：未确认空地隔离与静止画面一键务农去重
+
+- 现场证据：04:19 仍出现 `检测到空地共1块` 后逐块土地 OCR 未命中；此前 12 秒一轮重复输出一键务农并把 `self_actions_daily_count` 推到 469，说明 native 返回/日志不等于画面变化。
+- 根因：QQ 窗口重建后 WGC 处于重建冷却，业务继续消费未确认候选；一键务农调用缺少同一静止画面的确认闸。
+- RED/GREEN：新增 `tests/test_v549_runtime_action_and_empty_gate_20260926.py`，7/7 OK；MMUI/WGC 回归 40/40 OK；空地套件 32/32、背包套件 60/60；`py_compile` 与 `git diff --check` OK。
+- 实现：`portable/hook.py` 增加 confirmed 棋盘与45秒证明门；未确认候选清空为待复核，不触发种植/买种/仓库；同一 frame signature 的一键务农进入8-60秒确认冷却，存在真实待种任务时放行。
+- 部署：版本 `1.5.12`；备份 `E:\CV农场助手\backups\v549-empty-gate-self-action-1.5.12-20260926-043703`；源/生产 Hook SHA-256 `1D80E50C99235502B1F62FFD5AAC20E88CA0F0B591FF4A5B1E09304B3DB4EF71`；配置 SHA-256 保持 `4F2370E0A94A940C80DBFE93E5F41B3A2A15A2BBEC5751721BD24F0545B7B728`；PID `33708`，Responding=True。
+- 新启动段未再出现旧的 MMUI WGC 查找告警；尚待下一次真实一键务农机会确认 v549 日志。当前下一步：继续观察 fresh-frame confirmation 与好友页面推进证据。
