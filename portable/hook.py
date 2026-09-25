@@ -48607,7 +48607,22 @@ def _qqfarm_resolve_friend_list_frame(context, owner_frame=None):
                 and not recent_list_surface
                 and not friend_route_active
             ):
-                return None, []
+                # A native owner frame can be a blank/compositor surface while
+                # the window-owned PrintWindow path still holds the validated
+                # friend list.  The textual scene hint alone is not proof of
+                # a real self-farm frame.  Keep the cache only when the current
+                # owner frame is not itself a trusted business surface.
+                owner_is_trusted = False
+                validator = globals().get(
+                    '_qqfarm_visible_frame_has_farm_scene'
+                )
+                if owner_frame is not None and callable(validator):
+                    try:
+                        owner_is_trusted = bool(validator(owner_frame))
+                    except BaseException:
+                        owner_is_trusted = False
+                if owner_is_trusted:
+                    return None, []
             if len(cached_rows) >= 3:
                 return cached, cached_rows
         except BaseException:
@@ -57045,6 +57060,23 @@ def _qqfarm_stable_full_board_run_cycle_fast_skip(context, now_ts=None):
         frame = None
     if frame is None:
         return False
+    # A visible multi-row friend list is business evidence, even when the
+    # full-board cache still reports the user's farm as stable.  Let the
+    # ordered friend dispatcher consume it instead of silently skipping this
+    # patrol tick.
+    try:
+        rows_fn = globals().get('_friend_list_visit_button_rows')
+        visible_rows = list(rows_fn(frame) or []) if callable(rows_fn) else []
+        if len(visible_rows) >= 3:
+            _throttled_write(
+                'v547-visible-friend-list-bypassed-full-skip',
+                'v547 visible friend-list rows=' + str(len(visible_rows)) +
+                ' bypassed stable full-board run-cycle skip',
+                4.0,
+            )
+            return False
+    except BaseException:
+        pass
     stable_fn = globals().get('_qqfarm_stable_full_board_fast_skip')
     if not callable(stable_fn) or not bool(
         stable_fn(context, frame, now_ts=now_value)

@@ -5813,3 +5813,16 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - 聚焦证据：`v487/v488/v489(核心列表派发)/v499/v520/v533/v536/v537/v538` 相关测试已运行；v538 2/2 OK，v488 精简入口回归由失败转为通过。v489 中若干旧的弱友好表面/终态测试仍与现行 v530/v533 强证明契约不一致，未把它们冒充为本次修复证据。
 - 版本：源码标记提升为 1.4.98，加入 v538 启动标记、CHANGELOG、README 和新 fixture/test；尚未部署。
 - 下一步：创建部署备份，隐藏重启并用新日志验证 `v538`、`source=friend-card-band`、首行坐标不低于第一张卡片顶部；确认好友农场页面确认和游标推进后再提交/推送。
+
+## 2026-09-26 00:52 +0800 - v1.5.10 可见好友列表绕过稳定满板快路径
+
+- 症状：巡检只输出开始/结束；好友列表帧可能被旧的稳定满板缓存快速跳过，没有进入好友派发。
+- RED：`test_run_cycle_fast_gate_rejects_visible_friend_list_frame` 在旧实现下返回 `True`，复现 5 行好友列表被静默跳过。
+- GREEN：`_qqfarm_stable_full_board_run_cycle_fast_skip()` 先检查当前帧；不少于 3 行好友列表时记录 `v547-visible-friend-list-bypassed-full-skip` 并释放 native 好友派发。
+- 定点验证：`43 / 43 OK`；`python -m py_compile portable\hook.py` 与 `git diff --check` 通过。
+- 全量发现：`1614 tests`，`50 failures / 13 errors / 11 skipped`；失败集中于历史 AST 精简加载、缺失旧 `.analysis` 脚本和旧行为契约，本轮相关组合仍为 43/43。
+- 部署版本：`1.5.10`；备份：`E:\CV农场助手\backups\v547-visible-friend-list-fast-skip-1.5.10-20260926-004648`。
+- 源/生产 Hook SHA-256：`0C84C2C5A6098FDADA6A4634593DD752E24631D6D7A291B8966EB31CB5167FA5`；生产 PID `34592`，`Responding=True`。
+- 配置 SHA-256 仍为 `4F2370E0A94A940C80DBFE93E5F41B3A2A15A2BBEC5751721BD24F0545B7B728`；GUI、UserData、配置、日志和历史备份未覆盖。
+- 新启动段确认 Hook 加载和左上角锚定 `rect=(0, 0, 642, 1200)`；观察期内未出现真实多行好友列表，v547 的自然现场命中继续等待对应页面状态。
+- 下一动作：选择性提交并推送 `main`，创建 `v1.5.10` GitHub Release。
