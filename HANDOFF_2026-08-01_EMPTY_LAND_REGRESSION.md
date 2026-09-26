@@ -5876,3 +5876,26 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - 隐藏重启后生产 PID `29720`，`Responding=True`。启动段记录：`12:26:50` OCR 预热超时后继续启动；`12:27:03` 进入自家检查；`12:27:22` 等级识别完成；`12:27:37` 好友页面未完成确认并保留好友链路。
 - 当前观察段尚未遇到新的“确认棋盘但无土壤正证据”样本，因此没有把 `v550 empty-land soil-proof gate` 的自然现场命中冒充为已验证；需要在真实空地/满板场景出现时继续取证。
 - Git 交付仍只包含源码兼容修复与测试；2.3.7 继续作为离线对比样本，不制作或发布其授权绕过补丁。
+
+
+## 2026-09-26 13:24:00 +0800 — v1.5.14 授权校验交付门禁与便携包
+
+### 目标
+将源码级授权校验与发布门禁纳入 v1.5.14 交付，同时保持当前 GUI、UserData、配置、日志和运行时状态不变。
+
+### RED → GREEN
+- 新增 `tests/test_authorization_delivery_20260926.py`；首次运行因缺少授权策略模块而按预期失败。
+- 新增 `portable/authorization_policy.py`，覆盖有效、过期、产品不匹配、签名缺失/失败、设备绑定和只读文件审计。
+- 新增 `scripts/verify_authorization_delivery.py`，要求策略/说明随包交付，并阻止 v2.3.7 安装包与 `v2.3.7-standalone` 比较树进入发布树。
+- `scripts/build_release.ps1` 已接入源码树与最终 stage 两道授权门禁，并排除 `v2.3.7-standalone`。
+
+### 验证与交付
+- 授权回归：5 / 5 OK。
+- 授权预检：`OK: authorization delivery preflight passed`。
+- PowerShell 语法解析：OK；`git diff --check`：OK。
+- 便携包：`E:\CodexProjects\Generated\qq-farm-release\CV农场助手-v1.5.14-便携完整版.zip`。
+- SHA-256：`CC63FD7A653B954E55B6947E1091B013E619A64F9F493A3D333B05C21714FBE2`。
+- 包内确认：授权策略/门禁/说明均存在；v2.3.7 安装包与独立比较树均为 0 项。
+
+### 边界
+2.3.7 继续只作离线行为对照；本交付不改写其二进制授权逻辑、不生成卡密或补丁。现有生产 v1.5.13 运行实例未因本次文档/门禁改动重启或覆盖 UserData。下一步：提交指定源码文件并推送 v1.5.14 tag/release，之后再单独观察生产空地/好友链路。

@@ -43,7 +43,7 @@ if (Test-Path -LiteralPath $stageFull) {
 }
 New-Item -ItemType Directory -Force -Path $stageFull | Out-Null
 
-$excludedDirs = @('UserData', 'logs', '__pycache__', 'screenshots', 'captures', 'cache', 'crash', 'backups', 'artifacts', 'diagnostics', 'maintenance-backup', 'legacy-runtime', 'deployment-backups', 'migration-archive', '.analysis', '.codex', '.git', '$out')
+$excludedDirs = @('UserData', 'logs', '__pycache__', 'screenshots', 'captures', 'cache', 'crash', 'backups', 'artifacts', 'diagnostics', 'maintenance-backup', 'legacy-runtime', 'v2.3.7-standalone', 'deployment-backups', 'migration-archive', '.analysis', '.codex', '.git', '$out')
 $sourcePrefixLength = $source.TrimEnd('\').Length + 1
 Get-ChildItem -LiteralPath $source -Recurse -File -Force | ForEach-Object {
     $relative = $_.FullName.Substring($sourcePrefixLength)
@@ -67,10 +67,31 @@ Get-ChildItem -LiteralPath $source -Recurse -File -Force | ForEach-Object {
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $readmeSource = Join-Path $repoRoot 'README.md'
 $changelogSource = Join-Path $repoRoot 'CHANGELOG.md'
+$authorizationVerifier = Join-Path $repoRoot 'scripts\verify_authorization_delivery.py'
 if (!(Test-Path -LiteralPath $readmeSource -PathType Leaf)) { throw "README missing: $readmeSource" }
 if (!(Test-Path -LiteralPath $changelogSource -PathType Leaf)) { throw "CHANGELOG missing: $changelogSource" }
+if (!(Test-Path -LiteralPath $authorizationVerifier -PathType Leaf)) { throw "Authorization verifier missing: $authorizationVerifier" }
+& python $authorizationVerifier --root $repoRoot --source-tree
+if ($LASTEXITCODE -ne 0) { throw "Authorization delivery preflight failed for source tree" }
 Copy-Item -LiteralPath $readmeSource -Destination (Join-Path $stageFull 'README.md') -Force
 Copy-Item -LiteralPath $changelogSource -Destination (Join-Path $stageFull 'CHANGELOG.md') -Force
+$deliveryArtifacts = @(
+    'portable\authorization_policy.py',
+    'scripts\verify_authorization_delivery.py',
+    'docs\AUTHORIZATION_DELIVERY.md'
+)
+foreach ($relativeArtifact in $deliveryArtifacts) {
+    $artifactSource = Join-Path $repoRoot $relativeArtifact
+    if (!(Test-Path -LiteralPath $artifactSource -PathType Leaf)) {
+        throw "Authorization delivery artifact missing: $artifactSource"
+    }
+    $artifactTarget = Join-Path $stageFull $relativeArtifact
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $artifactTarget) | Out-Null
+    Copy-Item -LiteralPath $artifactSource -Destination $artifactTarget -Force
+}
+$stagedAuthorizationVerifier = Join-Path $stageFull 'scripts\verify_authorization_delivery.py'
+& python $stagedAuthorizationVerifier --root $stageFull
+if ($LASTEXITCODE -ne 0) { throw "Authorization delivery preflight failed for release stage" }
 $releaseNotesName = (
     [char]0x7248 + [char]0x672C + [char]0x4E0E + [char]0x66F4 +
     [char]0x65B0 + [char]0x65E5 + [char]0x5FD7 + '.md'
@@ -97,6 +118,7 @@ $projectInfo = @(
     '4. 好友链保留首位、护主、偷取后务农、封禁返回和装扮门禁；',
     '5. 每日分享只在精确目标、单联系人、直接发送和对话框关闭全部校验后记录成功。',
     '6. LocalAppData、RoamingAppData、TEMP、TMP、日志和每日状态都在 UserData\WindowsProfile，更新时保留 UserData。',
+    '7. 授权校验策略与发布前门禁随包交付；2.3.7 样本仅作离线行为对照。',
     '',
     '完整迭代内容请查看 README.md 和 版本与更新日志.md。'
 ) -join [Environment]::NewLine
