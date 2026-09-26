@@ -28187,7 +28187,14 @@ def _qqfarm_resolve_live_surface_click(
             point_hwnd = 0
         previous = globals().get('_QQFARM_LAST_NATIVE_SURFACE_ROUTE')
         if not isinstance(previous, dict):
-            previous = globals().get('_QQFARM_STALE_NATIVE_SURFACE_ROUTE')
+            previous = None
+        preserved_previous = globals().get(
+            '_QQFARM_STALE_NATIVE_SURFACE_ROUTE'
+        )
+        if not isinstance(preserved_previous, dict):
+            preserved_previous = None
+        if previous is None:
+            previous = preserved_previous
         physical_geometry_evidence = False
         physical_source_rect = None
         # A PrintWindow retry owns a physical screen rectangle even when the
@@ -28285,6 +28292,42 @@ def _qqfarm_resolve_live_surface_click(
             previous_route=previous,
             point_hwnd=point_hwnd,
         )
+        # A successful click on the newly anchored window replaces the latest
+        # route, but compiled/native helpers may continue emitting absolute
+        # coordinates from the pre-anchor window for the rest of the process.
+        # Retry that preserved source geometry before rejecting the action.
+        if (
+                not isinstance(route, dict) and
+                isinstance(preserved_previous, dict) and
+                preserved_previous is not previous
+        ):
+            route = _qqfarm_choose_live_surface(
+                candidates,
+                input_x,
+                input_y,
+                frame_width=frame_width,
+                frame_height=frame_height,
+                preferred_hwnds=preferred,
+                previous_route=preserved_previous,
+                point_hwnd=point_hwnd,
+            )
+            if isinstance(route, dict):
+                try:
+                    logger = globals().get('_throttled_write')
+                    message = (
+                        'v551 recovered anchored native click from preserved ' +
+                        'pre-move route input=' +
+                        repr((int(input_x), int(input_y))) +
+                        ' old=' + repr(preserved_previous.get('root_rect')) +
+                        ' new=' + repr(route.get('root_rect')) +
+                        ' client=' + repr(route.get('client_point'))
+                    )
+                    if callable(logger):
+                        logger('v551-anchored-native-click', message, 2.0)
+                    else:
+                        _write(message)
+                except BaseException:
+                    pass
         if isinstance(route, dict) and physical_geometry_evidence:
             route = dict(route)
             route['coordinate_space'] = 'physical-printwindow-remapped'
@@ -48631,24 +48674,11 @@ def _qqfarm_anchor_miniapp_top_left(hwnd, margin=0):
         if not isinstance(prior_route, dict):
             prior_route = None
         if prior_route is None:
-            dpi_scale = 1.0
-            try:
-                ctypes_module = __import__('ctypes')
-                user32 = ctypes_module.windll.user32
-                dpi_fn = getattr(user32, 'GetDpiForWindow', None)
-                if callable(dpi_fn):
-                    dpi_value = int(dpi_fn(hwnd) or 96)
-                    if dpi_value > 0:
-                        dpi_scale = max(1.0, min(3.0, dpi_value / 96.0))
-            except BaseException:
-                dpi_scale = 1.0
-            if dpi_scale > 1.0:
-                source_rect = tuple(
-                    int(round(float(value) * dpi_scale))
-                    for value in (left, top, right, bottom)
-                )
-            else:
-                source_rect = (left, top, right, bottom)
+            # GetWindowRect and the compiled helper's absolute points already
+            # share the caller's DPI coordinate space. Scaling this rectangle
+            # again turns a 642x1200 pre-move window into 963x1800 and excludes
+            # real native points such as (870, 1166) from the remap source.
+            source_rect = (left, top, right, bottom)
             prior_route = {
                 'root_hwnd': int(hwnd),
                 'target_hwnd': int(hwnd),

@@ -5899,3 +5899,29 @@ Next action: on the next real home-progress or visible home friend-request rearm
 
 ### 边界
 2.3.7 继续只作离线行为对照；本交付不改写其二进制授权逻辑、不生成卡密或补丁。现有生产 v1.5.13 运行实例未因本次文档/门禁改动重启或覆盖 UserData。下一步：提交指定源码文件并推送 v1.5.14 tag/release，之后再单独观察生产空地/好友链路。
+
+## 2026-09-26 18:01 +0800 - v1.5.15 RED/GREEN：左上角锚定后的旧坐标点击恢复
+
+### 症状与根因
+
+- 现场日志在好友入口点击后持续出现 `v513 ... live-surface-resolution-failed input=(870,1166)`，窗口实际已经固定到左上角，画面没有推进。
+- `_qqfarm_anchor_miniapp_top_left()` 对 `GetWindowRect` 的结果重复执行 DPI 放大，移动前路线从实际 `642x1200` 被错误放大为约 `963x1800`，旧绝对坐标因此被判定为不属于原路线。
+
+### RED -> GREEN
+
+- 新增 `tests/test_v551_anchored_native_click_regression_20260926.py`，覆盖不重复 DPI 放大、旧坐标 `(870,1166)` 映射到当前 `428x800` 表面、当前路线失配后回退保留路线以及渲染子窗口目标。
+- 修复 `portable/hook.py`：保存原始移动前矩形；当前路线解析失败时使用保留路线重映射；成功恢复记录 `v551 recovered anchored native click from preserved pre-move route`。
+- 聚焦回归：`48 / 48 OK`；`py_compile`、`git diff --check` 均通过。
+
+### 生产部署与现场证据
+
+- 生产备份：`E:\CV农场助手\backups\v551-anchored-click-1.5.15-20260926-175746`。
+- 仅替换 `E:\CV农场助手\hook.py` 与 `E:\CV农场助手\VERSION`；GUI、`UserData`、配置、日志和历史备份未覆盖。
+- 源/部署 Hook SHA-256：`31AF6A0F3935DAC2D834825C4F8ADD1DED6A72D5087BD57BBE9C79A43B9D5B67`，`3021628` bytes，一致；版本 `1.5.15`。
+- 配置 SHA-256 保持：`4F2370E0A94A940C80DBFE93E5F41B3A2A15A2BBEC5751721BD24F0545B7B728`。
+- 隐藏重启后 PID `12808`，`Responding=True`；新日志段中 `v513` 计数为 `0`，`v516 ... delivered=True` 出现 `6` 次，好友列表捕获到 `4` 行；未出现 Traceback、WGC 致命错误或捕获失败。窗口重建后再次记录 `v543 miniapp anchored top-left`。
+
+### 边界与后续观察
+
+- `QQFarmCVHelper_v2.3.7_x64_setup.exe` 仍仅作为离线行为对照样本；本次没有改写第三方二进制授权逻辑，也没有生成卡密或授权绕过补丁。
+- `v551` 恢复路径尚未在自然现场再次命中，因为新进程已优先走当前有效路由；这是正常结果。继续观察好友入口实际画面推进和真实空地/活动四格播种证据。
