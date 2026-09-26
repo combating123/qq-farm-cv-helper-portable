@@ -5836,3 +5836,43 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - 实现：`portable/hook.py` 增加 confirmed 棋盘与45秒证明门；未确认候选清空为待复核，不触发种植/买种/仓库；同一 frame signature 的一键务农进入8-60秒确认冷却，存在真实待种任务时放行。
 - 部署：版本 `1.5.12`；备份 `E:\CV农场助手\backups\v549-empty-gate-self-action-1.5.12-20260926-043703`；源/生产 Hook SHA-256 `1D80E50C99235502B1F62FFD5AAC20E88CA0F0B591FF4A5B1E09304B3DB4EF71`；配置 SHA-256 保持 `4F2370E0A94A940C80DBFE93E5F41B3A2A15A2BBEC5751721BD24F0545B7B728`；PID `33708`，Responding=True。
 - 新启动段未再出现旧的 MMUI WGC 查找告警；尚待下一次真实一键务农机会确认 v549 日志。当前下一步：继续观察 fresh-frame confirmation 与好友页面推进证据。
+
+## 2026-09-26 12:22:00 +0800 — v1.5.13 RED/GREEN：土壤正证据门与慢路径隔离
+
+### 症状与根因
+
+- 生产日志在 2026-09-26 03:15 前后仍出现“检测到空地共 1 块”后逐块土地名称 OCR 未命中；单块等待约 20–30 秒，造成用户看到画面长时间不动。
+- 现场还出现 WGC 旧选择器找不到 `MMUIRenderSubWindow` 的告警。v1.5.12 已加入 QQ/微信 Render 面枚举与重建逻辑，但生产 Hook 尚未加载本轮 v550 修改。
+- 农田网格/棋盘命中只说明候选位于农场，不足以证明该位置是裸土。没有独立土壤正证据的候选若继续下游，会再次触发慢 OCR、背包预检或买种。
+
+### RED → GREEN
+
+- 新增 `tests/test_v550_soil_proof_gate_20260926.py` 的高层回归：确认棋盘但无土壤正证据的候选必须被保留为待复核，不能进入 flat-proof/慢 OCR 路径；同时保留视觉土壤和收获后正证据候选。
+- v1.5.13 在 `_wrap_detect_empty_lands_state()` 中接入 `_qqfarm_filter_empty_land_candidates_by_soil_proof()`：无 `_qqfarm_visual_soil_proof`、`_qqfarm_live_flat_empty_proof` 或 `_qqfarm_post_harvest_confirmed` 的候选从可操作结果中移除；全部被移除时棋盘状态改为 `unknown`，清空当前可操作空地缓存并等待新鲜画面。
+
+### 验证
+
+- v550 高层土壤正证据回归：`3 / 3 OK`。
+- v549 运行时动作/空地门：`3 / 3 OK`。
+- v548 QQ MMUI/WGC 与仓库门：`4 / 4 OK`。
+- v543 窗口几何/左上角锚定：`7 / 7 OK`。
+- 空地板面、满板、播种流程组合：`8 / 8 OK`（另含同套件现有测试）。
+- `python -m py_compile portable\\hook.py`：OK；`git diff --check`：OK。
+- 生产快照（2026-09-26 12:05）显示进程当时未运行，且源 Hook 与部署 Hook 尚不一致；本轮部署前必须创建新备份并只替换 `hook.py`、`VERSION`。
+
+### 交付边界与部署
+
+- 保留 GUI、UserData、配置、日志、窗口位置和本地业务状态；不覆盖 `E:\\CV农场助手\\UserData`、`logs` 或 `backups`。
+- `QQFarmCVHelper_v2.3.7_x64_setup.exe` 继续作为离线静态行为对比样本；本交付不修改其授权/卡密校验，也不生成授权绕过补丁。
+- 下一动作：创建 `E:\\CV农场助手\\backups\\v550-soil-proof-1.5.13-*`，复制源 Hook 与 VERSION，隐藏重启，核对新日志中的 `v550 empty-land soil-proof gate`、WGC 重建与无重复一键务农，然后再提交并推送 GitHub。
+
+## 2026-09-26 12:29:30 +0800 — v1.5.13 已部署：首段运行观察
+
+- 生产备份：`E:\\CV农场助手\\backups\\v550-soil-proof-1.5.13-20260926-122537`。
+- 仅替换：`E:\\CV农场助手\\hook.py`、`E:\\CV农场助手\\VERSION`；`UserData`、配置、日志、GUI 和历史备份未覆盖。
+- 源/部署 Hook SHA-256：`234362D7B00F797596FFEEA33385BDA7B4AFE2417EA493FEA45DC1381299ACBF`，`3020146` bytes，一致。
+- 源/部署 VERSION SHA-256：`42C4A6120F79B4A9745000FE22D0D4C91DC462231C7F98421E26F26992CD1D42`，版本文本 `1.5.13`，一致。
+- 配置 SHA-256：`4F2370E0A94A940C80DBFE93E5F41B3A2A15A2BBEC5751721BD24F0545B7B728`，部署前后保持。
+- 隐藏重启后生产 PID `29720`，`Responding=True`。启动段记录：`12:26:50` OCR 预热超时后继续启动；`12:27:03` 进入自家检查；`12:27:22` 等级识别完成；`12:27:37` 好友页面未完成确认并保留好友链路。
+- 当前观察段尚未遇到新的“确认棋盘但无土壤正证据”样本，因此没有把 `v550 empty-land soil-proof gate` 的自然现场命中冒充为已验证；需要在真实空地/满板场景出现时继续取证。
+- Git 交付仍只包含源码兼容修复与测试；2.3.7 继续作为离线对比样本，不制作或发布其授权绕过补丁。

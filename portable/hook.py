@@ -14488,6 +14488,42 @@ def _wrap_detect_empty_lands_state(fn, name=''):
                 board_state = 'bypass'
                 board_rejected_centers = []
                 board_anchor_count = 0
+            # A plot-lattice hit proves that a coordinate belongs to the farm,
+            # but it does not prove that the tile is bare soil.  Keep the two
+            # kinds of evidence separate so a planted tile cannot enter the
+            # slow land-title OCR path and make the patrol appear frozen.
+            try:
+                soil_proof_filter_fn = globals().get(
+                    '_qqfarm_filter_empty_land_candidates_by_soil_proof'
+                )
+                if (
+                        board_state == 'confirmed' and
+                        isinstance(result, list) and result and
+                        callable(soil_proof_filter_fn)
+                ):
+                    result, held_without_soil_proof = soil_proof_filter_fn(result)
+                    for held_item in held_without_soil_proof:
+                        held_center = (
+                            held_item.get('center')
+                            if isinstance(held_item, dict) else None
+                        )
+                        if held_center is None:
+                            continue
+                        if held_center not in rejected_centers:
+                            rejected_centers.append(held_center)
+                        if held_center not in board_rejected_centers:
+                            board_rejected_centers.append(held_center)
+                    if held_without_soil_proof:
+                        if not result:
+                            board_state = 'unknown'
+                        _write(
+                            'v550 empty-land soil-proof gate held=' +
+                            str(len(held_without_soil_proof)) +
+                            ' proven=' + str(len(result)) +
+                            ' state=' + str(board_state)
+                        )
+            except BaseException:
+                pass
             # A native/template hit without a fresh confirmed board is an
             # observation only.  Treating it as click authority is what turns
             # clipped QQ frames into false empty plots and repeated shop/self
@@ -27175,6 +27211,34 @@ def _qqfarm_home_visual_unknown_requires_defer(context, now_ts=None):
         )
     except BaseException:
         return False
+
+
+def _qqfarm_filter_empty_land_candidates_by_soil_proof(candidates):
+    """Split plot nominations into proven targets and review-only hits.
+
+    A confirmed farm lattice is not enough to authorize a planting click.  The
+    visual detector or a locked post-harvest snapshot must provide independent
+    bare-soil evidence for the current coordinate.
+    """
+    try:
+        items = list(candidates or [])
+    except BaseException:
+        items = []
+    proven = []
+    held = []
+    for item in items:
+        has_soil_proof = bool(
+            isinstance(item, dict) and (
+                item.get('_qqfarm_visual_soil_proof') or
+                item.get('_qqfarm_live_flat_empty_proof') or
+                item.get('_qqfarm_post_harvest_confirmed')
+            )
+        )
+        if has_soil_proof:
+            proven.append(item)
+        else:
+            held.append(item)
+    return proven, held
 
 
 def _qqfarm_unconfirmed_empty_candidates_are_actionable(
