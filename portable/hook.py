@@ -27636,7 +27636,27 @@ def _qqfarm_invalidate_stale_surface_cache(candidates=None):
             )
         if not stale:
             return False
-        globals()['_QQFARM_STALE_NATIVE_SURFACE_ROUTE'] = dict(route)
+        anchor_route = globals().get(
+            '_QQFARM_PRE_ANCHOR_NATIVE_SURFACE_ROUTE'
+        )
+        if not isinstance(anchor_route, dict):
+            existing_stale = globals().get(
+                '_QQFARM_STALE_NATIVE_SURFACE_ROUTE'
+            )
+            if isinstance(existing_stale, dict) and bool(
+                    existing_stale.get('anchor_source')
+            ):
+                anchor_route = dict(existing_stale)
+                globals()['_QQFARM_PRE_ANCHOR_NATIVE_SURFACE_ROUTE'] = dict(
+                    anchor_route
+                )
+            else:
+                anchor_route = None
+        # Keep immutable pre-anchor geometry separate from the latest stale
+        # route. Native harvest helpers can continue emitting coordinates from
+        # before a window move even after a later HWND/geometry rebuild.
+        if anchor_route is None:
+            globals()['_QQFARM_STALE_NATIVE_SURFACE_ROUTE'] = dict(route)
         globals()['_QQFARM_LAST_NATIVE_SURFACE_ROUTE'] = None
         return True
     except BaseException:
@@ -28193,8 +28213,13 @@ def _qqfarm_resolve_live_surface_click(
         )
         if not isinstance(preserved_previous, dict):
             preserved_previous = None
+        pre_anchor_previous = globals().get(
+            '_QQFARM_PRE_ANCHOR_NATIVE_SURFACE_ROUTE'
+        )
+        if not isinstance(pre_anchor_previous, dict):
+            pre_anchor_previous = None
         if previous is None:
-            previous = preserved_previous
+            previous = preserved_previous or pre_anchor_previous
         physical_geometry_evidence = False
         physical_source_rect = None
         # A PrintWindow retry owns a physical screen rectangle even when the
@@ -28296,38 +28321,54 @@ def _qqfarm_resolve_live_surface_click(
         # route, but compiled/native helpers may continue emitting absolute
         # coordinates from the pre-anchor window for the rest of the process.
         # Retry that preserved source geometry before rejecting the action.
-        if (
-                not isinstance(route, dict) and
-                isinstance(preserved_previous, dict) and
-                preserved_previous is not previous
-        ):
-            route = _qqfarm_choose_live_surface(
-                candidates,
-                input_x,
-                input_y,
-                frame_width=frame_width,
-                frame_height=frame_height,
-                preferred_hwnds=preferred,
-                previous_route=preserved_previous,
-                point_hwnd=point_hwnd,
-            )
-            if isinstance(route, dict):
-                try:
-                    logger = globals().get('_throttled_write')
-                    message = (
-                        'v551 recovered anchored native click from preserved ' +
-                        'pre-move route input=' +
-                        repr((int(input_x), int(input_y))) +
-                        ' old=' + repr(preserved_previous.get('root_rect')) +
-                        ' new=' + repr(route.get('root_rect')) +
-                        ' client=' + repr(route.get('client_point'))
-                    )
-                    if callable(logger):
-                        logger('v551-anchored-native-click', message, 2.0)
-                    else:
-                        _write(message)
-                except BaseException:
-                    pass
+        if not isinstance(route, dict):
+            fallback_routes = []
+            for candidate_route in (
+                    preserved_previous, pre_anchor_previous
+            ):
+                if not isinstance(candidate_route, dict):
+                    continue
+                if any(candidate_route is item for item in fallback_routes):
+                    continue
+                if isinstance(previous, dict) and (
+                        candidate_route is previous or
+                        candidate_route == previous
+                ):
+                    continue
+                fallback_routes.append(candidate_route)
+            for candidate_route in fallback_routes:
+                route = _qqfarm_choose_live_surface(
+                    candidates,
+                    input_x,
+                    input_y,
+                    frame_width=frame_width,
+                    frame_height=frame_height,
+                    preferred_hwnds=preferred,
+                    previous_route=candidate_route,
+                    point_hwnd=point_hwnd,
+                )
+                if isinstance(route, dict):
+                    try:
+                        logger = globals().get('_throttled_write')
+                        marker = (
+                            'v552' if candidate_route.get('anchor_source')
+                            else 'v551'
+                        )
+                        message = (
+                            marker + ' recovered anchored native click from '
+                            'preserved pre-move route input=' +
+                            repr((int(input_x), int(input_y))) +
+                            ' old=' + repr(candidate_route.get('root_rect')) +
+                            ' new=' + repr(route.get('root_rect')) +
+                            ' client=' + repr(route.get('client_point'))
+                        )
+                        if callable(logger):
+                            logger(marker + '-anchored-native-click', message, 2.0)
+                        else:
+                            _write(message)
+                    except BaseException:
+                        pass
+                    break
         if isinstance(route, dict) and physical_geometry_evidence:
             route = dict(route)
             route['coordinate_space'] = 'physical-printwindow-remapped'
@@ -48687,6 +48728,9 @@ def _qqfarm_anchor_miniapp_top_left(hwnd, margin=0):
                 'input_screen_point': None,
                 'coordinate_space': 'pre-anchor-logical',
             }
+        else:
+            prior_route = dict(prior_route)
+        prior_route['anchor_source'] = True
         # pywin32's SetWindowPos returns None on success, while ctypes/test
         # shims may return a truthy BOOL.  Treat an exception or explicit
         # False as failure; None is the normal successful pywin32 result.
@@ -48697,6 +48741,9 @@ def _qqfarm_anchor_miniapp_top_left(hwnd, margin=0):
         if moved:
             globals()['_QQFARM_LAST_NATIVE_SURFACE_ROUTE'] = None
             globals()['_QQFARM_STALE_NATIVE_SURFACE_ROUTE'] = dict(prior_route)
+            globals()['_QQFARM_PRE_ANCHOR_NATIVE_SURFACE_ROUTE'] = dict(
+                prior_route
+            )
             logger = globals().get('_throttled_write')
             if callable(logger):
                 logger(
