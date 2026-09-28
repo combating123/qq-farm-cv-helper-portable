@@ -6016,3 +6016,15 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - Release: https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.5.18
 - Portable artifact: E:\CodexBuilds\qq-farm\releases\CV农场助手-v1.5.18-便携完整版.zip; local SHA-256=8549E4AA48A9D6F8D974D058449614C8A8A50458ECF5FE9A7B81900CE106DBC6.
 - Release asset contains the updated application files and excludes UserData, logs, backups, and the 2.3.7 standalone sample; existing GUI and local runtime data remain outside the release package.
+
+## 2026-09-28 21:02 +0800 — v1.5.19 runtime no-frame diagnostics deployed
+
+- Objective: explain patrol cycles that emitted only start/end messages while the QQ render surface was blank or not a farm page, without allowing stale pixels to drive self or friend actions.
+- RED: added `tests/test_v555_runtime_no_frame_diagnostics_20260928.py`; before implementation the requested diagnostic function was absent and both tests failed with `StopIteration`.
+- GREEN: added `_qqfarm_runtime_no_frame_diagnostic()` and connected it to the QQ page-readiness `no-frame` and `non-farm-frame` branches. The diagnostic records reason, WGC state, scene hint and retry deadline with bounded same-state suppression.
+- Focused verification: v555/v554/v548/v506/capture/WGC/patrol suite `37 / 37 OK`; `python -m py_compile portable/hook.py` OK; `git diff --check` OK.
+- Deployment backup: `E:\CV农场助手\backups\v555-runtime-no-frame-1.5.19-20260928-210035`. Only `hook.py` and `VERSION` were copied to production; GUI, `UserData`, config, logs, backups and window placement were preserved.
+- Source/deployment Hook SHA-256: `A28BEFBD7A9D8BCDA83225ED6BBAA6814A6A0094A1E36D6C628E138BFDB3FA3C`; version `1.5.19`; production config SHA-256 remains `5B3DFC6C4E28658205D8FCE60BE230A076031398320F8AEA1103207384F14BF6`.
+- Hidden restart: PID `26056`, `Responding=True`; runtime emitted `v555 runtime business gate deferred ... reason=no-frame wgc=blank` and the existing message explicitly skipped level/OCR, planting, purchase, fertilizer and friend patrol. No Traceback/NameError/SyntaxError appeared in the startup segment.
+- Remaining natural observations: after the QQ render surface returns to a fresh farm frame, verify one real harvest, one real empty plot and one ordered friend transition. The current evidence confirms the no-frame gate, not those natural-action sign-offs.
+- Next action: publish v1.5.19 source and portable release, then inspect the next fresh-farm log segment for `v555` recovery followed by real action proof.

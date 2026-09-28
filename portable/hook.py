@@ -5923,6 +5923,68 @@ def _qqfarm_note_page_readiness(context, state, message):
     return True
 
 
+def _qqfarm_runtime_no_frame_diagnostic(
+        context, reason='', label='', now_ts=None, retry_after=0.0,
+        wgc_state='', scene_hint=''):
+    """Explain a business-cycle short-circuit caused by missing page pixels.
+
+    The native loop still emits its normal start/end messages when the page
+    readiness gate returns ``False``.  Keep that loop non-blocking, but leave a
+    debounced reason and retry deadline so an apparent idle cycle is
+    distinguishable from a confirmed empty farm or friend page.
+    """
+    if context is None:
+        return False
+    try:
+        now_value = float(
+            now_ts if now_ts is not None else __import__('time').monotonic()
+        )
+    except BaseException:
+        now_value = 0.0
+    try:
+        retry_value = float(retry_after or 0.0)
+    except BaseException:
+        retry_value = 0.0
+    try:
+        signature = (
+            str(reason or 'no-frame').strip().lower(),
+            str(label or '').strip(),
+            str(wgc_state or '').strip().lower(),
+            str(scene_hint or '').strip().lower(),
+        )
+        previous = getattr(context, '_qqfarm_runtime_gate_diagnostic_signature', None)
+        previous_retry = float(getattr(
+            context, '_qqfarm_runtime_gate_retry_after', 0.0
+        ) or 0.0)
+        if previous == signature and now_value > 0.0 and (
+                previous_retry > now_value and retry_value <= previous_retry):
+            return False
+        setattr(context, '_qqfarm_runtime_gate_diagnostic_signature', signature)
+        setattr(context, '_qqfarm_runtime_gate_retry_after', retry_value)
+        setattr(context, '_qqfarm_runtime_gate_last_reason', signature[0])
+    except BaseException:
+        return False
+    message = (
+        'v555 runtime business gate deferred label=' + signature[1] +
+        ' reason=' + signature[0] +
+        ' wgc=' + signature[2] +
+        ' scene=' + signature[3] +
+        ' retry_after=' + ('%.3f' % retry_value)
+    )
+    log_fn = globals().get('_throttled_write')
+    try:
+        if callable(log_fn):
+            log_fn('v555-runtime-no-frame', message, 5.0)
+        else:
+            _write(message)
+    except BaseException:
+        try:
+            _write(message)
+        except BaseException:
+            pass
+    return True
+
+
 _QQFARM_PERSISTENT_NONFARM_THRESHOLD = 3
 _QQFARM_PERSISTENT_NONFARM_COOLDOWN_SECONDS = 30.0
 _QQFARM_PERSISTENT_NONFARM_CLOSE_WAIT_SECONDS = 20.0
@@ -6269,6 +6331,28 @@ def _qqfarm_runtime_page_readiness_gate(context, label):
     except BaseException:
         usable = False
     if not usable:
+        try:
+            now_mono = float(__import__('time').monotonic())
+        except BaseException:
+            now_mono = 0.0
+        try:
+            diagnostic_fn = globals().get('_qqfarm_runtime_no_frame_diagnostic')
+            if callable(diagnostic_fn):
+                diagnostic_fn(
+                    context,
+                    reason='no-frame',
+                    label=label,
+                    now_ts=now_mono,
+                    retry_after=now_mono + 3.0,
+                    wgc_state=str(globals().get(
+                        '_QQFARM_WGC_STATE', 'unknown'
+                    ) or 'unknown'),
+                    scene_hint=str(getattr(
+                        context, '_qqfarm_live_scene_hint', ''
+                    ) or getattr(context, '_qqfarm_cycle_branch_hint', '') or ''),
+                )
+        except BaseException:
+            pass
         _qqfarm_note_page_readiness(
             context,
             'loading',
@@ -6318,6 +6402,28 @@ def _qqfarm_runtime_page_readiness_gate(context, label):
     except BaseException:
         farm_scene_visible = False
     if not farm_scene_visible:
+        try:
+            now_mono = float(__import__('time').monotonic())
+        except BaseException:
+            now_mono = 0.0
+        try:
+            diagnostic_fn = globals().get('_qqfarm_runtime_no_frame_diagnostic')
+            if callable(diagnostic_fn):
+                diagnostic_fn(
+                    context,
+                    reason='non-farm-frame',
+                    label=label,
+                    now_ts=now_mono,
+                    retry_after=now_mono + 3.0,
+                    wgc_state=str(globals().get(
+                        '_QQFARM_WGC_STATE', 'unknown'
+                    ) or 'unknown'),
+                    scene_hint=str(getattr(
+                        context, '_qqfarm_live_scene_hint', ''
+                    ) or getattr(context, '_qqfarm_cycle_branch_hint', '') or ''),
+                )
+        except BaseException:
+            pass
         _qqfarm_note_page_readiness(
             context,
             'loading',
