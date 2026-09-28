@@ -27726,9 +27726,151 @@ def _qqfarm_unconfirmed_empty_candidates_are_actionable(
         return False
 
 
+def _qqfarm_self_action_capture_ready(
+        context, frame=None, now_ts=None, fresh_capture=None):
+    """Return whether a self-farm action has a fresh, usable visual source."""
+    if context is None or frame is None:
+        return False
+    if fresh_capture is False:
+        return False
+    try:
+        now_value = float(
+            now_ts if now_ts is not None else __import__('time').monotonic()
+        )
+    except BaseException:
+        now_value = 0.0
+    try:
+        if bool(getattr(
+                context, '_qqfarm_hidden_restore_waiting_for_fresh_frame', False
+        )) or bool(globals().get(
+                '_QQFARM_HIDDEN_RESTORE_WAITING_FOR_FRESH_FRAME', False
+        )):
+            return False
+        lease_until = float(globals().get(
+            '_QQFARM_HIDDEN_RESTORE_LEASE_UNTIL', 0.0
+        ) or 0.0)
+        if lease_until > now_value:
+            return False
+    except BaseException:
+        return False
+    try:
+        blank_ts = float(globals().get('_QQFARM_WGC_BLANK_TS', 0.0) or 0.0)
+        if blank_ts > 0.0:
+            visible_fn = globals().get('_qqfarm_farm_window_is_visible')
+            if not callable(visible_fn) or not bool(visible_fn()):
+                return False
+    except BaseException:
+        return False
+    try:
+        shape = getattr(frame, 'shape', None)
+        if shape is None or len(shape) < 2:
+            return False
+        if int(shape[0]) < 32 or int(shape[1]) < 32:
+            return False
+    except BaseException:
+        return False
+    for attr_name in (
+            '_qqfarm_capture_invalid',
+            '_qqfarm_capture_stale',
+            '_qqfarm_capture_occluded',
+    ):
+        try:
+            if bool(getattr(context, attr_name, False)):
+                return False
+        except BaseException:
+            return False
+    try:
+        pixel_gate = globals().get('_qqfarm_capture_frame_has_rendered_pixels')
+        if callable(pixel_gate) and not bool(pixel_gate(frame)):
+            return False
+    except BaseException:
+        return False
+    # A compiled owner may pass the frame it already had on hand.  In QQ mode
+    # that argument is not automatically a fresh capture: after hide/show or
+    # a WGC fallback it can be the last farm image from before the surface was
+    # occluded.  When the capture layer exposes ownership markers, require the
+    # action frame to be the frame produced by that layer instead of trusting
+    # the caller's positional argument.
+    if fresh_capture is True:
+        try:
+            qq_fn = globals().get('_active_is_qq_mode')
+            weixin_fn = globals().get('_active_is_weixin_mode')
+            capture_mode = bool(
+                (callable(qq_fn) and bool(qq_fn())) or
+                (callable(weixin_fn) and bool(weixin_fn()))
+            )
+        except BaseException:
+            capture_mode = False
+        if capture_mode:
+            try:
+                visible_id = int(globals().get(
+                    '_QQFARM_LAST_VISIBLE_CAPTURE_FRAME_ID', 0
+                ) or 0)
+                printwindow_id = int(globals().get(
+                    '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID', 0
+                ) or 0)
+                normalized = globals().get('_QQFARM_LAST_WGC_NORMALIZED_FRAME')
+                good_frame = globals().get('_QQFARM_LAST_GOOD_CAPTURE_FRAME')
+                markers_present = bool(
+                    visible_id > 0 or printwindow_id > 0 or
+                    normalized is not None or good_frame is not None
+                )
+                if markers_present and not (
+                        id(frame) in (visible_id, printwindow_id) or
+                        frame is normalized or frame is good_frame):
+                    return False
+            except BaseException:
+                return False
+    try:
+        state = str(globals().get('_QQFARM_WGC_STATE', '') or '').strip().lower()
+        if state in (
+                'pending-window', 'starting', 'pending',
+                'pending-fresh-frame', 'blank', 'rebuilding', 'occluded'
+        ):
+            session_ready = bool(globals().get('_QQFARM_WGC_SESSION_READY', False))
+            frame_id = int(id(frame))
+            fresh_ids = {
+                int(globals().get('_QQFARM_LAST_VISIBLE_CAPTURE_FRAME_ID', 0) or 0),
+                int(globals().get('_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID', 0) or 0),
+            }
+            if not session_ready and frame_id not in fresh_ids:
+                return False
+    except BaseException:
+        return False
+    if fresh_capture is None:
+        try:
+            qq_fn = globals().get('_active_is_qq_mode')
+            weixin_fn = globals().get('_active_is_weixin_mode')
+            capture_mode = bool(
+                (callable(qq_fn) and bool(qq_fn())) or
+                (callable(weixin_fn) and bool(weixin_fn()))
+            )
+        except BaseException:
+            capture_mode = False
+        if capture_mode:
+            # A QQ capture request may fall back to the last good buffer while
+            # the native owner is cooling down.  That buffer is useful for
+            # diagnostics, but it is not action authority for self farming.
+            # The wrapper supplies ``fresh_capture`` when it can compare the
+            # capture markers around the request; leave direct callers
+            # compatible when no marker is available.
+            fresh_capture = bool(
+                id(frame) == int(globals().get(
+                    '_QQFARM_LAST_VISIBLE_CAPTURE_FRAME_ID', 0
+                ) or 0) or
+                id(frame) == int(globals().get(
+                    '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID', 0
+                ) or 0) or
+                frame is globals().get('_QQFARM_LAST_WGC_NORMALIZED_FRAME')
+            )
+            if not fresh_capture:
+                return False
+    return True
+
+
 def _qqfarm_self_action_should_defer(context, frame_signature, now_ts=None):
     """Debounce a repeated one-key self action on an unchanged frame."""
-    if context is None or frame_signature is None:
+    if context is None:
         return False
     try:
         now_value = float(
@@ -27750,17 +27892,18 @@ def _qqfarm_self_action_should_defer(context, frame_signature, now_ts=None):
             getattr(context, '_qqfarm_post_harvest_pending', False) or
             getattr(context, '_qqfarm_single_harvest_planting_pending', False)
         )
+        same_signature = bool(last_signature == frame_signature)
         return bool(
             not pending and last_ts > 0.0 and
             0.0 <= now_value - last_ts < cooldown and
-            last_signature == frame_signature
+            same_signature
         )
     except BaseException:
         return False
 
 
 def _qqfarm_record_self_action_frame(context, frame_signature, now_ts=None):
-    if context is None or frame_signature is None:
+    if context is None:
         return False
     try:
         now_value = float(
@@ -43336,9 +43479,153 @@ def _friend_navigation_frame_without_selected_card(frame):
         return frame
 
 
+def _qqfarm_friend_next_entry_dispatch_allowed(context, fresh_frame, now_ts=None):
+    """Keep an unconfirmed bottom-friend navigation bounded across patrol ticks."""
+    if context is None:
+        return True
+    try:
+        now_fn = globals().get('_friend_guard_poll_now')
+        now_value = float(
+            now_ts if now_ts is not None else (
+                now_fn() if callable(now_fn) else __import__('time').monotonic()
+            )
+        )
+    except BaseException:
+        now_value = 0.0
+    try:
+        pending_identity = getattr(
+            context, '_qqfarm_friend_next_entry_pending_identity', None
+        )
+        cooldown_until = float(getattr(
+            context, '_qqfarm_friend_next_entry_cooldown_until', 0.0
+        ) or 0.0)
+        retry_count = max(0, int(getattr(
+            context, '_qqfarm_friend_next_entry_retry_count', 0
+        ) or 0))
+    except BaseException:
+        pending_identity, cooldown_until, retry_count = None, 0.0, 0
+    if pending_identity is None and cooldown_until <= now_value:
+        return True
+
+    current_identity = None
+    try:
+        identity_fn = globals().get('_qqfarm_friend_navigation_identity')
+        if callable(identity_fn) and fresh_frame is not None:
+            current_identity = identity_fn(fresh_frame)
+    except BaseException:
+        current_identity = None
+    changed = None
+    if pending_identity is not None and current_identity is not None:
+        try:
+            changed_fn = globals().get(
+                '_qqfarm_friend_navigation_identity_changed'
+            )
+            changed = (
+                changed_fn(pending_identity, fresh_frame)
+                if callable(changed_fn) else
+                bool(pending_identity != current_identity)
+            )
+        except BaseException:
+            changed = None
+    if changed is True:
+        try:
+            setattr(context, '_qqfarm_friend_next_entry_pending_identity', None)
+            setattr(context, '_qqfarm_friend_next_entry_cooldown_until', 0.0)
+            setattr(context, '_qqfarm_friend_next_entry_retry_count', 0)
+            setattr(context, '_qqfarm_friend_next_entry_last_dispatch_ts', 0.0)
+        except BaseException:
+            pass
+        return True
+    if changed is False and cooldown_until > now_value:
+        try:
+            log_fn = globals().get('_throttled_write')
+            if callable(log_fn):
+                log_fn(
+                    'v554-bottom-entry-dispatch-cooldown',
+                    'v554 suppressed repeated bottom friend entry until fresh card; '
+                    'remaining=' + ('%.1f' % max(0.0, cooldown_until - now_value)),
+                    4.0,
+                )
+        except BaseException:
+            pass
+        return False
+    if retry_count >= 2:
+        try:
+            setattr(context, '_qqfarm_friend_next_entry_pending_identity', None)
+            setattr(context, '_qqfarm_friend_next_entry_cooldown_until', 0.0)
+            setattr(context, '_qqfarm_friend_next_entry_retry_count', 0)
+            setattr(context, '_qqfarm_friend_next_entry_last_dispatch_ts', 0.0)
+            setattr(context, '_qqfarm_friend_chain_exhausted', True)
+        except BaseException:
+            pass
+        try:
+            writer = globals().get('_write')
+            if callable(writer):
+                writer(
+                    'v554 bottom friend entry released after bounded '
+                    'unconfirmed retries'
+                )
+        except BaseException:
+            pass
+        return False
+    return True
+
+
+def _qqfarm_record_friend_next_entry_dispatch(context, fresh_frame, now_ts=None):
+    """Record one bottom-entry dispatch when its wrapper did not already do so."""
+    if context is None:
+        return False
+    try:
+        pending_identity = getattr(
+            context, '_qqfarm_friend_next_entry_pending_identity', None
+        )
+        cooldown_until = float(getattr(
+            context, '_qqfarm_friend_next_entry_cooldown_until', 0.0
+        ) or 0.0)
+    except BaseException:
+        pending_identity, cooldown_until = None, 0.0
+    if pending_identity is not None or cooldown_until > 0.0:
+        return False
+    try:
+        now_fn = globals().get('_friend_guard_poll_now')
+        now_value = float(
+            now_ts if now_ts is not None else (
+                now_fn() if callable(now_fn) else __import__('time').monotonic()
+            )
+        )
+    except BaseException:
+        now_value = 0.0
+    current_identity = None
+    try:
+        identity_fn = globals().get('_qqfarm_friend_navigation_identity')
+        if callable(identity_fn) and fresh_frame is not None:
+            current_identity = identity_fn(fresh_frame)
+    except BaseException:
+        current_identity = None
+    try:
+        retry_count = min(2, max(0, int(getattr(
+            context, '_qqfarm_friend_next_entry_retry_count', 0
+        ) or 0)) + 1)
+        cooldown = 14.0 if retry_count <= 1 else 30.0
+        setattr(context, '_qqfarm_friend_next_entry_pending_identity', current_identity)
+        setattr(context, '_qqfarm_friend_next_entry_retry_count', retry_count)
+        setattr(context, '_qqfarm_friend_next_entry_cooldown_until', now_value + cooldown)
+        setattr(context, '_qqfarm_friend_next_entry_last_dispatch_ts', now_value)
+        return True
+    except BaseException:
+        return False
+
+
 def _invoke_friend_next_actionable_entry(context, fresh_frame, last_action_label=''):
     if context is None or fresh_frame is None:
         return False, ''
+    allowed_fn = globals().get('_qqfarm_friend_next_entry_dispatch_allowed')
+    if callable(allowed_fn):
+        try:
+            if not bool(allowed_fn(context, fresh_frame)):
+                return False, ''
+        except BaseException:
+            return False, ''
     last = str(last_action_label or '').lower()
     if 'steal' in last or 'harvest' in last:
         method_names = (
@@ -43375,6 +43662,12 @@ def _invoke_friend_next_actionable_entry(context, fresh_frame, last_action_label
         if not result:
             continue
         label = 'method.' + method_name
+        try:
+            record_fn = globals().get('_qqfarm_record_friend_next_entry_dispatch')
+            if callable(record_fn):
+                record_fn(context, fresh_frame)
+        except BaseException:
+            pass
         try:
             count = int(getattr(context, '_qqfarm_friend_chain_count', 0) or 0) + 1
             setattr(context, '_qqfarm_friend_chain_count', count)
@@ -43414,15 +43707,48 @@ def _friend_chain_begin_dispatch(context):
             setattr(context, '_qqfarm_friend_chain_exhausted', False)
             setattr(context, '_qqfarm_friend_chain_native_home_blocked', False)
             if not was_pending:
-                setattr(
-                    context, '_qqfarm_friend_next_entry_pending_identity', None
-                )
-                setattr(
-                    context, '_qqfarm_friend_next_entry_cooldown_until', 0.0
-                )
-                setattr(
-                    context, '_qqfarm_friend_next_entry_retry_count', 0
-                )
+                # A patrol redispatch can occur while the prior bottom-entry
+                # click is still awaiting a fresh friend card.  Preserve that
+                # bounded confirmation budget instead of turning every timer
+                # tick into a new click chain.  An exhausted budget is cleared
+                # so a genuinely new friend session can start cleanly.
+                try:
+                    pending_identity = getattr(
+                        context,
+                        '_qqfarm_friend_next_entry_pending_identity',
+                        None,
+                    )
+                    retry_count = max(0, int(getattr(
+                        context,
+                        '_qqfarm_friend_next_entry_retry_count',
+                        0,
+                    ) or 0))
+                    cooldown_until = float(getattr(
+                        context,
+                        '_qqfarm_friend_next_entry_cooldown_until',
+                        0.0,
+                    ) or 0.0)
+                    preserve_navigation = bool(
+                        0 < retry_count < 2 and (
+                            pending_identity is not None or
+                            cooldown_until > 0.0
+                        )
+                    )
+                except BaseException:
+                    preserve_navigation = False
+                if not preserve_navigation:
+                    setattr(
+                        context, '_qqfarm_friend_next_entry_pending_identity', None
+                    )
+                    setattr(
+                        context, '_qqfarm_friend_next_entry_cooldown_until', 0.0
+                    )
+                    setattr(
+                        context, '_qqfarm_friend_next_entry_retry_count', 0
+                    )
+                    setattr(
+                        context, '_qqfarm_friend_next_entry_last_dispatch_ts', 0.0
+                    )
                 # A compiled troublemaker call may have been deferred by the
                 # previous friend chain.  Preserve its callable and arguments
                 # across redispatches until a real counter increment confirms it.
@@ -54087,22 +54413,102 @@ def _wrap_vip_business_func(fn, name=''):
             self_action_frame_signature = None
             self_action_deferred = False
             if 'process_self_farm' in lname and dispatch_context is not None:
+                candidate_frame = None
+                capture_fresh = True
                 try:
-                    signature_fn = globals().get(
-                        '_qqfarm_stable_full_board_frame_signature'
-                    )
-                    candidate_frame = None
                     for value in list(a or ()) + list((k or {}).values()):
                         if getattr(value, 'shape', None) is not None:
                             candidate_frame = value
                             break
+                except BaseException:
+                    candidate_frame = None
+                if candidate_frame is None:
+                    capture_fresh = None
+                    before_capture_markers = (
+                        int(globals().get(
+                            '_QQFARM_LAST_VISIBLE_CAPTURE_FRAME_ID', 0
+                        ) or 0),
+                        int(globals().get(
+                            '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID', 0
+                        ) or 0),
+                        float(globals().get(
+                            '_QQFARM_LAST_WGC_NORMALIZED_TS', 0.0
+                        ) or 0.0),
+                        float(globals().get(
+                            '_QQFARM_LAST_GOOD_CAPTURE_TS', 0.0
+                        ) or 0.0),
+                    )
+                    try:
+                        capture_fn = globals().get('_get_frame_from_bot')
+                        if callable(capture_fn):
+                            candidate_frame = capture_fn(dispatch_context)
+                    except BaseException:
+                        candidate_frame = None
+                    after_capture_markers = (
+                        int(globals().get(
+                            '_QQFARM_LAST_VISIBLE_CAPTURE_FRAME_ID', 0
+                        ) or 0),
+                        int(globals().get(
+                            '_QQFARM_LAST_PHYSICAL_PRINTWINDOW_FRAME_ID', 0
+                        ) or 0),
+                        float(globals().get(
+                            '_QQFARM_LAST_WGC_NORMALIZED_TS', 0.0
+                        ) or 0.0),
+                        float(globals().get(
+                            '_QQFARM_LAST_GOOD_CAPTURE_TS', 0.0
+                        ) or 0.0),
+                    )
+                    markers_present = bool(
+                        any(value > 0 for value in before_capture_markers) or
+                        any(value > 0 for value in after_capture_markers)
+                    )
+                    marker_changed = bool(
+                        after_capture_markers[2] > before_capture_markers[2] + 1e-6 or
+                        after_capture_markers[3] > before_capture_markers[3] + 1e-6 or
+                        (
+                            after_capture_markers[0] > 0 and
+                            after_capture_markers[0] != before_capture_markers[0]
+                        ) or
+                        (
+                            after_capture_markers[1] > 0 and
+                            after_capture_markers[1] != before_capture_markers[1]
+                        )
+                    )
+                    if candidate_frame is not None and markers_present:
+                        capture_fresh = marker_changed
+                ready_fn = globals().get('_qqfarm_self_action_capture_ready')
+                try:
+                    capture_ready = bool(
+                        ready_fn(
+                            dispatch_context,
+                            candidate_frame,
+                            fresh_capture=capture_fresh,
+                        )
+                        if callable(ready_fn) else candidate_frame is not None
+                    )
+                except BaseException:
+                    capture_ready = False
+                if not capture_ready:
+                    try:
+                        _throttled_write(
+                            'v554-self-action-capture-gate',
+                            'v554 deferred self action: no fresh usable farm frame; '
+                            'native planting/empty-land path not dispatched',
+                            4.0,
+                        )
+                    except BaseException:
+                        pass
+                    return False
+                try:
+                    signature_fn = globals().get(
+                        '_qqfarm_stable_full_board_frame_signature'
+                    )
                     if candidate_frame is not None and callable(signature_fn):
                         self_action_frame_signature = signature_fn(candidate_frame)
                     defer_fn = globals().get('_qqfarm_self_action_should_defer')
-                    if (self_action_frame_signature is not None and
-                            callable(defer_fn) and defer_fn(
-                                dispatch_context, self_action_frame_signature
-                            )):
+                    if callable(defer_fn) and defer_fn(
+                            dispatch_context, self_action_frame_signature
+                    ):
                         self_action_deferred = True
                         _throttled_write(
                             'v549-self-action-unchanged-frame',
@@ -54423,8 +54829,7 @@ def _wrap_vip_business_func(fn, name=''):
                 if (
                         'process_self_farm' in lname and
                         dispatch_context is not None and
-                        res is not False and
-                        self_action_frame_signature is not None
+                        res is not False
                 ):
                     record_fn = globals().get('_qqfarm_record_self_action_frame')
                     if callable(record_fn):

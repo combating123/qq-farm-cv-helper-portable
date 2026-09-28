@@ -5994,3 +5994,16 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - GitHub Release `v1.5.17` 已发布为非草稿、非预发布并设为 Latest：`https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.5.17`。
 - 远端资产读回为 `CVFarmHelper-v1.5.17-portable-full.zip`（`146584700` bytes，SHA-256 `D30DBE83665BDAE7E38F89C5B968A2E2FA8A54F0CF6466D1C088B0285DA266C2`）和对应 `.sha256` 文件；两项状态均为 `uploaded`，远端 digest 与本地一致。
 - 下一动作：等待下一次自然 `claimed>0/current=0` 现场，确认 v553 硬停止后没有土地/背包/商店动作，并记录后续真实收获或有序好友推进；在出现该场景前不再围绕旧 22/0 日志重复修改。
+
+
+## 2026-09-28 19:15:30 +0800 — v1.5.18 hidden stale-frame self-action gate deployed
+
+- Objective: stop hidden/occluded QQ miniapp frames from producing false self-farm, level, empty-land=22, backpack, or shop activity; bound repeated bottom-friend entry dispatches.
+- Root cause: the self-business wrapper could accept a positional frame without proving that it belonged to the current visible/WGC/PrintWindow capture session. A stale frame therefore reached the native planting pipeline after hide/show or capture fallback. The friend bottom-entry route also had pending confirmation state that could be cleared on the next patrol tick.
+- RED: added 	ests/test_v554_hidden_stale_self_action_and_friend_loop_20260928.py::test_qq_self_action_rejects_passed_frame_not_owned_by_latest_capture; it failed before the marker-ownership gate (True != False).
+- Implementation: portable/hook.py now rejects QQ self-action frames that do not match current capture ownership markers; keeps no-signature self-action cooldown; blocks self business while fresh-frame/restore/WGC gates are unresolved; preserves bounded friend-entry confirmation/cooldown.
+- GREEN evidence: v554 suite 6/6; focused capture/friend/planting/harvest suite 109/109; additional capture/WGC/anchor/friend suite 59/59; python -m py_compile portable/hook.py and git diff --check passed.
+- Full discovery evidence: 1649 tests, 51 failures, 13 errors, 11 skipped. The failures include pre-existing/uncommitted fixture and .analysis script gaps plus older AST-isolation assumptions; full discovery is not claimed as release-pass evidence.
+- Deployment: backup E:\CV农场助手\backups\v554-hidden-stale-self-action-1.5.18-20260928-191228; only hook.py and VERSION were replaced. Source/deploy hook SHA-256=1F9E9E9BE5FB689805EA7CE49381789A122A82FDB2AA4A14171EAFC8B5496CA3, bytes=3061398, VERSION=1.5.18. UserData, config-multi.ini, logs, GUI binaries, and window settings were preserved.
+- Runtime evidence: the new hook identity was loaded by PID 22460; latest startup segment has no Traceback/NameError/SyntaxError. WGC blank/occlusion recovery is now logged and self-business remains gated until a fresh page is available.
+- Next action: user should perform one hidden-window -> restore -> self-farm observation and verify the log contains the fresh-frame gate or a real action only after a new page frame; if a new failure appears, capture the corresponding 30-second log segment and screen.

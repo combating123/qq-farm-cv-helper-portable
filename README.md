@@ -4,7 +4,7 @@
   <br>
 
   [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-2176FF?style=flat-square&logo=windows11&logoColor=white)](#运行要求)
-  [![Version](https://img.shields.io/badge/版本-v1.5.17-32C98A?style=flat-square)](#版本与更新)
+  [![Version](https://img.shields.io/badge/版本-v1.5.18-32C98A?style=flat-square)](#版本与更新)
   [![Status](https://img.shields.io/badge/状态-稳定版本-17345F?style=flat-square)](#快速开始)
   [![QQ / 微信](https://img.shields.io/badge/平台-QQ%20%2F%20微信-32C98A?style=flat-square)](#平台与多实例)
   [![OpenCV](https://img.shields.io/badge/视觉识别-OpenCV-17345F?style=flat-square&logo=opencv&logoColor=white)](#视觉自动化流程)
@@ -253,10 +253,11 @@ CV农场助手/
 
 ## 版本与更新
 
-当前发布版本为 **v1.5.17（2026-09-28）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
+当前发布版本为 **v1.5.18（2026-09-28）**。完整逐项记录见 [CHANGELOG.md](./CHANGELOG.md)。
 
 | 版本 | 面向使用者的主要更新 |
 | --- | --- |
+| **v1.5.18** | 修复隐藏/恢复后的旧帧仍触发自家务农和 22 块空地误判；增加 QQ 捕获归属闸门、无签名重复动作抑制和好友底部入口有界冷却，保留现有 GUI、UserData、配置与左上角窗口行为 |
 | **v1.5.17** | 修复原生误报 22 块空地但视觉为 0 时仍进入背包、普通播种、每日萝卜、直接土地动作或商店慢链的问题；所有入口统一硬停止，满板/复核耗尽后恢复好友巡检，并保留真实收获与已验证固定地块队列 |
 | **v1.5.16** | 修复窗口锚定/重建后收获点击仍使用旧绝对坐标，保留渲染路线并恢复旧收获动作；GUI、UserData、配置和左上角行为不变 |
 | **v1.4.99** | 修复 PrintWindow 好友列表缓存断链与 DPI/物理窗口点击错位，避免列表空帧触发关闭/重开循环和好友入口落在错误区域 |
