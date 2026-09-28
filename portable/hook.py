@@ -215,6 +215,7 @@ _write('v538 card-first friend-list geometry and RGB/BGR normalization enabled')
 _write('v539 friend-list capture cache and physical DPI click remap enabled')
 _write('v542 uncertain friend no-action gate and retry-only logging enabled')
 _write('v544 native friend-list cache release guard enabled')
+_write('v553 native-empty 22/0 all-route hard-stop and bounded friend release enabled')
 
 try:
     # Keep the bootstrap import set minimal.  The packaged proxy loads this
@@ -14960,6 +14961,28 @@ def _wrap_buy_seed_for_crop_backpack_guard(fn, name=''):
                 args[0] if args else kwargs.get('bot', kwargs.get('self'))
             )
             try:
+                hard_stop_fn = globals().get(
+                    '_qqfarm_native_empty_claim_requires_hard_stop'
+                )
+                native_claim_hard_stop = bool(
+                    hard_stop_fn(bot) if callable(hard_stop_fn) else False
+                )
+            except BaseException:
+                native_claim_hard_stop = False
+            if native_claim_hard_stop:
+                try:
+                    release_fn = globals().get(
+                        '_qqfarm_release_false_native_empty_claim'
+                    )
+                    if callable(release_fn):
+                        release_fn(
+                            bot,
+                            reason='seed-shop-entry-visual-zero-no-soil-proof',
+                        )
+                except BaseException:
+                    pass
+                return False
+            try:
                 rollout_fn = globals().get(
                     '_qqfarm_strict_planting_rollout_active'
                 )
@@ -21335,6 +21358,28 @@ def _wrap_planting_flow_fast(fn, name=''):
             )
             call_args = list(args or ())
             call_kwargs = dict(kwargs or {})
+            try:
+                hard_stop_fn = globals().get(
+                    '_qqfarm_native_empty_claim_requires_hard_stop'
+                )
+                native_claim_hard_stop = bool(
+                    hard_stop_fn(bot) if callable(hard_stop_fn) else False
+                )
+            except BaseException:
+                native_claim_hard_stop = False
+            if native_claim_hard_stop:
+                try:
+                    release_fn = globals().get(
+                        '_qqfarm_release_false_native_empty_claim'
+                    )
+                    if callable(release_fn):
+                        release_fn(
+                            bot,
+                            reason='planting-flow-entry-visual-zero-no-soil-proof',
+                        )
+                except BaseException:
+                    pass
+                return False
             runtime_arg_offset = 0 if bound_owner is not None else 1
             frame_arg_index = runtime_arg_offset
             crop_arg_index = runtime_arg_offset + 1
@@ -23252,6 +23297,31 @@ def _wrap_backpack_seed_priority_planting_fast(fn, name=''):
             except BaseException:
                 full_input_lands = []
                 input_empty_count = 0
+            try:
+                hard_stop_fn = globals().get(
+                    '_qqfarm_native_empty_claim_requires_hard_stop'
+                )
+                native_claim_hard_stop = bool(
+                    hard_stop_fn(bot) if callable(hard_stop_fn) else False
+                )
+            except BaseException:
+                native_claim_hard_stop = False
+            if native_claim_hard_stop:
+                try:
+                    release_fn = globals().get(
+                        '_qqfarm_release_false_native_empty_claim'
+                    )
+                    if callable(release_fn):
+                        release_fn(
+                            bot,
+                            reason='backpack-entry-visual-zero-no-soil-proof',
+                        )
+                except BaseException:
+                    pass
+                # Native interprets an empty remaining queue as a completed
+                # no-op. Returning the stale nominations would let the same
+                # owner fall through to ordinary seeds or the seed shop.
+                return False, [], False, None, False
             try:
                 enrich_fn = globals().get(
                     '_qqfarm_enrich_empty_land_candidates_with_proof'
@@ -27211,6 +27281,393 @@ def _qqfarm_home_visual_unknown_requires_defer(context, now_ts=None):
         )
     except BaseException:
         return False
+
+
+def _qqfarm_native_empty_claim_requires_hard_stop(context, now_ts=None):
+    """Reject a native positive count when the visual layer has zero proof."""
+    if context is None:
+        return False
+    try:
+        if not bool(getattr(
+                context, '_qqfarm_native_empty_log_claim_pending', False)):
+            return False
+        claimed = max(0, int(getattr(
+            context, '_qqfarm_native_empty_log_claim_count', 0
+        ) or 0))
+        if claimed <= 0:
+            return False
+        claim_ts = float(getattr(
+            context, '_qqfarm_native_empty_log_claim_ts', 0.0
+        ) or 0.0)
+        time_module = globals().get('time') or __import__('time')
+        now_value = float(
+            now_ts if now_ts is not None else time_module.time()
+        )
+        age = max(0.0, now_value - claim_ts) if claim_ts > 0.0 else 999999.0
+        if age > 90.0:
+            return False
+        current_count = max(0, int(getattr(
+            context, '_qqfarm_recent_empty_land_count', 0
+        ) or 0))
+        current_lands = list(getattr(
+            context, '_qqfarm_recent_empty_lands', []
+        ) or [])
+        return bool(current_count <= 0 and not current_lands)
+    except BaseException:
+        return False
+
+
+def _qqfarm_release_false_native_empty_claim(
+        context, now_ts=None, reason='visual-zero-no-soil-proof'):
+    """Stop unsafe planting and either retain real home work or release friends."""
+    if context is None:
+        return False
+    try:
+        time_module = globals().get('time') or __import__('time')
+        now_value = float(
+            now_ts if now_ts is not None else time_module.time()
+        )
+    except BaseException:
+        now_value = 0.0
+    try:
+        claimed = max(0, int(getattr(
+            context, '_qqfarm_native_empty_log_claim_count', 0
+        ) or 0))
+    except BaseException:
+        claimed = 0
+    try:
+        current = max(0, int(getattr(
+            context, '_qqfarm_recent_empty_land_count', 0
+        ) or 0))
+    except BaseException:
+        current = 0
+    try:
+        harvest_quota = max(0, int(getattr(
+            context, 'planting_harvest_quota', 0
+        ) or 0))
+    except BaseException:
+        harvest_quota = 0
+    try:
+        pending_harvest_lands = list(getattr(
+            context, '_qqfarm_post_harvest_pending_lands', []
+        ) or [])
+    except BaseException:
+        pending_harvest_lands = []
+    try:
+        pending_harvest_centers = list(getattr(
+            context, '_qqfarm_post_harvest_pending_centers', []
+        ) or [])
+    except BaseException:
+        pending_harvest_centers = []
+    try:
+        rescan_remaining = max(0, int(getattr(
+            context, '_qqfarm_post_harvest_rescan_remaining', 0
+        ) or 0))
+        rescan_deadline = float(getattr(
+            context, '_qqfarm_post_harvest_rescan_deadline_ts', 0.0
+        ) or 0.0)
+        rescan_active = bool(
+            rescan_remaining > 0 and
+            (rescan_deadline <= 0.0 or now_value <= rescan_deadline)
+        )
+    except BaseException:
+        rescan_active = False
+    try:
+        capture_frames = list(getattr(
+            context, '_qqfarm_post_harvest_capture_frames', []
+        ) or [])
+        harvest_event_ts = float(getattr(
+            context, '_qqfarm_post_harvest_event_ts', 0.0
+        ) or 0.0)
+        harvest_deadline = float(getattr(
+            context, '_qqfarm_post_harvest_deadline_ts', 0.0
+        ) or 0.0)
+        capture_active = bool(
+            capture_frames and harvest_event_ts > 0.0 and
+            max(0.0, now_value - harvest_event_ts) <= 120.0 and
+            (harvest_deadline <= 0.0 or now_value <= harvest_deadline)
+        )
+    except BaseException:
+        capture_active = False
+    try:
+        fixed_slot_ids = tuple(getattr(
+            context, '_qqfarm_fixed_slot_pending_slot_ids', ()
+        ) or ())
+    except BaseException:
+        fixed_slot_ids = ()
+    try:
+        fixed_slot_lands = list(getattr(
+            context, '_qqfarm_fixed_slot_pending_lands', []
+        ) or [])
+    except BaseException:
+        fixed_slot_lands = []
+    try:
+        fixed_slot_quads = tuple(getattr(
+            context, '_qqfarm_fixed_slot_pending_quad_groups', ()
+        ) or ())
+    except BaseException:
+        fixed_slot_quads = ()
+    fixed_slot_verified = False
+    try:
+        allowed_slot_ids = {'L%02d' % index for index in range(1, 25)}
+        normalized_ids = tuple(str(item or '') for item in fixed_slot_ids)
+        land_ids = []
+        fixed_slot_verified = bool(
+            normalized_ids and fixed_slot_lands and
+            len(normalized_ids) == len(fixed_slot_lands) and
+            len(normalized_ids) == len(set(normalized_ids)) and
+            set(normalized_ids).issubset(allowed_slot_ids)
+        )
+        if fixed_slot_verified:
+            for land in fixed_slot_lands:
+                if not isinstance(land, dict):
+                    fixed_slot_verified = False
+                    break
+                slot_id = str(land.get('slot_id') or '')
+                center = land.get('center')
+                if not (
+                        slot_id in allowed_slot_ids and
+                        bool(land.get('_qqfarm_strict_ledger_verified')) and
+                        bool(land.get('_qqfarm_visual_soil_proof')) and
+                        isinstance(center, (tuple, list)) and len(center) >= 2):
+                    fixed_slot_verified = False
+                    break
+                int(round(float(center[0])))
+                int(round(float(center[1])))
+                land_ids.append(slot_id)
+        if fixed_slot_verified and tuple(land_ids) != normalized_ids:
+            fixed_slot_verified = False
+        if fixed_slot_verified:
+            for raw_group in fixed_slot_quads:
+                group = tuple(str(slot_id or '') for slot_id in tuple(
+                    raw_group or ()
+                ))
+                if (
+                        len(group) != 4 or len(set(group)) != 4 or
+                        not set(group).issubset(set(normalized_ids))):
+                    fixed_slot_verified = False
+                    break
+    except BaseException:
+        fixed_slot_verified = False
+    try:
+        protected_home_work = bool(
+            getattr(context, '_qqfarm_post_harvest_pending', False) or
+            getattr(context, '_qqfarm_single_harvest_planting_pending', False) or
+            harvest_quota > 0 or
+            getattr(context, '_qqfarm_post_harvest_snapshot_locked', False) or
+            pending_harvest_lands or pending_harvest_centers or
+            rescan_active or capture_active or
+            getattr(context, '_qqfarm_strict_24slot_transaction_active', False) or
+            getattr(context, '_qqfarm_fixed_slot_chain_active', False) or
+            fixed_slot_verified
+        )
+    except BaseException:
+        protected_home_work = False
+    try:
+        board_state = str(getattr(
+            context, '_qqfarm_empty_land_board_gate_state', ''
+        ) or '').strip().lower()
+        board_ts = float(getattr(
+            context, '_qqfarm_empty_land_board_gate_ts', 0.0
+        ) or 0.0)
+        full_scene = bool(getattr(
+            context, '_qqfarm_empty_land_scene_confirmed_full', False
+        ))
+        full_scene_ts = float(getattr(
+            context, '_qqfarm_empty_land_scene_confirmed_full_ts', 0.0
+        ) or 0.0)
+        board_age = (
+            max(0.0, now_value - board_ts)
+            if board_ts > 0.0 else 999999.0
+        )
+        full_scene_age = (
+            max(0.0, now_value - full_scene_ts)
+            if full_scene_ts > 0.0 else 999999.0
+        )
+        fresh_confirmed_full = bool(
+            board_state == 'confirmed' and board_age <= 45.0 and
+            full_scene and full_scene_age <= 45.0 and current <= 0
+        )
+    except BaseException:
+        board_state = 'unknown'
+        fresh_confirmed_full = False
+
+    def _set_many(items):
+        for attr_name, value in items:
+            try:
+                setattr(context, attr_name, value)
+            except BaseException:
+                pass
+
+    _set_many((
+        ('_qqfarm_native_empty_log_claim_pending', False),
+        ('_qqfarm_native_empty_log_claim_resolved_ts', now_value),
+        ('_qqfarm_false_native_empty_hard_stop_ts', now_value),
+        ('_qqfarm_false_native_empty_hard_stop_claim_count', claimed),
+        ('_qqfarm_false_native_empty_hard_stop_reason', str(reason or '')),
+        ('_qqfarm_backpack_inventory_scan_pending', False),
+        ('_qqfarm_inventory_empty_land_proof_pending', False),
+        ('_qqfarm_inventory_empty_land_proof_owned_recheck', False),
+        ('_qqfarm_recent_empty_lands', []),
+        ('_qqfarm_recent_empty_land_count', 0),
+        ('_qqfarm_recent_empty_land_centers', []),
+        ('_qqfarm_stable_empty_lands', []),
+        ('_qqfarm_stable_empty_land_count', 0),
+        ('_qqfarm_backpack_single_land_mode', False),
+        ('_qqfarm_backpack_single_land_failed_centers', []),
+    ))
+    try:
+        if bool(getattr(
+                context,
+                '_qqfarm_backpack_inventory_hard_gate_owns_shop_block',
+                False)):
+            setattr(context, '_qqfarm_block_level_based_shop', False)
+            setattr(
+                context,
+                '_qqfarm_backpack_inventory_hard_gate_owns_shop_block',
+                False,
+            )
+    except BaseException:
+        pass
+
+    outcome = 'home-recheck'
+    if protected_home_work:
+        protected_remaining = max(
+            1, harvest_quota, len(pending_harvest_lands),
+            len(pending_harvest_centers), len(fixed_slot_ids),
+            len(fixed_slot_lands),
+        )
+        _set_many((
+            ('_qqfarm_home_empty_land_pending', True),
+            ('_qqfarm_home_empty_land_remaining', protected_remaining),
+            ('_qqfarm_home_visual_recheck_required', True),
+            ('_qqfarm_home_visual_recheck_required_ts', now_value),
+            ('_qqfarm_force_self_cycle_next', True),
+            ('_qqfarm_cycle_branch_hint', 'self'),
+        ))
+        outcome = 'protected-home-work'
+    else:
+        release_friend = bool(fresh_confirmed_full)
+        if not release_friend:
+            recheck_fn = globals().get('_qqfarm_home_visual_recheck_step')
+            if callable(recheck_fn):
+                try:
+                    release_friend = not bool(recheck_fn(
+                        context,
+                        {
+                            'state': (
+                                board_state
+                                if board_state in ('unknown', 'blank', 'occluded')
+                                else 'unknown'
+                            ),
+                            'fresh': False,
+                            'empty_count': None,
+                        },
+                        now_ts=now_value,
+                    ))
+                except BaseException:
+                    release_friend = False
+            if not release_friend:
+                _set_many((
+                    ('_qqfarm_home_empty_land_pending', True),
+                    ('_qqfarm_home_empty_land_remaining', max(1, claimed)),
+                    ('_qqfarm_home_visual_recheck_required', True),
+                    ('_qqfarm_home_visual_recheck_required_ts', now_value),
+                    ('_qqfarm_force_self_cycle_next', True),
+                    ('_qqfarm_cycle_branch_hint', 'self'),
+                ))
+        if release_friend:
+            _set_many((
+                ('_qqfarm_home_empty_land_pending', False),
+                ('_qqfarm_home_empty_land_remaining', 0),
+                ('_qqfarm_home_empty_zero_confirmations', 0),
+                ('_qqfarm_force_self_cycle_next', False),
+                ('_qqfarm_cycle_branch_hint', 'friend'),
+                ('_qqfarm_home_visual_recheck_required', False),
+                ('_qqfarm_home_visual_recheck_required_ts', 0.0),
+                ('_qqfarm_home_visual_recheck_attempts', 0),
+                ('_qqfarm_home_visual_recheck_started_ts', 0.0),
+                ('_qqfarm_fixed_slot_pending_slot_ids', ()),
+                ('_qqfarm_fixed_slot_pending_lands', []),
+                ('_qqfarm_fixed_slot_pending_quad_groups', ()),
+            ))
+            outcome = (
+                'confirmed-full-friend-release'
+                if fresh_confirmed_full else
+                'bounded-recheck-friend-release'
+            )
+
+    try:
+        writer = globals().get('_write')
+        if callable(writer):
+            writer(
+                'v553 native empty-land claim hard-stop claimed=' +
+                str(claimed) + ' current=' + str(current) +
+                ' reason=' + str(reason or 'visual-zero-no-soil-proof') +
+                ' outcome=' + outcome
+            )
+    except BaseException:
+        pass
+    return True
+
+
+def _wrap_native_false_empty_planting_action_guard(fn, name=''):
+    """Block direct planting helpers while a native positive lacks visual proof."""
+    try:
+        if not callable(fn):
+            return fn, False
+        if bool(getattr(
+                fn, '__qqfarm_native_false_empty_action_guard_wrapped__', False)):
+            return fn, False
+
+        def _wrapped(*args, **kwargs):
+            try:
+                bound_owner = getattr(fn, '__self__', None)
+            except BaseException:
+                bound_owner = None
+            context = bound_owner if bound_owner is not None else (
+                args[0] if args else kwargs.get('bot', kwargs.get('self'))
+            )
+            try:
+                hard_stop_fn = globals().get(
+                    '_qqfarm_native_empty_claim_requires_hard_stop'
+                )
+                hard_stop = bool(
+                    hard_stop_fn(context) if callable(hard_stop_fn) else False
+                )
+            except BaseException:
+                hard_stop = False
+            if hard_stop:
+                try:
+                    release_fn = globals().get(
+                        '_qqfarm_release_false_native_empty_claim'
+                    )
+                    if callable(release_fn):
+                        release_fn(
+                            context,
+                            reason=(
+                                'direct-planting-entry-visual-zero-no-soil-proof:'
+                                + str(name)
+                            ),
+                        )
+                except BaseException:
+                    pass
+                return False
+            return fn(*args, **kwargs)
+
+        _wrapped.__name__ = getattr(
+            fn, '__name__', 'native_false_empty_action_guard'
+        )
+        _wrapped.__qualname__ = getattr(fn, '__qualname__', _wrapped.__name__)
+        _wrapped.__doc__ = getattr(fn, '__doc__', None)
+        preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+        if callable(preserve_fn):
+            _wrapped = preserve_fn(_wrapped, fn)
+        _wrapped.__qqfarm_native_false_empty_action_guard_wrapped__ = True
+        _wrapped.__qqfarm_native_false_empty_action_guard_orig__ = fn
+        return _wrapped, True
+    except BaseException:
+        return fn, False
 
 
 def _qqfarm_filter_empty_land_candidates_by_soil_proof(candidates):
@@ -59254,9 +59711,31 @@ def _patch_native_v237_business_overlay_for_module(module, tag=''):
     targets.append((module, module_name))
 
     target_names = (
+        '_detect_empty_lands',
         '_run_backpack_seed_priority_planting',
         '_run_planting_flow',
+        '_execute_planting_by_mode',
+        '_plant_seed_over_lands',
+        '_drag_seed_over_lands',
+        '_try_plant_quad_act_seeds',
+        '_buy_seed_for_crop',
     )
+    direct_action_names = {
+        '_execute_planting_by_mode',
+        '_plant_seed_over_lands',
+        '_drag_seed_over_lands',
+        '_try_plant_quad_act_seeds',
+    }
+
+    def _preserve(candidate, wrapped):
+        try:
+            preserve_fn = globals().get('_qqfarm_preserve_wrapper_metadata')
+            if callable(preserve_fn):
+                return preserve_fn(candidate, wrapped)
+        except BaseException:
+            pass
+        return candidate
+
     seen = set()
     for owner, owner_label in targets:
         for attr_name in target_names:
@@ -59286,14 +59765,56 @@ def _patch_native_v237_business_overlay_for_module(module, tag=''):
                 if not callable(old):
                     continue
 
-                if attr_name == '_run_backpack_seed_priority_planting':
+                target_label = owner_label + '.' + attr_name
+                if attr_name == '_detect_empty_lands':
+                    new, ok = _wrap_detect_empty_lands_state(
+                        old, target_label
+                    )
+                    if ok:
+                        new = _preserve(new, old)
+                elif attr_name == '_run_backpack_seed_priority_planting':
                     new, ok = _wrap_backpack_seed_priority_planting_fast(
-                        old, owner_label + '.' + attr_name
+                        old, target_label
                     )
+                    if ok:
+                        new = _preserve(new, old)
+                elif attr_name == '_run_planting_flow':
+                    new = old
+                    ok = False
+                    crop_wrapped, crop_ok = (
+                        _wrap_native_v225_crop_catalog_planting_flow(
+                            new, target_label
+                        )
+                    )
+                    if crop_ok:
+                        crop_wrapped = _preserve(crop_wrapped, new)
+                        new = crop_wrapped
+                        ok = True
+                    fast_wrapped, fast_ok = _wrap_planting_flow_fast(
+                        new, target_label
+                    )
+                    if fast_ok:
+                        fast_wrapped = _preserve(fast_wrapped, new)
+                        new = fast_wrapped
+                        ok = True
+                elif attr_name == '_buy_seed_for_crop':
+                    new, ok = _wrap_buy_seed_for_crop_backpack_guard(
+                        old, target_label
+                    )
+                    if ok:
+                        new = _preserve(new, old)
+                elif attr_name in direct_action_names:
+                    guard_factory = globals().get(
+                        '_wrap_native_false_empty_planting_action_guard'
+                    )
+                    if callable(guard_factory):
+                        new, ok = guard_factory(old, target_label)
+                        if ok:
+                            new = _preserve(new, old)
+                    else:
+                        new, ok = old, False
                 else:
-                    new, ok = _wrap_native_v225_crop_catalog_planting_flow(
-                        old, owner_label + '.' + attr_name
-                    )
+                    new, ok = old, False
                 if not ok:
                     continue
                 if descriptor_type == 'staticmethod':

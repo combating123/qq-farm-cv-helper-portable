@@ -5959,3 +5959,36 @@ Next action: on the next real home-progress or visible home friend-request rearm
 ### 下一动作
 
 - 提交并推送 v1.5.16，创建 GitHub Release；随后继续记录下一次真实收获场景的按钮消失、空地变化和收获计数证据。
+## 2026-09-28 14:53 +0800 - v1.5.17 RED/GREEN：原生空地 22、视觉 0 的背包硬停止
+
+### 症状与根因
+
+- 生产日志在 `14:19:10` 输出“检测到空地共 22 块”，而 Hook 同时记录 `v501 ... claimed=22 current=0`。
+- v501 只把原生计数保存为诊断；v525 已接管原生 `_run_backpack_seed_priority_planting`，但其入口此前仍消费 22 个原生候选，随后重复土地/种子栏点击并长期阻塞收获和好友巡检。
+
+### RED → GREEN
+
+- 新增 `tests/test_v553_native_empty_claim_hard_stop_20260928.py`。
+- RED：缺少硬门函数；补入初版后，quota-only、锁定收获快照、rescan-only 和收获捕获序列仍会被误释放，四个子场景按预期失败。
+- GREEN：新增 `_qqfarm_native_empty_claim_requires_hard_stop()` 与 `_qqfarm_release_false_native_empty_claim()`；在背包入口发现新鲜原生正计数、视觉空地为 0、且不存在真实收获状态时，返回空 remaining 队列，不调用 native 背包、土地点击或商店，并清除仅由假空地形成的自家锁。
+- 真实视觉土壤/收获后候选继续可种；`planting_harvest_quota`、pending 标志、锁定快照、待种地块、有效 rescan 和收获捕获序列均保留。
+
+### 扩展覆盖与验证
+
+- v553 从背包单入口扩展为 v2.3.7 业务模块级覆盖：`_detect_empty_lands`、`_run_backpack_seed_priority_planting`、`_run_planting_flow`、`_execute_planting_by_mode`、`_plant_seed_over_lands`、`_drag_seed_over_lands`、`_try_plant_quad_act_seeds` 和 `_buy_seed_for_crop` 共用硬停止门。
+- 模块级 overlay 探针确认首次安装 5 个 wrapper，重复安装 0 个变化；组合包装标记保留，重复导入不会叠加 Hook。
+- v553 扩展回归：`10 / 10 OK`。
+- v501/v548/v549/v550、收获 v375/v376/v393/v394/v395、好友 v516/v533/v536 组合：`50 / 50 OK`。
+- planting/backpack/empty 历史组合共 158 项为 `153 OK / 5` 个既有基线失败；切回当前 HEAD 基线后同样失败，集中在 `strict-before-frame-unavailable` 与旧 pending-review 点击契约，不作为本轮通过证据。
+- native/daily/share 历史组合共 75 项为 `4 failures / 2 errors`；基线同样存在，包括 v481 旧好友 no-progress 契约、缺失 `_rewrite_unconfirmed_friend_no_action_log` 的隔离加载错误和旧 reward event 顺序契约。完整测试未描述为全绿。
+- `python -m py_compile portable\hook.py` 和 `git diff --check` 仍需在部署前最终重跑并记录新鲜结果。
+
+### 当前状态与下一动作
+
+- 源码版本已提升并部署为 `1.5.17`；README/CHANGELOG、v553 启动标记和模块级 overlay 已更新。
+- 部署备份：`E:\CV农场助手\backups\v553-native-empty-hard-stop-1.5.17-20260928-154502`；仅替换 `hook.py` 与 `VERSION`，GUI、UserData、配置、日志和历史备份未覆盖。
+- 源/生产 Hook：`3044397` bytes，SHA-256 `5150AA1EA7CB561D4DFACE29AE33EAECC4C4C3D10AE2FE47C117F157276BA458`；版本文件均为 `1.5.17`；生产配置 SHA-256 保持 `5B3DFC6C4E28658205D8FCE60BE230A076031398320F8AEA1103207384F14BF6`。
+- 新进程 PID `25808`，`Responding=True`；Hook 日志确认 `v553 native-empty 22/0 all-route hard-stop and bounded friend release enabled`。启动后窗口重建期间出现一次 WGC 回退，随后恢复 QQ 农场画面；新段 Traceback=0、截图失败=0，并完成自动出售普通/超变果实后进入好友求助入口。
+- 自然 `claimed>0/current=0` 场景尚未出现，因此尚未签收自然 22/0 的零土地/背包/商店点击及好友/收获恢复；这项保持为下一次现场观察，不用模拟或旧日志替代。
+- GitHub commit/push/Release 仍单独处理；只有远端读回成功后才记录为已发布。
+- 下一动作：检查远端连通性并提交本次源码、测试和文档；尝试推送与创建/更新 Release，失败时保留本地提交与完整失败证据。
