@@ -28703,6 +28703,8 @@ def _qqfarm_same_page_recovery_needed(
         ):
             try:
                 setattr(context, '_qqfarm_friend_same_page_count', 0)
+                setattr(context, '_qqfarm_friend_same_page_retry_signature', None)
+                setattr(context, '_qqfarm_friend_same_page_recovery_count', 0)
             except BaseException:
                 pass
             return False
@@ -28713,6 +28715,8 @@ def _qqfarm_same_page_recovery_needed(
         if current_baseline > previous_baseline:
             try:
                 setattr(context, '_qqfarm_friend_same_page_count', 0)
+                setattr(context, '_qqfarm_friend_same_page_retry_signature', None)
+                setattr(context, '_qqfarm_friend_same_page_recovery_count', 0)
             except BaseException:
                 pass
             return False
@@ -28729,12 +28733,22 @@ def _qqfarm_same_page_recovery_needed(
 def _qqfarm_arm_same_page_recovery(
         context, cursor_before, previous_no_progress, card_signature,
         durable_before, threshold=3):
-    """Release a bounded same-page stall without advancing the friend cursor."""
+    """Retry one visible friend action per fresh selected-card signature."""
     try:
         if not _qqfarm_same_page_recovery_needed(
                 context, previous_no_progress, card_signature, durable_before,
                 threshold=threshold):
             return False
+        prior_retry_signature = getattr(
+            context, '_qqfarm_friend_same_page_retry_signature', None
+        )
+        already_retried = bool(
+            prior_retry_signature == card_signature
+            and int(getattr(
+                context, '_qqfarm_friend_same_page_recovery_count', 0
+            ) or 0) > 0
+        )
+        retry_attempted = not already_retried
         for field_name, value in (cursor_before or {}).items():
             try:
                 setattr(context, field_name, value)
@@ -28742,39 +28756,97 @@ def _qqfarm_arm_same_page_recovery(
                 pass
         for field_name, value in (
                 ('_qqfarm_native_friend_help_action_pending', False),
-                ('_qqfarm_friend_action_confirmation_pending', False),
-                ('_qqfarm_friend_action_confirmation_retries', 0),
+                ('_qqfarm_friend_action_confirmation_pending', True),
+                ('_qqfarm_friend_action_confirmation_retries', max(
+                    1, int(getattr(
+                        context, '_qqfarm_friend_action_confirmation_retries', 0
+                    ) or 0)
+                )),
                 ('_qqfarm_friend_action_confirmation_reason',
                  'same-page-stall-recovery'),
-                ('_qqfarm_friend_action_cooldown_until', 0.0),
-                ('_qqfarm_friend_native_action_unverified', False),
-                ('_qqfarm_native_friend_help_no_progress_guard', None),
+                ('_qqfarm_friend_action_cooldown_until',
+                 float(__import__('time').monotonic()) + (30.0 if already_retried else 14.0)),
+                ('_qqfarm_friend_native_action_unverified', True),
+                ('_qqfarm_native_friend_help_no_progress_guard', {
+                    **previous_no_progress,
+                    'unconfirmed': True,
+                    'signature': card_signature,
+                    'durable_before': max(0, int(durable_before or 0)),
+                    'same_page_count': max(
+                        1, int(previous_no_progress.get('same_page_count', 0) or 0) + 1
+                    ),
+                    'retry_attempted': bool(retry_attempted),
+                }),
         ):
             try:
                 setattr(context, field_name, value)
             except BaseException:
                 pass
-        try:
-            recovery_count = max(0, int(getattr(
-                context, '_qqfarm_friend_same_page_recovery_count', 0
-            ) or 0)) + 1
-            setattr(
-                context, '_qqfarm_friend_same_page_recovery_count',
-                recovery_count,
-            )
-        except BaseException:
-            recovery_count = 1
-        invalidate_fn = globals().get('_qqfarm_invalidate_wgc_frame_cache')
-        if callable(invalidate_fn):
+        recovery_count = max(0, int(getattr(
+            context, '_qqfarm_friend_same_page_recovery_count', 0
+        ) or 0))
+        retry_result = False
+        if not already_retried:
+            recovery_count += 1
             try:
-                invalidate_fn('friend-same-page-stall')
+                setattr(context, '_qqfarm_friend_same_page_recovery_count', recovery_count)
+                setattr(context, '_qqfarm_friend_same_page_retry_signature', card_signature)
             except BaseException:
                 pass
+            capture_fn = globals().get('_get_frame_from_bot')
+            retry_fn = globals().get('_qqfarm_visible_friend_action_recovery')
+            fresh_frame = None
+            try:
+                fresh_frame = capture_fn(context) if callable(capture_fn) else None
+            except BaseException:
+                fresh_frame = None
+            signature_fn = globals().get(
+                '_qqfarm_native_friend_help_card_signature'
+            )
+            fresh_signature = None
+            try:
+                fresh_signature = (
+                    signature_fn(fresh_frame)
+                    if fresh_frame is not None and callable(signature_fn)
+                    else None
+                )
+            except BaseException:
+                fresh_signature = None
+            same_fresh_friend = bool(
+                fresh_frame is not None
+                and fresh_signature is not None
+                and fresh_signature == card_signature
+            )
+            if same_fresh_friend and callable(retry_fn):
+                try:
+                    retry_result = bool(retry_fn(context, fresh_frame)[0])
+                except BaseException:
+                    retry_result = False
+            elif fresh_frame is not None:
+                diagnostic_fn = globals().get('_throttled_write')
+                if callable(diagnostic_fn):
+                    diagnostic_fn(
+                        'v556-friend-same-page-frame-changed',
+                        'v556 friend same-page retry deferred because fresh selected-card signature changed old=' +
+                        repr(card_signature)[:100] + ' new=' + repr(fresh_signature)[:100],
+                        8.0,
+                    )
+        else:
+            diagnostic_fn = globals().get('_throttled_write')
+            if callable(diagnostic_fn):
+                diagnostic_fn(
+                    'v556-friend-same-page-retry-exhausted-' +
+                    str(hash(repr(card_signature))),
+                    'v556 friend same-page retry already used; preserving pending route signature=' +
+                    repr(card_signature)[:150],
+                    30.0,
+                )
         write_fn = globals().get('_write')
         if callable(write_fn):
             write_fn(
-                'v526 friend same-page stall recovery armed count=' +
-                str(recovery_count) + ' cursor=' + str((cursor_before or {}).get(
+                'v556 friend same-page bounded retry count=' +
+                str(recovery_count) + ' attempted=' + repr(retry_attempted) +
+                ' action_sent=' + repr(retry_result) + ' cursor=' + str((cursor_before or {}).get(
                     '_qqfarm_friend_list_visit_cursor', 0
                 )) + ' signature=' + repr(card_signature)[:180]
             )
