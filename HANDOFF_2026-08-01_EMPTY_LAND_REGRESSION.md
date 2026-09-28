@@ -6007,3 +6007,12 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - Deployment: backup E:\CV农场助手\backups\v554-hidden-stale-self-action-1.5.18-20260928-191228; only hook.py and VERSION were replaced. Source/deploy hook SHA-256=1F9E9E9BE5FB689805EA7CE49381789A122A82FDB2AA4A14171EAFC8B5496CA3, bytes=3061398, VERSION=1.5.18. UserData, config-multi.ini, logs, GUI binaries, and window settings were preserved.
 - Runtime evidence: the new hook identity was loaded by PID 22460; latest startup segment has no Traceback/NameError/SyntaxError. WGC blank/occlusion recovery is now logged and self-business remains gated until a fresh page is available.
 - Next action: user should perform one hidden-window -> restore -> self-farm observation and verify the log contains the fresh-frame gate or a real action only after a new page frame; if a new failure appears, capture the corresponding 30-second log segment and screen.
+
+
+## 2026-09-28 19:21:30 +0800 — v1.5.18 GitHub publication
+
+- Commit: 8c0f7b (ix: gate stale QQ self-farm frames and friend entry loops).
+- Branch/tag pushed: main, 1.5.18.
+- Release: https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.5.18
+- Portable artifact: E:\CodexBuilds\qq-farm\releases\CV农场助手-v1.5.18-便携完整版.zip; local SHA-256=8549E4AA48A9D6F8D974D058449614C8A8A50458ECF5FE9A7B81900CE106DBC6.
+- Release asset contains the updated application files and excludes UserData, logs, backups, and the 2.3.7 standalone sample; existing GUI and local runtime data remain outside the release package.
