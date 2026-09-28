@@ -5990,5 +5990,7 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - 源/生产 Hook：`3044397` bytes，SHA-256 `5150AA1EA7CB561D4DFACE29AE33EAECC4C4C3D10AE2FE47C117F157276BA458`；版本文件均为 `1.5.17`；生产配置 SHA-256 保持 `5B3DFC6C4E28658205D8FCE60BE230A076031398320F8AEA1103207384F14BF6`。
 - 新进程 PID `25808`，`Responding=True`；Hook 日志确认 `v553 native-empty 22/0 all-route hard-stop and bounded friend release enabled`。启动后窗口重建期间出现一次 WGC 回退，随后恢复 QQ 农场画面；新段 Traceback=0、截图失败=0，并完成自动出售普通/超变果实后进入好友求助入口。
 - 自然 `claimed>0/current=0` 场景尚未出现，因此尚未签收自然 22/0 的零土地/背包/商店点击及好友/收获恢复；这项保持为下一次现场观察，不用模拟或旧日志替代。
-- GitHub commit/push/Release 仍单独处理；只有远端读回成功后才记录为已发布。
-- 下一动作：检查远端连通性并提交本次源码、测试和文档；尝试推送与创建/更新 Release，失败时保留本地提交与完整失败证据。
+- GitHub 源码提交 `f411f4749c23e7652e3bddee68ea633b6c77274a` 已推送到 `main`；annotated tag `v1.5.17` 已确认 peeled commit 指向同一提交。
+- GitHub Release `v1.5.17` 已发布为非草稿、非预发布并设为 Latest：`https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.5.17`。
+- 远端资产读回为 `CVFarmHelper-v1.5.17-portable-full.zip`（`146584700` bytes，SHA-256 `D30DBE83665BDAE7E38F89C5B968A2E2FA8A54F0CF6466D1C088B0285DA266C2`）和对应 `.sha256` 文件；两项状态均为 `uploaded`，远端 digest 与本地一致。
+- 下一动作：等待下一次自然 `claimed>0/current=0` 现场，确认 v553 硬停止后没有土地/背包/商店动作，并记录后续真实收获或有序好友推进；在出现该场景前不再围绕旧 22/0 日志重复修改。
