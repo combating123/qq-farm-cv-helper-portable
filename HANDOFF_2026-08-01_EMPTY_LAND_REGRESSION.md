@@ -1,5 +1,33 @@
 # QQFarmCVHelper 交接文档：空地误判回归优先修复
 
+## 2026-09-29 19:xx +0800 - v1.5.34 transition-marker hold
+
+- Objective: cover the remaining native path where friend-entry pending was cleared but the valid transition marker remained; production then called the self-home entry during a rows=0 transition.
+- RED: tests/test_v533_friend_home_entry_recovery.py::test_friend_transition_marker_also_blocks_home_entry_fallback returned True and invoked the home-entry route at marker age 1s.
+- GREEN: the v568 bounded hold now accepts either the verified pending entry or a fresh friend-list/friend-farm transition marker while friend-chain state remains active.
+- Verification: v533/v537 transition suite 9/9, fresh py_compile, and git diff --check passed. v1.5.33 production already showed rows=4 and actual visited dispatch; this patch addresses the subsequent marker-cleared handoff.
+- Deployment: pending timestamped backup and hidden restart. Only hook.py and VERSION are intended to change; GUI, UserData, config, counters, logs, and window placement remain preserved.
+- Next action: deploy v1.5.34 and inspect a fresh transition for no v533 home-entry recovery while the marker is within grace; confirm either friend-farm proof or bounded retry.
+
+## 2026-09-29 19:xx +0800 - v1.5.33 pending friend transition hold
+
+- Objective: stop a clicked friend row from falling through the native owner home-entry recovery during the short asynchronous transition, which caused repeated home/friend recovery and apparent miniapp restarts.
+- Evidence after v1.5.32: production log showed 'v520 frame-from-bot accepted window-owned friend-list route rows=5', 'v489 ... dispatch result=visited', then a later unconfirmed page caused 'v533 native friend owner home-entry recovery'; the process remained responsive but the friend farm was not confirmed.
+- RED: tests/test_v533_friend_home_entry_recovery.py::test_pending_friend_transition_does_not_fall_through_to_home_entry returned True and invoked the home-entry route at transition age 1s.
+- GREEN: native friend owner now holds a pending, verified friend-list/friend-farm transition for a bounded 12-30s grace before the home fallback; the existing timeout/retry path remains responsible after the grace expires.
+- Verification: v533 recovery suite 6/6, fresh py_compile, and git diff --check passed. The v1.5.32 deployment already proved list rows=5 and an actual row click; v1.5.33 still needs deployment and fresh runtime evidence.
+- Deployment: pending timestamped backup and hidden restart. Only hook.py and VERSION are intended to change; GUI, UserData, config, counters, logs, and window placement remain preserved.
+- Next action: deploy v1.5.33 and inspect a fresh friend transition for v568 pending friend transition hold, then a real friend-farm proof or bounded timeout without v533 home-entry recovery during the grace.
+
+## 2026-09-29 18:xx +0800 - v1.5.32 friend-list normalization preservation
+
+- Objective: stop the latest production loop where a visible 5-row friend list was accepted by the window-owned PrintWindow path, then discarded during business-frame normalization and followed by `v555 no-frame`/`v508 action=close`.
+- RED: `tests/test_v557_friend_list_nonfarm_recovery_20260929.py::test_window_owned_friend_list_survives_business_frame_normalization` failed because `_get_frame_from_bot()` returned `None` after the normalized frame lost row detection.
+- GREEN: `_get_frame_from_bot()` now records raw window-owned friend rows before normalization and retains that source frame in the existing bounded friend-list cache; normal business code still receives the normalized frame.
+- Verification: v557 16/16, v539 3/3, v520 3/3, v508 4/4, friend interval/carousel 9/9, readiness/MMUI/anchor 18/18; `py_compile` and `git diff --check` passed.
+- Deployment: pending production backup and hidden restart. Only `hook.py` and `VERSION` are intended to change; GUI, UserData, config, counters, logs and window placement remain preserved.
+- Next action: inspect a fresh production segment for v1.5.32, `v520/v539` list acceptance followed by `v489` row dispatch, and absence of `v555 scene=friend-list` plus `v508 action=close` while rows remain visible.
+
 **交接日期：2026-08-01（Asia/Shanghai）**
 **源码仓库：`E:\CodexProjects\qq-farm-cv-helper-portable`**
 **实际部署目录：`E:\CV农场助手`**
@@ -6045,3 +6073,141 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - GitHub: commit `e2b973be5802907392fbfc1d689dc842620f3a90` and tag `v1.5.20` are pushed. Release: `https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.5.20`.
 - Release asset: `E:\CodexBuilds\qq-farm\releases\CV农场助手-v1.5.20-便携完整版.zip`, local SHA-256 `C14AB3904DFD0A53BDE4BBFE3BA3C774A0E82CEF3574EA7F96DEA0E5572FB2BF`, `146590183` bytes; remote asset digest matches and status is `uploaded`.
 - Release preflight: authorization delivery checks passed for source and staged package; third-party 2.3.7 sample remains excluded from the release tree.
+
+## 2026-09-29 02:xx +0800 — v1.5.22 friend-list readiness gate
+
+- Objective: 修复好友农场没有动作、巡检只输出开始/结束、有效好友列表被误报为无画面并周期性关闭小程序。
+- Evidence: production v1.5.21 logs showed `rows=5` followed by `reason=no-frame scene=friend-list`, `rows=0`, stale friend-route release and `action=close`.
+- RED/GREEN: `tests/test_v557_friend_list_nonfarm_recovery_20260929.py` and `tests/test_v520_printwindow_friend_list_capture_20260921.py` cover the failure; focused friend/capture/share suite passed `38 / 38 OK`.
+- Implementation: `portable/hook.py` accepts a validated 3+ row friend-list frame before generic farm-canvas gating; preserves friend route during bounded capture gaps; share dialog miss refreshes the current capture once.
+- Verification: `python -m py_compile portable/hook.py` passed; `git diff --check` passed.
+- Deployment: pending this release phase; production must receive only `hook.py` and `VERSION` after a timestamped backup.
+- Next action: deploy v1.5.22, hidden-restart, compare source/deployed hashes and inspect a fresh runtime segment for `v557 runtime readiness accepted friend-list route`, friend action progress, and no `action=close` while rows remain valid.
+
+## 2026-09-29 03:xx +0800 — v1.5.23 active friend-list cache recovery
+
+- Objective: stop a confirmed friend-list session from entering `no-frame`/`action=close` after a transient blank WGC/PrintWindow frame, while keeping the existing GUI and window anchoring unchanged.
+- Evidence: production logs showed `rows=5` and a verified friend-list transition, followed by repeated `v555 ... reason=no-frame scene=friend-list`, then `v508 ... action=close`; durable metrics remained `friend_farming_count=0`.
+- RED: added cache-gap, blank-owner-frame, and stale-list-on-friend-farm tests to `tests/test_v557_friend_list_nonfarm_recovery_20260929.py`; the new cache-gap tests failed before implementation.
+- Implementation: active friend-list/pending-entry sessions now have a bounded 90-second list-cache grace; readiness and non-farm recovery reuse the same validated cache for missing/blank frames; concrete friend-farm surfaces reject old list fallback.
+- GREEN: v557/v508/v539/v544 focused cache/recovery suite `16 / 16 OK`; extended friend/capture/click/readiness suite completed without failures in the current run; `python -m py_compile portable/hook.py` passed.
+- Deployment: pending versioned backup and hidden restart. Only `hook.py` and `VERSION` are intended to change in production; GUI, UserData, config, logs, and window placement remain untouched.
+- Next action: deploy v1.5.23, verify source/deploy hash equality and a fresh runtime segment with no `action=close` while a validated friend-list session is active; confirm a real friend action or a bounded pending state rather than relying on `delivered=True`.
+
+## 2026-09-29 11:xx +0800 — v1.5.24 bounded friend-list timeout
+
+- Objective: 修复好友列表 pending 同帧永久退避造成的 0.75 秒空巡检热循环，以及由此引发的好友无动作、收获/播种/每日流程长期失去调度。
+- Production evidence: 业务日志连续只输出巡检开始/结束；运行时状态停在好友场景，配置巡检间隔仍为 12 秒，但好友快速间隔未释放。状态快照同时确认进程已停止、当日 task 已成功、share 为 `prompt-not-found` 失败、实例萝卜开关已开启但计数为 0。
+- RED: `test_same_list_pending_row_times_out_into_bounded_reopen` 在点击年龄 12 秒、超时 8 秒、重试 3 次时仍得到 `pending-row-backoff`，预期是既有 `pending-row-reopen`。
+- Implementation: 相同列表签名只在 `entry_age < friend_list_entry_timeout_seconds` 时退避；超时后继续原有三次重试/列表关闭恢复，并通过 `_set_friend_chain_fast_interval(..., False)` 恢复普通调度。
+- GREEN: 新增超时测试与原同帧防重复点击测试 `2 / 2 OK`；v557、首行顺序、窗口点击/锚定、QQ MMUI 恢复组合 `28 / 28 OK`。
+- Second RED: cacheless friend-list hold at age 40s still kept `_qqfarm_friend_entry_pending=True`; root cause was comparing wall-clock click timestamps with monotonic time, so production age could remain zero forever.
+- Second implementation: compute transition age in the click timestamp's wall-clock domain; after bounded grace preserve visit/pending cursor, set resume-pending, clear friend entry/chain flags and signatures, release the fast interval, force one self cycle, and protect that release call from generic `WM_CLOSE`.
+- Final focused evidence: v557/first-row/anchor/MMUI `29 / 29 OK`; v508/v539/v544 recovery-cache-click `12 / 12 OK`; fresh `py_compile` and `git diff --check` passed.
+- Retained baseline evidence: the broader selected checks still contain two historical share-reward isolation failures and one post-harvest planting isolation failure; they are recorded as open and are not represented as passing.
+- Deployment intent: 创建时间戳备份后只替换生产 `hook.py` 与 `VERSION`；不改 GUI、UserData、config-multi.ini、窗口布局或统计状态。
+- Live gate: 必须看到 v560 标记、巡检恢复约 12 秒节奏、好友列表超时后出现有限恢复而非永久 backoff；好友动作完成仍需 fresh friend-farm/action/counter 证据。
+
+## 2026-09-29 11:5x +0800 — v1.5.25 share-entry page proof
+
+- Live evidence after v1.5.24: patrol returned to ~12-second cadence; native daily task opened and claimed; warehouse super-fruit sale completed; friend help count increased `1 -> 2`; troublemaker count increased `9 -> 14`. This proves the prior all-business scheduler starvation ended.
+- Remaining fault: native log repeatedly showed `background 点击失败` followed by `share_entry 模板并点击`, then `进入分享弹窗后截图失败`; native template acknowledgement was being treated as a real page transition.
+- RED: `test_share_entry_native_true_requires_page_proof_or_client_redelivery` expected one QQ client click at `(40,190)` after a native True with no visible share page; the old wrapper sent zero client clicks.
+- Implementation: add `_share_entry_page_visible`; after native/fallback acknowledgement wait one bounded settle, require the fresh share-page button, perform at most one QQ-client redelivery when absent, recheck, and return failure before prompt capture when proof is still absent.
+- GREEN: v450 share-entry fallback `5 / 5 OK`; share target/daily wrapper/task prompt/v450 combination `91 / 91 OK`; share durable/repeat/dialog `35 / 35 OK`; v557/friend-order/anchor/MMUI `29 / 29 OK`.
+- Deployment intent: versioned backup, copy only `portable/hook.py -> E:\CV农场助手\hook.py` and `VERSION`, hidden restart, then require `v561` plus either share-page proof or explicit unverified failure without miniapp close/relaunch.
+
+## 2026-09-29 12:0x +0800 — v1.5.26 bounded friend resume and share hard cap
+
+- Live evidence after v1.5.25: v561 correctly rejected an unproved share entry before prompt capture, but native cleanup still relaunched the miniapp; the native retry count reached `18/3`. Friend logs showed `v209 pending-row-reopen cursor=1`, then the reopened same cached list logged `v358 new friend-list session reset stale cursor=1 ... selecting first row`.
+- Friend RED: the timeout/reopen regression had no `_qqfarm_friend_list_resume_pending`; the same list therefore restarted at row zero. Implementation preserves both visit and pending cursor and sets resume-pending when the recovery closes a non-terminal row.
+- Share RED: with today's in-memory count already `3`, the wrapped native failure incremented it to `4`, and `should`/`run` remained callable after backoff. Implementation adds `_share_retry_cap_reached` and gates failure, should, and run at the configured same-day limit.
+- Initial GREEN: friend timeout/order/resume `11 / 11 OK`; share cap/backoff/wrapper-idempotence `8 / 8 OK`.
+- Deployment intent: complete full affected share/friend suites, fresh compile/diff, timestamped backup, copy only Hook/VERSION, hidden restart, then verify no cursor `N -> 0` reset after `pending-row-reopen` and no share count above its existing capped value.
+
+## 2026-09-29 12:xx +0800 — v1.5.27 friend-entry interval release
+
+- Objective: stop the live `0.75s` friend-entry loop that repeatedly logged the home help entry while no fresh friend-list/friend-farm surface appeared, starving self harvest, farming, planting, daily task/share and radish scheduling.
+- Evidence: after v1.5.26 restart, runtime repeatedly logged `v474 patrol ... _var_var_58=0.75`, WGC `start-not-ready`, and bottom-entry clicks; the native route did not produce a fresh friend surface.
+- RED: `tests/test_friend_entry_fast_interval_release_20260929.py` initially failed because `_invoke_friend_branch_from_home` returned without calling `_set_friend_chain_fast_interval(context, False)`.
+- GREEN: the recovery path now releases the fast interval on native-entry no-surface, visual-entry no-surface, and no-entry-method exits; pending state remains for bounded retry. The retry gate is resolved via `globals().get` so AST-isolated and dynamic install paths do not raise `NameError`.
+- Verification: new regression `1 / 1 OK`; affected friend/list/entry/MMUI suite `37 / 37 OK`; planting/empty/backpack suite `66 / 66 OK`; fresh `py_compile` and `git diff --check` passed.
+- Deployment: create a new timestamped backup, replace only `E:\CV农场助手\hook.py` and `E:\CV农场助手\VERSION`, preserve GUI/UserData/config/logs/window layout, then hidden-restart.
+- Live acceptance: verify `v563`, no repeated 0.75-second entry clicks after an unconfirmed transition, ordinary interval returns to `12s`, and fresh logs show real friend/self/daily actions when the page is available. Natural radish/share success remains evidence-driven.
+- Next action: deploy v1.5.27 and inspect the first 60-second runtime segment.
+
+## 2026-09-29 13:xx +0800 — v1.5.28 terminal friend cursor normalization
+
+- Objective: stop the production friend-list loop observed at `cursor=3/3`, where the pending-row path used modulo selection and clicked the first visible row again.
+- Evidence: the production runtime recorded `rows=3`, `cursor=3/3`, `pending-row retry`, a click at `(364,288)`, then another cached-list dispatch; `v474` subsequently observed the fast interval returning to `0.75s`.
+- RED: `test_terminal_pending_cursor_does_not_wrap_to_first_row` returned `visited` and attempted the close/fallback route while a terminal pending cursor was present.
+- GREEN: `_handle_friend_list_surface` now normalizes `pending && visit_cursor >= len(rows) && pending_cursor >= len(rows)` to terminal `N/N` before target selection, clears pending/resume state, releases the fast interval, and prevents row modulo wrap. The existing bounded terminal-close flow remains the owner of the actual list close and durable completion.
+- Verification: new terminal-cursor regression plus same-list backoff/reopen regressions `3 / 3 OK`; affected friend/list/entry/recovery suite `49 / 49 OK`; planting/empty/backpack suite `43 / 43 OK`; daily/share suite `127` tests with two retained reward-claim isolation baseline failures; `py_compile` and `git diff --check` pass.
+- Deployment: create a timestamped production backup and replace only `E:\CV农场助手\hook.py` and `VERSION`; preserve GUI, UserData, config, logs, counters, window placement, and member state.
+- Next action: hidden-restart production and inspect a fresh 60-second segment for no `cursor=N/N` row-zero click, fast interval recovery to `12s`, and new self/friend/daily scheduling evidence.
+
+## 2026-09-29 14:xx +0800 — v1.5.29 stale zero-row fast-open release
+
+- Objective: stop the remaining production loop after a friend entry click when the captured friend list stayed at `rows=0`; the guard-list fast-open path was reacquiring `0.75s` and repeatedly sending the same bottom-entry action.
+- Evidence: post-v1.5.28 runtime repeatedly emitted `v489 native-v225 friend-list preflight rows=0`, `v474 ... _var_var_58=0.75`, and repeated bottom-entry delivery, while valid list periods used `12.0`.
+- RED: `test_guard_list_fast_open_releases_stale_zero_row_transition` initially showed no release because the existing `_qqfarm_friend_chain_pending` early return preceded the stale-transition check.
+- GREEN: `_friend_guard_list_fast_open_from_home` now checks the age of the last fast-open attempt before the pending-chain short circuit; after 8 seconds without a list row, it releases the fast interval, clears the transient friend-chain flags, and forces one normal self cycle.
+- Verification: friend/list/entry/recovery suite `50 / 50 OK`; `python -m py_compile portable/hook.py`; `git diff --check`. Existing daily/share baseline remains `127` with two historical reward-claim isolation failures unrelated to this change.
+- Deployment: create a timestamped v1.5.29 backup and replace only `E:\CV农场助手\hook.py` and `VERSION`; preserve GUI, UserData, config, logs, counters, window placement, and member state.
+- Next action: hidden-restart and inspect a fresh runtime segment for `v565`, no repeated zero-row bottom-entry dispatch, ordinary interval `12s`, and renewed self/friend/daily scheduling.
+
+## 2026-09-29 14:xx +0800 — v1.5.30 native zero-row scheduler release
+
+- Objective: fix the remaining no-action loop when native v2.3.7 `process_friend_farm` received `rows=0` and returned before the home guard-list opener could release its `0.75s` fast interval.
+- Evidence: deployed `1.5.29` source and production Hook matched at 3,100,056 bytes / SHA-256 `4A15CBD426232150B7774CE48C028069E3B623AFF4C4639A40769FFD286DB57F`; production log repeatedly contained native `rows=0` preflight and fast-cycle marker, while helper startup marker existed but the release message did not. Snapshot at 2026-09-29 14:22 +0800 records scene `friend`, friend help/farming count 29 and troublemaker count 36, but self harvest, planting, radish are 0; daily task is success and share is failed with `prompt-not-found`.
+- RED: two new cases in `tests/test_friend_entry_fast_interval_release_20260929.py` failed because `_qqfarm_release_zero_row_friend_fast_interval` did not exist: release expired zero-row unknown/self transitions, retain valid friend surfaces.
+- GREEN: added a shared expired-zero-row release helper and invoked it in native friend-owner preflight after current friend/list evidence is evaluated. At >=8 seconds it releases the interval, clears the transient chain and forces one self pass; fresh friend rows or a confirmed friend-farm surface keep the chain alive.
+- Verification: fast-interval regression `4 / 4 OK`; friend-list/cache/order/anchor/MMUI/recovery selected suite `52 / 52 OK`; `python -m py_compile portable/hook.py` and `git diff --check` pass.
+- Deployment: backup `E:\CV农场助手\backups\v566-zero-row-native-release-1.5.30-20260929-143000`; only production `hook.py` and `VERSION` replaced. Source/deployed Hook are both `3,102,911` bytes, SHA-256 `E7FDC2251383A7E4E9E48AB953BA651BD121FCA48572DCB54BE243A83555F8ED`; production version `1.5.30`. Config SHA-256 preserved at `5B3DFC6C4E28658205D8FCE60BE230A076031398320F8AEA1103207384F14BF6`.
+- Runtime: PID `21488` remains responsive (6/6 samples over 60 seconds). Poll interval is back at `12.0s`; fresh native preflight observed 4/4 then 3/3 rows, and `v489` recorded one actual row visit. Self cycle recorded daily task success and ordinary warehouse sale. No traceback/name/syntax failures in the sampled tail.
+- Remaining regression: a live 3-row list subsequently returned `closed` then repeated `closed-terminal-latch` while the native business log reported friend page confirmation pending. Daily share remains `prompt-not-found`; production counters still show self harvest 0, planting 0, radish 0. Thus the scheduler starvation fix is deployed, but friend action completion, terminal-list closure, share and radish are not signed off.
+- Next action: reproduce why the `closed-terminal-latch` remains visible after the close click, then add a RED test requiring bounded close retries on an unchanged list signature without reopening/closing a valid friend surface.
+
+## 2026-09-29 15:xx +0800 — v1.5.31 idle friend carousel advance
+
+- Objective: fix the screenshot state where one-key farming on a selected friend completed but the patrol stayed on that friend instead of moving to the next visible friend card.
+- Evidence: screenshot has the selected friend card in the bottom carousel, several cards to its right, and a return-home control at lower right. Production log repeatedly emitted `v465 native friend idle home click delivered but transition unverified state=True attempt=1/3..3/3`; a confirmed friend-help count grew, but the carousel did not change. Daily task success was present; share was pending `entry-red-dot-still-present`; current radish and planting counters were 0.
+- RED: new tests in `tests/test_friend_idle_carousel_advance_20260929.py` failed because there was no native idle-card advance helper.
+- GREEN: native `run_cycle` now tries the immediate right carousel card after two actionless friend rounds and before home fallback. It requires a fresh friend page and no visible help/steal action, then confirms a fresh selected-card movement before resetting idle state. If there is no right-hand card, the existing bounded home route remains active.
+- Verification: idle-carousel/home-coordinate tests plus v465 home recovery, friend ordering, cursor resume, window anchor, v557 list recovery and zero-row scheduler suite: `48 / 48 OK`; `py_compile` and `git diff --check` pass.
+- Deployment: backup `E:\CV农场助手\backups\v567-friend-idle-carousel-1.5.31-20260929-154522`; only production `hook.py` and `VERSION` replaced. Source/deployed Hook identity is `3,106,866` bytes, SHA-256 `CCC76877EA4B285B93BF205A273C670AAB32F7F9E11DE3D5192B4CF1B0382D3A`; version `1.5.31`. Production config SHA-256 remains `5B3DFC6C4E28658205D8FCE60BE230A076031398320F8AEA1103207384F14BF6`.
+- Runtime: hidden restart produced PID `14824`, `Responding=True`; Hook runtime identity and v567 implementation are present in the deployed file. New startup segment records self-farm task entry and warehouse processing without Traceback/NameError/SyntaxError. The specific idle-friend carousel trigger did not occur in the sampled post-restart segment, so a natural next-card transition is not yet signed off.
+- Daily/share/planting: daily task continues to reach native flow; share state remains pending `entry-red-dot-still-present`; natural empty-land recognition/plant count/radish count remain unverified and counters at the last status snapshot were 0. No claim that these features are repaired is made from the carousel fix.
+- Next action: observe one genuine idle friend with a visible immediate-right card; verify `v567 native idle friend advanced` and a changed selected-card signature, then verify the following friend receives harvest/help probes.
+
+## 2026-09-29 20:xx +0800 - v1.5.36 active friend route scene-loss guard
+
+- Objective: stop the remaining close/relaunch loop when the native friend owner temporarily loses its scene hint while the friend chain is still active.
+- Evidence: production logs showed repeated v489 rows=0, transient v555 scene=friend/home, and v508 persistent non-farm surface recovery action=close; valid friend-list rows had been observed in the same session.
+- RED: added test_active_friend_transition_survives_lost_scene_hint_without_close; before the fix, an active friend chain with cycle_branch_hint=friend and no current scene returned False from the protected recovery path.
+- GREEN: _qqfarm_friend_list_nonfarm_recovery_protected now treats an active friend branch plus pending/active/seen friend state as friend-route evidence, and the cacheless no-close hold uses that route evidence instead of requiring the scene string to remain friend-list.
+- Verification: focused friend recovery/cache/interval/MMUI suite 26 / 26 OK; py_compile and git diff check remain release gates before deployment.
+- Deployment intent: create a fresh timestamped backup, replace only production hook.py and VERSION, preserve GUI, UserData, config, logs, counters, and window placement, then hidden-restart.
+- Live acceptance: confirm v570, no v508 action=close while friend route state is active, no repeated miniapp recovery, and either a confirmed friend-farm action or a bounded pending wait. Natural empty-land, planting, share, and radish results remain separate evidence items.
+
+### v1.5.36 deployment evidence
+
+- Backup: E:\CV农场助手\backups\v570-active-friend-route-scene-loss-1.5.36-20260929-202515.
+- Only production hook.py and VERSION were replaced. GUI, UserData, config-multi.ini, logs, counters, and window placement were preserved.
+- Source/deployment Hook: 3,112,732 bytes, SHA-256 3F3D4B12B59D0F417F24AE3BC62F184996FF0677CF2B5C82B9D74CF1621D02F1. Production VERSION=1.5.36.
+- Production config SHA-256 remains 5B3DFC6C4E28658205D8FCE60BE230A076031398320F8AEA1103207384F14BF6.
+- Hidden restart PID 24296 is responding. The fresh startup segment contains the v570 marker, real friend/client clicks, bounded planting-flow execution, and daily-flow calls.
+- In the sampled post-restart segment, no new v508 persistent non-farm action=close or miniapp restart was observed. miniapp_restart_count remains 0; friend_harvest_count advanced from 4045 to 4106.
+- Focused regression suite: 26 / 26 OK. py_compile and git diff check passed.
+- Remaining live evidence: a fresh confirmed friend-farm help/steal proof, natural empty-land/planting result, daily share success, and radish success remain separate sign-offs; this release specifically closes the active-friend scene-loss close/relaunch path.
+
+## 2026-09-29 19:xx +0800 - v1.5.35 cached friend-list interval release
+
+- Objective: stop the user-visible loop where the patrol repeatedly entered/exited without friend actions while the miniapp was periodically recovered.
+- Evidence: production 18:37-19:31 logs showed normal 12-second starts, but during the unresolved friend route the scheduler alternated self checks and `好友页面未完成确认`; the same pending transition remained active and the UI made no confirmed friend-farm progress.
+- RED: `tests/test_v569_friend_cached_list_fast_interval_release_20260929.py` failed because same-signature cached friend-list backoff did not call `_set_friend_chain_fast_interval(context, False)`.
+- GREEN: same-signature cached list remains a bounded pending wait, preserves cursor/pending state, never re-clicks or closes the miniapp, and releases the 0.75-second fast lease so ordinary self/friend scheduling can run.
+- Verification: new v569 test `1 / 1 OK`; v557/v533 recovery suite `24 / 24 OK`; friend cache/interval suite `18 / 18 OK`; cursor/order/home-recovery suite `25 / 25 OK`; anchor/MMUI/click suite `27 / 27 OK`; fresh `py_compile` and `git diff --check` passed.
+- Deployment: pending versioned backup and hidden restart. Only production `hook.py` and `VERSION` are intended to change; GUI, UserData, config, logs, counters, and window placement remain preserved.
+- Remaining live evidence: actual fresh friend-farm proof, steal/help completion, harvest/planting, daily share, radish, and natural restart avoidance still require live page evidence; this change specifically addresses the scheduler starvation caused by the cached-list fast lease.
+- Next action: deploy v1.5.35 and inspect a fresh runtime segment for `v569`, normal patrol cadence, no repeated 0.75-second cache loop, no close/relaunch during pending transition, and either confirmed friend-farm action or a bounded pending wait.

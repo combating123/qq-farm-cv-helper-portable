@@ -216,6 +216,103 @@ _write('v539 friend-list capture cache and physical DPI click remap enabled')
 _write('v542 uncertain friend no-action gate and retry-only logging enabled')
 _write('v544 native friend-list cache release guard enabled')
 _write('v553 native-empty 22/0 all-route hard-stop and bounded friend release enabled')
+_write('v557 friend-list non-farm recovery wait and no-close guard enabled')
+_write('v558 active friend-list cache grace and blank-frame recovery enabled')
+_write('v559 active friend-list route no-close hold and bounded row retry enabled')
+_write('v560 friend-list pending timeout releases scheduler starvation enabled')
+_write('v561 share-entry page-proof and QQ-client redelivery enabled')
+_write('v562 friend-row resume cursor and daily-share retry hard-cap enabled')
+_write('v563 unconfirmed friend entry releases fast interval; dynamic retry gate lookup enabled')
+_write('v564 terminal pending friend cursor is normalized without row wrap enabled')
+_write('v565 stale zero-row guard-list fast-open releases scheduler enabled')
+_write('v568 pending friend transition blocks home fallback during bounded grace')
+_write('v569 cached friend-list wait releases fast interval without row replay')
+_write('v570 active friend route survives transient scene loss without close')
+
+
+def _qqfarm_runtime_friend_list_frame_is_valid(context, frame):
+    """Treat a proven multi-row friend list as a ready route, not a dead farm."""
+    if context is None:
+        return False
+    try:
+        rows_fn = globals().get('_friend_list_visit_button_rows')
+        candidate = frame
+        rows = list(rows_fn(candidate) or []) if (
+            callable(rows_fn) and candidate is not None
+        ) else []
+        if len(rows) < 3:
+            # A compositor/WGC miss must not erase a recently confirmed list
+            # session.  Reuse only the context-owned frame, only while the
+            # friend route is still active, and only for a bounded grace
+            # window.  This is readiness evidence, not an action proof.
+            cached_candidate = getattr(
+                context, '_qqfarm_friend_list_frame_cache', None
+            )
+            cached_rows = list(getattr(
+                context, '_qqfarm_friend_list_rows_cache', []
+            ) or [])
+            cached_ts = float(getattr(
+                context, '_qqfarm_friend_list_frame_cache_ts', 0.0
+            ) or 0.0)
+            now_fn = getattr(globals().get('time'), 'monotonic', None)
+            now_value = float(now_fn()) if callable(now_fn) else 0.0
+            age = (
+                now_value - cached_ts
+                if now_value > 0.0 and cached_ts > 0.0 else 999.0
+            )
+            active = bool(
+                getattr(context, '_qqfarm_friend_entry_pending', False)
+                or getattr(context, '_qqfarm_friend_chain_active', False)
+                or getattr(context, '_qqfarm_friend_chain_pending', False)
+                or str(getattr(
+                    context, '_qqfarm_cycle_branch_hint', ''
+                ) or '').strip().lower() == 'friend'
+            )
+            scene_hint = str(getattr(
+                context, '_qqfarm_live_scene_hint', ''
+            ) or '').strip().lower()
+            native_scene = str(getattr(
+                context, '_qqfarm_native_friend_surface_state', ''
+            ) or '').strip().lower()
+            list_route = bool(
+                scene_hint == 'friend-list'
+                or native_scene == 'friend-list'
+                or getattr(context, '_qqfarm_friend_entry_pending', False)
+            )
+            if (
+                    cached_candidate is None
+                    or len(cached_rows) < 3
+                    or not active
+                    or not list_route
+                    or age < 0.0
+                    or age > 90.0
+            ):
+                return False
+            candidate = cached_candidate
+            rows = cached_rows
+        if len(rows) < 3:
+            return False
+        setattr(context, '_qqfarm_live_scene_hint', 'friend-list')
+        setattr(context, '_qqfarm_native_friend_surface_state', 'friend-list')
+        setattr(context, '_qqfarm_cycle_branch_hint', 'friend')
+        remember_fn = globals().get('_qqfarm_remember_friend_list_frame')
+        if callable(remember_fn):
+            try:
+                remember_fn(context, candidate, rows)
+            except BaseException:
+                pass
+        try:
+            _throttled_write(
+                'v557-runtime-friend-list-ready',
+                'v557 runtime readiness accepted friend-list route rows=' +
+                str(len(rows)),
+                2.0,
+            )
+        except BaseException:
+            pass
+        return True
+    except BaseException:
+        return False
 
 try:
     # Keep the bootstrap import set minimal.  The packaged proxy loads this
@@ -6055,6 +6152,234 @@ def _qqfarm_reset_persistent_nonfarm_surface_recovery(context, hwnd=0):
         return False
 
 
+def _qqfarm_friend_list_nonfarm_recovery_protected(context):
+    """Preserve a validated friend-list route during capture gaps."""
+    if context is None:
+        return False
+    try:
+        scene = str(getattr(
+            context, '_qqfarm_live_scene_hint', ''
+        ) or '').strip().lower()
+        native_scene = str(getattr(
+            context, '_qqfarm_native_friend_surface_state', ''
+        ) or '').strip().lower()
+        branch_hint = str(getattr(
+            context, '_qqfarm_cycle_branch_hint', ''
+        ) or '').strip().lower()
+        pending = bool(getattr(
+            context, '_qqfarm_friend_entry_pending', False
+        ))
+        chain_active = bool(getattr(
+            context, '_qqfarm_friend_chain_active', False
+        ))
+        chain_pending = bool(getattr(
+            context, '_qqfarm_friend_chain_pending', False
+        ))
+        cycle_seen = bool(getattr(
+            context, '_qqfarm_friend_cycle_seen', False
+        ))
+        rows = list(getattr(
+            context, '_qqfarm_friend_list_rows_cache', []
+        ) or [])
+        cache_ts = float(getattr(
+            context, '_qqfarm_friend_list_frame_cache_ts', 0.0
+        ) or 0.0)
+        if len(rows) < 3:
+            rows = list(globals().get(
+                '_QQFARM_FRIEND_LIST_ROWS_CACHE', []
+            ) or [])
+        if cache_ts <= 0.0:
+            cache_ts = float(globals().get(
+                '_QQFARM_FRIEND_LIST_FRAME_CACHE_TS', 0.0
+            ) or 0.0)
+        time_module = globals().get('time') or __import__('time')
+        now_fn = getattr(time_module, 'monotonic', None)
+        now_value = float(now_fn()) if callable(now_fn) else 0.0
+        wall_now_fn = getattr(time_module, 'time', None)
+        wall_now_value = (
+            float(wall_now_fn()) if callable(wall_now_fn) else now_value
+        )
+        cache_age = (
+            max(0.0, now_value - cache_ts)
+            if now_value > 0.0 and cache_ts > 0.0 else 999.0
+        )
+        friend_route = bool(
+            scene in ('friend-list', 'friend', 'friend-farm') or
+            native_scene in ('friend-list', 'friend', 'friend-farm') or
+            (
+                branch_hint in ('friend', 'friend-list', 'friend-farm') and
+                (pending or chain_active or chain_pending or cycle_seen)
+            )
+        )
+        route_active = bool(
+            pending or chain_active or chain_pending or cycle_seen
+        )
+        verified_surface = str(getattr(
+            context, '_qqfarm_friend_entry_verified_surface', ''
+        ) or '').strip().lower()
+        marker_surface = str(getattr(
+            context, '_qqfarm_friend_entry_transition_marker_surface', ''
+        ) or '').strip().lower()
+        pending_ts = float(getattr(
+            context, '_qqfarm_friend_entry_clicked_ts', 0.0
+        ) or getattr(
+            context, '_qqfarm_friend_entry_transition_marker_ts', 0.0
+        ) or 0.0)
+        if pending_ts <= 0.0 and route_active:
+            pending_ts = float(getattr(
+                context, '_qqfarm_friend_list_cacheless_hold_started_ts', 0.0
+            ) or 0.0)
+            if pending_ts <= 0.0:
+                pending_ts = wall_now_value
+                setattr(
+                    context,
+                    '_qqfarm_friend_list_cacheless_hold_started_ts',
+                    pending_ts,
+                )
+        pending_age = (
+            max(0.0, wall_now_value - pending_ts)
+            if wall_now_value > 0.0 and pending_ts > 0.0 else 0.0
+        )
+        try:
+            timeout_value = float(getattr(
+                context, 'friend_list_entry_timeout_seconds', 8.0
+            ) or 8.0)
+        except BaseException:
+            timeout_value = 8.0
+        pending_grace = max(12.0, min(30.0, timeout_value + 6.0))
+        cache_missing = bool(len(rows) < 3 or cache_ts <= 0.0)
+        if route_active and cache_missing and pending_age > pending_grace:
+            # A lost list frame is protected only for one bounded transition.
+            # Preserve the current cursor for a later reopen, but release the
+            # fast friend lease so self-farm and daily work are schedulable.
+            for name, value in (
+                ('_qqfarm_friend_entry_pending', False),
+                ('_qqfarm_friend_chain_pending', False),
+                ('_qqfarm_friend_chain_active', False),
+                ('_qqfarm_friend_cycle_seen', False),
+                ('_qqfarm_friend_list_resume_pending', True),
+                ('_qqfarm_friend_entry_clicked_ts', 0.0),
+                ('_qqfarm_friend_entry_last_retry_ts', 0.0),
+                ('_qqfarm_friend_entry_retry_count', 0),
+                ('_qqfarm_friend_entry_verified_surface', ''),
+                ('_qqfarm_friend_entry_transition_marker_ts', 0.0),
+                ('_qqfarm_friend_entry_transition_marker_surface', ''),
+                ('_qqfarm_friend_entry_last_list_signature', None),
+                ('_qqfarm_friend_list_cacheless_hold_started_ts', 0.0),
+                ('_qqfarm_live_scene_hint', ''),
+                ('_qqfarm_native_friend_surface_state', ''),
+                ('_qqfarm_cycle_branch_hint', ''),
+                ('_qqfarm_force_self_cycle_next', True),
+            ):
+                try:
+                    setattr(context, name, value)
+                except BaseException:
+                    pass
+            fast_fn = globals().get('_set_friend_chain_fast_interval')
+            if callable(fast_fn):
+                try:
+                    fast_fn(context, False)
+                except BaseException:
+                    pass
+            reset_fn = globals().get(
+                '_qqfarm_reset_persistent_nonfarm_surface_recovery'
+            )
+            if callable(reset_fn):
+                try:
+                    reset_fn(context)
+                except BaseException:
+                    pass
+            try:
+                _throttled_write(
+                    'v560-expired-friend-list-hold-release',
+                    'v560 released expired cacheless friend-list hold age=' +
+                    ('%.3f' % pending_age) + ' grace=' +
+                    ('%.3f' % pending_grace) + ' cursor=' + str(getattr(
+                        context, '_qqfarm_friend_list_visit_cursor', 0
+                    )),
+                    2.0,
+                )
+            except BaseException:
+                pass
+            # Protect this call from the generic WM_CLOSE path. The next normal
+            # cycle owns capture recovery or a fresh friend-list reopen.
+            return True
+        # Once a row click was issued from a verified list, a blank/native
+        # scene hint during the bounded transition is still a loading state.
+        # Keep it retryable and never close the QQ window from this path.
+        if pending and route_active and (
+            verified_surface == 'friend-list' or marker_surface == 'friend-list'
+        ):
+            try:
+                _throttled_write(
+                    'v559-friend-entry-no-close-hold',
+                    'v559 held pending friend entry during blank scene hint',
+                    4.0,
+                )
+            except BaseException:
+                pass
+            return True
+        # Native v2.3.7 can clear the list-frame cache while the visible QQ
+        # surface is still the friend list.  That cache loss is not evidence
+        # that the mini-program is broken, and must never authorize WM_CLOSE.
+        # Keep the route alive until a fresh friend farm, home, or a new list
+        # session explicitly reconciles it.
+        if (
+            friend_route
+            and route_active
+            and (len(rows) < 3 or cache_ts <= 0.0)
+        ):
+            try:
+                _throttled_write(
+                    'v559-friend-list-no-close-hold',
+                    'v559 held active friend-list route after cache loss '
+                    'pending=' + str(pending) +
+                    ' chain_active=' + str(chain_active) +
+                    ' chain_pending=' + str(chain_pending),
+                    4.0,
+                )
+            except BaseException:
+                pass
+            return True
+        cache_ttl = 90.0 if friend_route else 15.0
+        cache_valid = bool(
+            len(rows) >= 3 and 0.0 <= cache_age <= cache_ttl
+        )
+        pending_protected = bool(
+            pending and friend_route and (
+                pending_age <= pending_grace or pending_ts <= 0.0
+            ) and (chain_active or chain_pending or cycle_seen)
+        )
+        protected = bool(
+            cache_valid and friend_route and (
+                pending or chain_active or chain_pending or cycle_seen
+            )
+        ) or pending_protected
+        if not protected:
+            return False
+        try:
+            _throttled_write(
+                'v557-friend-list-nonfarm-wait',
+                'v557 friend-list evidence preserved during non-farm capture gap '
+                'rows=' + str(len(rows)) +
+                ' age=' + ('%.3f' % cache_age) +
+                ' pending=' + str(pending) +
+                ' scene=' + (scene or native_scene or 'friend-list'),
+                2.0,
+            )
+        except BaseException:
+            pass
+        try:
+            setattr(context, '_qqfarm_live_scene_hint', 'friend-list')
+            setattr(context, '_qqfarm_native_friend_surface_state', 'friend-list')
+            setattr(context, '_qqfarm_cycle_branch_hint', 'friend')
+        except BaseException:
+            pass
+        return True
+    except BaseException:
+        return False
+
+
 def _qqfarm_persistent_nonfarm_surface_recovery(
         context, hwnd, reason='non-farm'):
     """Recover when one QQ HWND keeps yielding blank/desktop pixels.
@@ -6074,6 +6399,17 @@ def _qqfarm_persistent_nonfarm_surface_recovery(
         window = 0
     if window <= 0:
         return False
+    # A friend list is expected to fail the farm-canvas test.  Do not let the
+    # generic recovery counter close the QQ window while its list route is
+    # still backed by fresh rows or a pending friend transition.
+    try:
+        protected_fn = globals().get(
+            '_qqfarm_friend_list_nonfarm_recovery_protected'
+        )
+        if callable(protected_fn) and bool(protected_fn(context)):
+            return 'friend-list-wait'
+    except BaseException:
+        pass
     try:
         time_module = globals().get('time') or __import__('time')
         now_value = float(time_module.monotonic())
@@ -6332,6 +6668,19 @@ def _qqfarm_runtime_page_readiness_gate(context, label):
         usable = False
     if not usable:
         try:
+            friend_ready_fn = globals().get(
+                '_qqfarm_runtime_friend_list_frame_is_valid'
+            )
+            if callable(friend_ready_fn) and friend_ready_fn(context, frame):
+                _qqfarm_note_page_readiness(
+                    context,
+                    'ready-friend-list',
+                    '好友列表画面已确认，允许进入好友巡查链路；不要求农场棋盘画布',
+                )
+                return True
+        except BaseException:
+            pass
+        try:
             now_mono = float(__import__('time').monotonic())
         except BaseException:
             now_mono = 0.0
@@ -6402,6 +6751,19 @@ def _qqfarm_runtime_page_readiness_gate(context, label):
     except BaseException:
         farm_scene_visible = False
     if not farm_scene_visible:
+        try:
+            friend_ready_fn = globals().get(
+                '_qqfarm_runtime_friend_list_frame_is_valid'
+            )
+            if callable(friend_ready_fn) and friend_ready_fn(context, frame):
+                _qqfarm_note_page_readiness(
+                    context,
+                    'ready-friend-list',
+                    '好友列表画面已确认，允许进入好友巡查链路；不要求农场棋盘画布',
+                )
+                return True
+        except BaseException:
+            pass
         try:
             now_mono = float(__import__('time').monotonic())
         except BaseException:
@@ -33972,6 +34334,22 @@ def _get_frame_from_bot(bot):
                             )
                     except BaseException:
                         pass
+                # A window-owned PrintWindow can prove the friend-list route
+                # before the business-frame normalizer changes dimensions or
+                # crops the footer.  Keep that proof separate from the frame
+                # returned to ordinary business code: the latter must still
+                # use the canonical 428x800 coordinates, while the native
+                # friend owner can resolve the cached source frame and rows.
+                raw_friend_rows = []
+                if visible_frame is not None:
+                    raw_rows_fn = globals().get('_friend_list_visit_button_rows')
+                    try:
+                        raw_friend_rows = list(
+                            raw_rows_fn(visible_frame) or []
+                        ) if callable(raw_rows_fn) else []
+                    except BaseException:
+                        raw_friend_rows = []
+
                 prepared_frame = visible_frame
                 if prepared_frame is not None and callable(prepare_fn):
                     try:
@@ -33982,18 +34360,19 @@ def _get_frame_from_bot(bot):
                     prepared_frame is not None and callable(trusted_fn) and
                     bool(trusted_fn(prepared_frame))
                 )
-                friend_list_route = False
+                friend_list_route = bool(len(raw_friend_rows) >= 3)
+                visible_rows = list(raw_friend_rows)
                 if prepared_frame is not None and not trusted:
                     rows_fn = globals().get('_friend_list_visit_button_rows')
                     try:
-                        visible_rows = (
+                        normalized_rows = (
                             rows_fn(prepared_frame) if callable(rows_fn) else []
                         )
-                        friend_list_route = bool(
-                            len(list(visible_rows or [])) >= 3
-                        )
+                        if len(list(normalized_rows or [])) >= 3:
+                            visible_rows = list(normalized_rows or [])
+                            friend_list_route = True
                     except BaseException:
-                        friend_list_route = False
+                        pass
                 visible_valid = bool(
                     prepared_frame is not None and (
                         friend_list_route or trusted or not callable(validator) or
@@ -34008,7 +34387,8 @@ def _get_frame_from_bot(bot):
                         if callable(cache_fn):
                             try:
                                 cache_fn(
-                                    bot, prepared_frame,
+                                    bot,
+                                    visible_frame if raw_friend_rows else prepared_frame,
                                     list(visible_rows or []),
                                 )
                             except BaseException:
@@ -46555,6 +46935,91 @@ def _qqfarm_native_friend_idle_home_recovery(context):
     return False
 
 
+def _qqfarm_native_friend_idle_carousel_advance(context):
+    """Advance to the next visible friend before native idle-home fallback."""
+    if context is None:
+        return False
+    try:
+        if bool(getattr(context, '_qqfarm_friend_entry_pending', False)):
+            return False
+        if bool(getattr(context, '_qqfarm_friend_chain_active', False)):
+            return False
+        idle_rounds = int(getattr(
+            context, '_qqfarm_native_friend_idle_rounds', 0
+        ) or 0)
+    except BaseException:
+        return False
+    if idle_rounds < 2:
+        return False
+    capture_fn = globals().get('_get_frame_from_bot')
+    state_fn = globals().get('_friend_guard_friend_ui_state')
+    bounds_fn = globals().get('_friend_selected_carousel_card_bounds')
+    changed_fn = globals().get('_friend_carousel_selection_changed')
+    navigate_fn = globals().get('_invoke_friend_adjacent_card_navigation')
+    try:
+        frame = capture_fn(context) if callable(capture_fn) else None
+        if frame is None or not callable(state_fn) or state_fn(frame) is not True:
+            return False
+        for matcher_name in (
+            '_friend_guard_steal_button_match',
+            '_friend_guard_help_button_match',
+        ):
+            matcher = globals().get(matcher_name)
+            match = matcher(frame) if callable(matcher) else None
+            if isinstance(match, dict) and bool(match.get('matched')):
+                return False
+        before_bounds = bounds_fn(frame) if callable(bounds_fn) else None
+        center_fn = globals().get('_friend_adjacent_card_center')
+        next_center = center_fn(frame) if callable(center_fn) else None
+        if not isinstance(before_bounds, dict) or next_center is None:
+            return False
+        if not callable(navigate_fn):
+            return False
+        navigation = navigate_fn(context, frame)
+        moved = bool(navigation[0]) if isinstance(navigation, tuple) else bool(navigation)
+        if not moved:
+            return False
+        sleep_fn = globals().get('_friend_guard_sleep')
+        if callable(sleep_fn):
+            sleep_fn(0.35)
+        else:
+            __import__('time').sleep(0.35)
+        after_frame = capture_fn(context)
+        if after_frame is None or state_fn(after_frame) is not True:
+            return False
+        after_bounds = bounds_fn(after_frame) if callable(bounds_fn) else None
+        shape = getattr(after_frame, 'shape', None)
+        frame_width = int(shape[1]) if shape is not None and len(shape) >= 2 else 428
+        selection_changed = bool(
+            callable(changed_fn)
+            and changed_fn(before_bounds, after_bounds, frame_width)
+        )
+        if not selection_changed:
+            return False
+        setattr(context, '_qqfarm_native_friend_idle_rounds', 0)
+        setattr(context, '_qqfarm_native_friend_idle_home_attempts', 0)
+        setattr(context, '_qqfarm_native_friend_idle_home_requested', False)
+        setattr(context, '_qqfarm_friend_chain_last_selected_bounds', after_bounds)
+        setattr(context, '_qqfarm_live_scene_hint', 'friend')
+        setattr(context, '_qqfarm_cycle_branch_hint', 'friend')
+        setattr(context, '_qqfarm_friend_cycle_seen', True)
+        _write(
+            'v567 native idle friend advanced to adjacent carousel card; selection=' +
+            repr(before_bounds)[:120] + ' -> ' + repr(after_bounds)[:120]
+        )
+        return True
+    except BaseException as error:
+        try:
+            _throttled_write(
+                'v567-idle-friend-carousel-error',
+                'v567 idle friend carousel advance deferred: ' + repr(error)[:180],
+                5.0,
+            )
+        except BaseException:
+            pass
+        return False
+
+
 def _wrap_native_v225_daily_catchup_run_cycle(fn, name=''):
     """Give the native run cycle one narrow daily catch-up point on home frames."""
     if not callable(fn):
@@ -46705,6 +47170,20 @@ def _wrap_native_v225_daily_catchup_run_cycle(fn, name=''):
         except BaseException:
             pass
         if not _home_ready(context):
+            advance_fn = globals().get(
+                '_qqfarm_native_friend_idle_carousel_advance'
+            )
+            try:
+                if callable(advance_fn) and bool(advance_fn(context)):
+                    return True
+            except BaseException as error:
+                try:
+                    _write(
+                        'v567 native idle carousel recovery error=' +
+                        repr(error)[:220]
+                    )
+                except BaseException:
+                    pass
             recover_fn = globals().get(
                 '_qqfarm_native_friend_idle_home_recovery'
             )
@@ -48659,6 +49138,53 @@ def _set_friend_chain_fast_interval(context, active):
     except BaseException:
         return False
 
+def _qqfarm_release_zero_row_friend_fast_interval(
+    context, rows=None, friend_surface=None, now_ts=None, timeout_seconds=8.0
+):
+    """Release a stale fast friend lease when no friend surface was proven."""
+    try:
+        if context is None or friend_surface is True or len(rows or []) >= 3:
+            return False
+        last_ts = float(getattr(
+            context, '_qqfarm_guard_list_fast_open_ts', 0.0
+        ) or 0.0)
+        if last_ts <= 0.0:
+            return False
+        if now_ts is None:
+            now_fn = globals().get('_friend_watchdog_now')
+            now_ts = float(
+                now_fn() if callable(now_fn) else __import__('time').time()
+            )
+        age = float(now_ts) - last_ts
+        if age < max(1.0, float(timeout_seconds)):
+            return False
+        fast_fn = globals().get('_set_friend_chain_fast_interval')
+        if callable(fast_fn):
+            fast_fn(context, False)
+        for name, value in (
+            ('_qqfarm_friend_chain_pending', False),
+            ('_qqfarm_friend_chain_active', False),
+            ('_qqfarm_friend_cycle_seen', False),
+            ('_qqfarm_force_self_cycle_next', True),
+        ):
+            try:
+                setattr(context, name, value)
+            except BaseException:
+                pass
+        try:
+            _throttled_write(
+                'v566-native-zero-row-fast-release',
+                'v566 released expired friend fast interval after native rows=' +
+                str(len(rows or [])) + ' friend_surface=' +
+                repr(friend_surface) + ' age=' + ('%.3f' % age),
+                4.0,
+            )
+        except BaseException:
+            pass
+        return True
+    except BaseException:
+        return False
+
 def _invoke_friend_guard_relaxed_home_check(
     action, target, context, original_args=(), original_kwargs=None
 ):
@@ -49859,7 +50385,7 @@ def _qqfarm_resolve_friend_list_frame(context, owner_frame=None):
             # validated list frame must survive one owner/compositor miss
             # across that interval, but remain bounded so a stale list cannot
             # become a permanent scene source.
-            if cached is None or cached_ts <= 0.0 or age < 0.0 or age > 15.0:
+            if cached is None or cached_ts <= 0.0 or age < 0.0:
                 return None, []
             hint = str(getattr(
                 context, '_qqfarm_live_scene_hint', ''
@@ -49885,6 +50411,17 @@ def _qqfarm_resolve_friend_list_frame(context, owner_frame=None):
                     context, '_qqfarm_cycle_branch_hint', ''
                 ) or '').strip().lower() == 'friend'
             )
+            scene_route = bool(
+                hint in ('friend-list', 'friend', 'friend-farm')
+                or str(getattr(
+                    context, '_qqfarm_native_friend_surface_state', ''
+                ) or '').strip().lower() in (
+                    'friend-list', 'friend', 'friend-farm'
+                )
+            )
+            cache_ttl = 90.0 if (friend_route_active or scene_route) else 15.0
+            if age > cache_ttl:
+                return None, []
             if (
                 hint in ('home', 'self', 'self-farm')
                 and not recent_list_surface
@@ -51353,6 +51890,47 @@ def _handle_friend_list_surface(context, frame):
                         terminal_phase or empty_latched or stale_cursor >= len(rows)
                     )
                 )
+                # A failed transition after the final row can leave the native
+                # owner with both ``pending=True`` and cursor N/N.  Treat that
+                # combination as terminal before the selection below: the
+                # modulo used for ordinary rows would otherwise turn N into
+                # row zero and keep the same friend-list click loop alive.
+                pending_at_terminal = bool(
+                    rows
+                    and (entry_pending or chain_pending or chain_active)
+                    and stale_cursor >= len(rows)
+                    and stale_pending >= len(rows)
+                )
+                if pending_at_terminal:
+                    terminal_cursor = len(rows)
+                    stale_cursor = terminal_cursor
+                    stale_pending = terminal_cursor
+                    exhausted = True
+                    terminal_latched = True
+                    try:
+                        setattr(context, '_qqfarm_friend_list_visit_cursor', terminal_cursor)
+                        setattr(context, '_qqfarm_friend_list_pending_cursor', terminal_cursor)
+                        setattr(context, '_qqfarm_friend_chain_exhausted', True)
+                        setattr(context, '_qqfarm_friend_chain_allow_home', True)
+                        setattr(context, '_qqfarm_friend_list_resume_pending', False)
+                    except BaseException:
+                        pass
+                    try:
+                        fast_fn = globals().get('_set_friend_chain_fast_interval')
+                        if callable(fast_fn):
+                            fast_fn(context, False)
+                    except BaseException:
+                        pass
+                    try:
+                        writer = globals().get('_write')
+                        if callable(writer):
+                            writer(
+                                'v564 friend-list terminal pending normalized; ' +
+                                'preserving cursor=' + str(terminal_cursor) + '/' +
+                                str(len(rows)) + ' without row wrap'
+                            )
+                    except BaseException:
+                        pass
                 if fresh_list_session and not same_round_resume and not terminal_latched and (
                     resume_pending or exhausted or stale_cursor > 0 or stale_pending > 0
                 ):
@@ -51730,6 +52308,62 @@ def _handle_friend_list_surface(context, frame):
                     max(0.0, retry_now - entry_clicked_ts)
                     if entry_clicked_ts > 0.0 else 0.0
                 )
+                try:
+                    entry_timeout_seconds = float(getattr(
+                        context, 'friend_list_entry_timeout_seconds', 8.0
+                    ) or 8.0)
+                except BaseException:
+                    entry_timeout_seconds = 8.0
+                entry_timeout_seconds = max(6.0, min(30.0, entry_timeout_seconds))
+                # A repeated invocation can receive the same cached list frame
+                # while the previous row click is still unresolved. Posting
+                # the same row again only reports another delivery; it does
+                # not advance the UI.  This hold is bounded: after the normal
+                # entry timeout the existing retry/reopen path below must run,
+                # otherwise the fast friend interval starves every other task.
+                try:
+                    signature_fn = globals().get('_qqfarm_frame_progress_signature')
+                    current_list_signature = (
+                        signature_fn(frame) if callable(signature_fn) else None
+                    )
+                    previous_list_signature = getattr(
+                        context, '_qqfarm_friend_entry_last_list_signature', None
+                    )
+                    if (
+                        current_list_signature is not None
+                        and previous_list_signature is not None
+                        and current_list_signature == previous_list_signature
+                        and entry_age < entry_timeout_seconds
+                    ):
+                        # The cached list is valid evidence for keeping the
+                        # pending row, but it is not fresh transition proof.
+                        # Do not let the 0.75s friend lease spin on that same
+                        # frame and starve the normal self/friend scheduler.
+                        try:
+                            fast_fn = globals().get(
+                                '_set_friend_chain_fast_interval'
+                            )
+                            if callable(fast_fn):
+                                fast_fn(context, False)
+                        except BaseException:
+                            pass
+                        writer = globals().get('_write')
+                        if callable(writer):
+                            writer(
+                                'v559 friend list pending row unchanged; '
+                                'waiting for fresh list/friend-farm frame cursor=' +
+                                str(pending_cursor) + ' age=' +
+                                ('%.3f' % entry_age) + ' timeout=' +
+                                ('%.3f' % entry_timeout_seconds)
+                            )
+                        return 'pending-row-backoff'
+                    if current_list_signature is not None:
+                        setattr(
+                            context, '_qqfarm_friend_entry_last_list_signature',
+                            current_list_signature,
+                        )
+                except BaseException:
+                    pass
                 last_row_pending = bool(
                     len(guard_list_candidates) > 0
                     and pending_cursor >= (len(guard_list_candidates) - 1)
@@ -51993,6 +52627,16 @@ def _handle_friend_list_surface(context, frame):
                                 context,
                                 '_qqfarm_friend_list_visit_cursor',
                                 int(pending_cursor),
+                            )
+                            setattr(
+                                context,
+                                '_qqfarm_friend_list_pending_cursor',
+                                int(pending_cursor),
+                            )
+                            setattr(
+                                context,
+                                '_qqfarm_friend_list_resume_pending',
+                                True,
                             )
                             setattr(context, '_qqfarm_friend_chain_pending', False)
                             setattr(context, '_qqfarm_friend_cycle_seen', False)
@@ -52571,14 +53215,10 @@ def _invoke_friend_guard_home_coordinate_click(context, fresh_frame):
         if bool(home_match.get('matched')) and isinstance(center, (tuple, list)) and len(center) >= 2:
             match_x, match_y = int(center[0]), int(center[1])
             match_mode = str(home_match.get('match_mode', '') or '')
-            if match_mode in (
-                'night-home+selected-carousel',
-                'night-home+selected-carousel-low-edge',
-                'return-home+selected-carousel-exact-low-edge',
-            ):
-                # Night templates include the glow above the button, so their
-                # geometric center lands above the clickable button body.
-                match_y = max(match_y, int(round(height * 0.78)))
+            # The return-home artwork extends into a large glow above the
+            # clickable control.  Template centers commonly land too high,
+            # regardless of which night/day matching mode found the artwork.
+            match_y = max(match_y, int(round(height * 0.78)))
             if 0 <= match_x < width and 0 <= match_y < height:
                 frame_x, frame_y = match_x, match_y
     except BaseException:
@@ -52981,6 +53621,19 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
     """Retry the friend entry without recursively re-entering its dispatcher."""
     if context is None or fresh_frame is None:
         return False
+    def _release_fast_interval(reason):
+        try:
+            fast_fn = globals().get('_set_friend_chain_fast_interval')
+            if callable(fast_fn):
+                fast_fn(context, False)
+            _throttled_write(
+                'v563-friend-entry-fast-release',
+                'v563 released friend fast interval after unconfirmed entry ' +
+                'reason=' + str(reason or 'unknown'),
+                4.0,
+            )
+        except BaseException:
+            pass
     try:
         quota_fn = globals().get('_friend_help_quota_active')
         if bool(
@@ -53044,7 +53697,8 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
         except BaseException:
             direct_cooldown_until = 0.0
         direct_cooldown_active = bool(direct_cooldown_until > route_now)
-        if _qqfarm_friend_entry_retry_gate_active(context, now_ts=route_now):
+        retry_gate_fn = globals().get('_qqfarm_friend_entry_retry_gate_active')
+        if callable(retry_gate_fn) and retry_gate_fn(context, now_ts=route_now):
             return False
         try:
             visual_retry_after = float(getattr(
@@ -53164,7 +53818,7 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
                         pass
             return False, None, ''
         for method_name in method_names:
-            if _qqfarm_friend_entry_retry_gate_active(context, now_ts=route_now):
+            if callable(retry_gate_fn) and retry_gate_fn(context, now_ts=route_now):
                 return False
             action = getattr(context, method_name, None)
             if not callable(action):
@@ -53196,6 +53850,7 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
                     _confirm_post_click_friend_surface()
                 )
                 if not verified:
+                    _release_fast_interval('native-entry-no-fresh-surface')
                     try:
                         setattr(context, '_qqfarm_friend_entry_pending', False)
                         setattr(context, '_qqfarm_friend_entry_clicked_ts', 0.0)
@@ -53406,6 +54061,7 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
                 setattr(context, '_qqfarm_friend_chain_pending', False)
             except BaseException:
                 pass
+            _release_fast_interval('visual-entry-no-fresh-surface')
 
         # This helper runs after the compiled run_cycle dispatcher has already
         # completed. Re-entering process_friend_farm here recursively calls the
@@ -53415,6 +54071,7 @@ def _invoke_friend_branch_from_home(context, fresh_frame):
             _write('v144 friend home direct entries unavailable; dispatcher re-entry skipped')
         except BaseException:
             pass
+        _release_fast_interval('no-entry-method-confirmed')
         return False
     except BaseException as error:
         try:
@@ -53452,6 +54109,42 @@ def _friend_guard_list_fast_open_from_home(context):
             return False
     except BaseException:
         return False
+    try:
+        now_fn = globals().get('_friend_watchdog_now')
+        now_ts = (
+            float(now_fn())
+            if callable(now_fn)
+            else float(__import__('time').time())
+        )
+        last_ts = float(getattr(
+            context, '_qqfarm_guard_list_fast_open_ts', 0.0
+        ) or 0.0)
+        if last_ts > 0.0 and (now_ts - last_ts) >= 8.0:
+            fast_fn = globals().get('_set_friend_chain_fast_interval')
+            if callable(fast_fn):
+                fast_fn(context, False)
+            for name, value in (
+                ('_qqfarm_friend_chain_pending', False),
+                ('_qqfarm_friend_chain_active', False),
+                ('_qqfarm_friend_cycle_seen', False),
+                ('_qqfarm_force_self_cycle_next', True),
+            ):
+                try:
+                    setattr(context, name, value)
+                except BaseException:
+                    pass
+            try:
+                _throttled_write(
+                    'v565-guard-list-zero-row-release',
+                    'v565 released stale guard-list fast open after zero-row ' +
+                    'transition age=' + ('%.3f' % (now_ts - last_ts)),
+                    4.0,
+                )
+            except BaseException:
+                pass
+            return False
+    except BaseException:
+        pass
     try:
         if bool(getattr(context, '_qqfarm_friend_chain_pending', False)):
             return False
@@ -61795,6 +62488,26 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
                         except BaseException:
                             pass
                 active_friend_surface = bool(friend_surface is True)
+                if len(rows) < 3 and not active_friend_surface:
+                    release_fn = globals().get(
+                        '_qqfarm_release_zero_row_friend_fast_interval'
+                    )
+                    if callable(release_fn):
+                        targets = [self]
+                        active_context = globals().get(
+                            '_ACTIVE_RUN_CYCLE_CONTEXT'
+                        )
+                        if (
+                            active_context is not None
+                            and active_context is not self
+                        ):
+                            targets.append(active_context)
+                        for target in targets:
+                            if release_fn(
+                                target, rows=rows,
+                                friend_surface=friend_surface,
+                            ):
+                                return False
                 if not active_friend_surface and friend_surface is False:
                     reconcile_fn = globals().get(
                         '_qqfarm_reconcile_visible_self_surface'
@@ -61871,6 +62584,79 @@ def _wrap_native_v225_friend_help_candidate_cache(fn, name=''):
             # the compiled implementation click stale footer coordinates when
             # no confirmed friend surface is available.
             if not active_friend_surface and len(rows) < 3:
+                # A row click starts an asynchronous friend-farm transition.
+                # During the bounded grace window, an empty/unclear owner frame
+                # is loading evidence rather than self-home evidence. Returning
+                # here prevents the native home-entry fallback from reopening
+                # the friend route or triggering a close/recovery loop.
+                try:
+                    pending_entry = bool(getattr(
+                        self, '_qqfarm_friend_entry_pending', False
+                    ))
+                    verified_surface = str(getattr(
+                        self, '_qqfarm_friend_entry_verified_surface', ''
+                    ) or '').strip().lower()
+                    clicked_ts = float(getattr(
+                        self, '_qqfarm_friend_entry_clicked_ts', 0.0
+                    ) or 0.0)
+                    marker_surface = str(getattr(
+                        self, '_qqfarm_friend_entry_transition_marker_surface', ''
+                    ) or '').strip().lower()
+                    marker_ts = float(getattr(
+                        self, '_qqfarm_friend_entry_transition_marker_ts', 0.0
+                    ) or 0.0)
+                    now_fn = globals().get('_friend_watchdog_now')
+                    now_ts = float(
+                        now_fn() if callable(now_fn) else __import__('time').time()
+                    )
+                    timeout_value = float(getattr(
+                        self, 'friend_list_entry_timeout_seconds', 8.0
+                    ) or 8.0)
+                    grace_seconds = max(
+                        12.0, min(30.0, timeout_value + 6.0)
+                    )
+                    transition_age = (
+                        max(0.0, now_ts - clicked_ts)
+                        if clicked_ts > 0.0 else 0.0
+                    )
+                    marker_age = (
+                        max(0.0, now_ts - marker_ts)
+                        if marker_ts > 0.0 else 0.0
+                    )
+                    marker_pending = bool(
+                        marker_surface in ('friend-list', 'friend-farm')
+                        and marker_ts > 0.0
+                        and marker_age < grace_seconds
+                        and (
+                            bool(getattr(
+                                self, '_qqfarm_friend_chain_pending', False
+                            ))
+                            or bool(getattr(
+                                self, '_qqfarm_friend_chain_active', False
+                            ))
+                            or bool(getattr(
+                                self, '_qqfarm_friend_cycle_seen', False
+                            ))
+                        )
+                    )
+                    if (
+                            (
+                                pending_entry
+                                and verified_surface in ('friend-list', 'friend-farm')
+                                and transition_age < grace_seconds
+                            )
+                            or marker_pending
+                    ):
+                        _throttled_write(
+                            'v568-pending-friend-transition-hold',
+                            'v568 held pending friend transition before home fallback '
+                            'age=' + ('%.3f' % transition_age) +
+                            ' grace=' + ('%.3f' % grace_seconds),
+                            2.0,
+                        )
+                        return False
+                except BaseException:
+                    pass
                 # A confirmed self-home frame is a different case from an
                 # unknown/cropped frame: the native owner has reached the
                 # friend branch before the friend entry was opened.  Recover
@@ -62950,6 +63736,45 @@ def _share_clear_retry_backoff(context):
         return False
 
 
+def _share_retry_cap_reached(context):
+    """Return True once today's native share retry counter reaches its cap."""
+    try:
+        blocked_fn = globals().get('_daily_flow_retry_blocked')
+        if callable(blocked_fn) and bool(blocked_fn('share')):
+            return True
+    except BaseException:
+        pass
+    if context is None:
+        return False
+    try:
+        value = _cfg_get(
+            _active_bot_sections(), 'daily_flow_max_retry_per_day', '3'
+        )
+        limit = int(float(str(value).strip()))
+    except BaseException:
+        limit = 3
+    limit = max(1, min(20, limit))
+    try:
+        day_fn = globals().get('_daily_business_date')
+        today = str(
+            day_fn() if callable(day_fn)
+            else __import__('time').strftime('%Y-%m-%d')
+        )
+    except BaseException:
+        today = ''
+    try:
+        retry_day = str(getattr(
+            context, 'daily_flow_retry_date', today
+        ) or today)
+        counts = getattr(context, 'daily_flow_retry_counts', None)
+        count = int(counts.get('share', 0) or 0) if isinstance(counts, dict) else 0
+    except BaseException:
+        return False
+    if today and retry_day and retry_day != today:
+        return False
+    return bool(count >= limit)
+
+
 def _patch_share_retry_backoff_for_module(module, tag=''):
     """Throttle failed share attempts without consuming all six retries at once."""
     changed = 0
@@ -63008,6 +63833,15 @@ def _patch_share_retry_backoff_for_module(module, tag=''):
                             30.0,
                         )
                         return False
+                    cap_fn = globals().get('_share_retry_cap_reached')
+                    if callable(cap_fn) and bool(cap_fn(context)):
+                        _throttled_write(
+                            'v562-share-retry-cap-failure',
+                            'v562 daily share failure ignored because today retry '
+                            'cap is already reached',
+                            30.0,
+                        )
+                        return False
                 result = __orig(*args, **kwargs)
                 if flow_key == 'share':
                     next_ts = _share_set_retry_backoff(context)
@@ -63034,6 +63868,14 @@ def _patch_share_retry_backoff_for_module(module, tag=''):
         ):
             def _wrapped_should(*args, __orig=original_should, **kwargs):
                 context = _share_bot_from_args(args, kwargs)
+                cap_fn = globals().get('_share_retry_cap_reached')
+                if callable(cap_fn) and bool(cap_fn(context)):
+                    _throttled_write(
+                        'v562-share-retry-cap-should',
+                        'v562 daily share retry cap reached; suppressing same-day should',
+                        30.0,
+                    )
+                    return False
                 if _share_retry_backoff_active(context):
                     _throttled_write(
                         'v86-share-retry-wait',
@@ -63058,6 +63900,9 @@ def _patch_share_retry_backoff_for_module(module, tag=''):
         ):
             def _wrapped_run(*args, __orig=original_run, **kwargs):
                 context = _share_bot_from_args(args, kwargs)
+                cap_fn = globals().get('_share_retry_cap_reached')
+                if callable(cap_fn) and bool(cap_fn(context)):
+                    return False
                 if _share_retry_backoff_active(context):
                     return False
                 return __orig(*args, **kwargs)
@@ -63458,6 +64303,43 @@ def _share_recovery_fail(context, reason):
     except BaseException:
         pass
     return False
+
+
+def _share_retry_after_surface_miss(context, phase='dialog'):
+    """Refresh the current QQ surface once after a post-click capture miss."""
+    if context is None:
+        return False
+    try:
+        attempts = max(0, int(getattr(
+            context, '_qqfarm_share_surface_retry_count', 0
+        ) or 0))
+        if attempts >= 1:
+            return False
+        setattr(context, '_qqfarm_share_surface_retry_count', attempts + 1)
+    except BaseException:
+        return False
+    try:
+        invalidate_fn = globals().get('_qqfarm_invalidate_wgc_frame_cache')
+        if callable(invalidate_fn):
+            invalidate_fn('share-' + str(phase or 'dialog') + '-surface-miss')
+    except BaseException:
+        pass
+    frame = None
+    try:
+        frame_fn = globals().get('_get_frame_from_bot')
+        frame = frame_fn(context) if callable(frame_fn) else None
+    except BaseException:
+        frame = None
+    try:
+        _throttled_write(
+            'v557-share-surface-retry',
+            'v557 share surface refreshed after ' + str(phase or 'dialog') +
+            ' capture miss; fresh=' + str(frame is not None),
+            5.0,
+        )
+    except BaseException:
+        pass
+    return frame is not None
 
 def _share_reward_claim_button_center(frame, allow_middle=False):
     """Locate a large yellow claim button in normalized QQ client coordinates."""
@@ -64434,6 +65316,7 @@ def _run_share_prompt_recovery(context):
         return False
     try:
         setattr(context, '_qqfarm_share_visual_recovery_running', True)
+        setattr(context, '_qqfarm_share_surface_retry_count', 0)
     except BaseException:
         pass
 
@@ -64515,6 +65398,19 @@ def _run_share_prompt_recovery(context):
             except TypeError:
                 center = _share_find_prompt_button_center()
             if center is None:
+                retry_surface_fn = globals().get(
+                    '_share_retry_after_surface_miss'
+                )
+                refreshed = bool(
+                    callable(retry_surface_fn) and
+                    retry_surface_fn(context, 'prompt')
+                )
+                if refreshed:
+                    try:
+                        center = _share_find_prompt_button_center((context,), {})
+                    except TypeError:
+                        center = _share_find_prompt_button_center()
+            if center is None:
                 fail_fn = globals().get('_share_recovery_fail')
                 return fail_fn(context, 'prompt-not-found') if callable(fail_fn) else False
             if _blocked('recovery-before-prompt-click', cfg):
@@ -64532,6 +65428,16 @@ def _run_share_prompt_recovery(context):
                 5.0,
             )
             dialog = _share_wait_dialog_hwnd(mod, timeout_ms=3500)
+        if not dialog:
+            retry_surface_fn = globals().get(
+                '_share_retry_after_surface_miss'
+            )
+            refreshed = bool(
+                callable(retry_surface_fn) and
+                retry_surface_fn(context, 'dialog')
+            )
+            if refreshed:
+                dialog = _share_wait_dialog_hwnd(mod, timeout_ms=3500)
         if not dialog:
             _throttled_write(
                 'v78-share-dialog-missing',
@@ -66459,6 +67365,33 @@ def _share_click_result_succeeded(result):
         return False
 
 
+def _share_entry_page_visible(context, call_args=(), call_kwargs=None):
+    """Require a fresh share-page button after the task-card entry click."""
+    try:
+        frame = None
+        frame_fn = globals().get('_get_frame_from_bot')
+        if callable(frame_fn) and context is not None:
+            try:
+                frame = frame_fn(context)
+            except BaseException:
+                frame = None
+        if frame is None:
+            call_frame_fn = globals().get('_share_prompt_frame_from_call')
+            if callable(call_frame_fn):
+                try:
+                    frame = call_frame_fn(call_args, call_kwargs)
+                except BaseException:
+                    frame = None
+        detector = globals().get('_share_prompt_button_center_from_rgb')
+        return bool(
+            frame is not None
+            and callable(detector)
+            and detector(frame) is not None
+        )
+    except BaseException:
+        return False
+
+
 def _share_prompt_button_center_from_rgb(image):
     """Locate the large lime share capsule in logical or full physical frames."""
     try:
@@ -66852,6 +67785,8 @@ def _wrap_share_entry_settle_func(fn):
         entry_kind = _daily_entry_call_kind(a, k)
         context = None
         freebenefits_before = None
+        share_entry_settle_consumed = False
+        share_entry_client_redelivered = False
         if entry_kind == 'freebenefits':
             try:
                 context_fn = globals().get('_daily_flow_context_from_args')
@@ -66932,6 +67867,8 @@ def _wrap_share_entry_settle_func(fn):
                     if recovered:
                         result = True
                         succeeded = True
+                        if entry_kind == 'share_entry':
+                            share_entry_client_redelivered = True
                         _throttled_write(
                             'v450-daily-entry-coordinate-' + str(entry_kind),
                             'v450 native daily entry coordinate fallback tag=' +
@@ -66940,6 +67877,61 @@ def _wrap_share_entry_settle_func(fn):
                         )
                 except BaseException:
                     pass
+        if entry_kind == 'share_entry' and succeeded:
+            # The compiled template helper reports True when it finds the
+            # artwork, even when its background click was rejected.  Do not
+            # enter prompt capture from that acknowledgement alone.
+            try:
+                settle_ms = _share_int_cfg('share_entry_settle_ms', 1200)
+            except BaseException:
+                settle_ms = 1200
+            settle_seconds = max(0.25, min(1.5, float(settle_ms) / 1000.0))
+            time.sleep(settle_seconds)
+            share_entry_settle_consumed = True
+            visible_fn = globals().get('_share_entry_page_visible')
+            page_visible = bool(
+                visible_fn(context, a, k) if callable(visible_fn) else True
+            )
+            if not page_visible and not share_entry_client_redelivered:
+                client_click = globals().get('_friend_guard_post_client_click')
+                redelivered = False
+                if callable(client_click):
+                    try:
+                        try:
+                            redelivered = bool(client_click(40, 190, 428, 800))
+                        except TypeError:
+                            redelivered = bool(client_click(40, 190))
+                    except BaseException:
+                        redelivered = False
+                if redelivered:
+                    share_entry_client_redelivered = True
+                    time.sleep(settle_seconds)
+                    page_visible = bool(
+                        visible_fn(context, a, k)
+                        if callable(visible_fn) else True
+                    )
+                    try:
+                        _throttled_write(
+                            'v561-share-entry-client-redelivery',
+                            'v561 share entry native acknowledgement lacked page proof; '
+                            'redelivered to QQ client visible=' + str(page_visible),
+                            5.0,
+                        )
+                    except BaseException:
+                        pass
+            if not page_visible:
+                try:
+                    _throttled_write(
+                        'v561-share-entry-unverified',
+                        'v561 share entry click lacked fresh share-page proof; '
+                        'returning failure without prompt capture',
+                        5.0,
+                    )
+                except BaseException:
+                    pass
+                return False
+            result = True
+            succeeded = True
         if entry_kind == 'freebenefits' and succeeded:
             try:
                 time.sleep(0.75)
@@ -67203,7 +68195,8 @@ def _wrap_share_entry_settle_func(fn):
                 )
             except BaseException:
                 pass
-            time.sleep(settle_seconds)
+            if not (entry_kind == 'share_entry' and share_entry_settle_consumed):
+                time.sleep(settle_seconds)
         return result
 
     try:
