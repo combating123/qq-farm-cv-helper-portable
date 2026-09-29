@@ -6201,6 +6201,14 @@ Next action: on the next real home-progress or visible home friend-request rearm
 - Focused regression suite: 26 / 26 OK. py_compile and git diff check passed.
 - Remaining live evidence: a fresh confirmed friend-farm help/steal proof, natural empty-land/planting result, daily share success, and radish success remain separate sign-offs; this release specifically closes the active-friend scene-loss close/relaunch path.
 
+### v1.5.36 GitHub publication
+
+- Commit pushed to main: 3bf4cb3.
+- Tag: v1.5.36.
+- Release: https://github.com/combating123/qq-farm-cv-helper-portable/releases/tag/v1.5.36
+- Release is published, non-draft, and non-prerelease. ZIP and SHA-256 assets are uploaded.
+- Portable ZIP: 146603947 bytes, SHA-256 9215744AFCE24D438BE9311F59F15056EDEEDA5E2C666B459BE3A03C0A44A5F2.
+
 ## 2026-09-29 19:xx +0800 - v1.5.35 cached friend-list interval release
 
 - Objective: stop the user-visible loop where the patrol repeatedly entered/exited without friend actions while the miniapp was periodically recovered.
